@@ -1,0 +1,13 @@
+/backend/vendor
+/backend/node_modules
+/backend/.env
+/backend/storage/*.key
+/backend/storage/framework/cache/*
+/backend/storage/framework/sessions/*
+/backend/storage/framework/views/*
+/backend/storage/logs/*
+/backend/database/database.sqlite
+/frontend/node_modules
+/frontend/.next
+/frontend/.env*.local
+.DS_Store
