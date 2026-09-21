@@ -49,7 +49,17 @@ Responsibilities:
 
 ## Current status
 
-Sprint 1 (Foundation) is **complete**: schema, auth/RBAC/tenant isolation, clients/properties/
-projects API, frontend screens S01–S06 with create flows, and 67 passing backend tests. Stopped
-here for user checkpoint per the agreed execution scope. Sprints 2–8 (BOQ, Pricing, Proposals,
-Approval+Contract, Payments, Change Orders, Polish) are not started.
+Sprint 1 (Foundation) and Sprint 2 (BOQ) are **complete**. 101 passing backend tests. Stopped
+here for user checkpoint. Sprints 3–8 (Pricing, Proposals, Approval+Contract, Payments, Change
+Orders, Polish) are not started.
+
+Sprint 2 delivered: rooms/boq_categories/boq_items schema, org-level BOQ templates (clone-not-
+reference semantics), full CRUD + nested tree/totals endpoint, CSV import/export, apply-template
+endpoint, S07 BOQ Builder UI (spreadsheet-style grid, room/category filters, template apply,
+CSV import/export). A mid-sprint infrastructure bug was found and fixed: `docker compose exec
+app php artisan test` was silently running `migrate:fresh` against the real dev Postgres database
+instead of an isolated sqlite one, because `docker-compose.yml`'s `env_file` leaks real OS env
+vars that PHPUnit's `<env>` tags don't override without `force="true"`. Fixed in
+`backend/phpunit.xml` + `backend/tests/bootstrap.php` — verified holding as of Sprint 2's QA pass.
+A gap (no way to create a room from the UI, only via CSV import) was found during frontend
+testing and closed with a `POST /projects/{id}/rooms` endpoint + UI form.
