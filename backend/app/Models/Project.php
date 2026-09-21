@@ -54,6 +54,21 @@ class Project extends Model
         return $this->hasMany(ProjectService::class);
     }
 
+    public function rooms(): HasMany
+    {
+        return $this->hasMany(Room::class);
+    }
+
+    public function boqCategories(): HasMany
+    {
+        return $this->hasMany(BoqCategory::class);
+    }
+
+    public function boqItems(): HasMany
+    {
+        return $this->hasMany(BoqItem::class);
+    }
+
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'project_members')

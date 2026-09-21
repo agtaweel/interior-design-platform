@@ -153,8 +153,51 @@ Documents.
 - Frontend (`frontend/`) is a plain Next.js app, not yet dockerized — run with `npm run dev`
   inside `frontend/` (port 3000 by default).
 
-## Sprint 1 scope (this checkpoint)
+## Sprint 1 scope (complete)
 
 Foundation only: auth, organizations, roles/RBAC, organization_members, clients, properties,
-projects, project_members, audit_logs — plus screens S01–S06 and their supporting tests. Stop
-and checkpoint with the user after this sprint before starting BOQ (Sprint 2).
+projects, project_members, audit_logs — plus screens S01–S06 and their supporting tests. 67
+backend tests passing. See git log for the sequence of commits.
+
+## Sprint 2 scope (current)
+
+BOQ only — not pricing/markup (that's Sprint 3). In scope:
+
+- **Schema**: `rooms` (id, project_id, name, area_m2, sort_order), `boq_categories` (id,
+  project_id, parent_id, name, sort_order — self-referential for nested categories),
+  `boq_items` (id, project_id, category_id, room_id, name, description, quantity, unit,
+  material_unit_cost, labor_unit_cost, other_unit_cost, client_unit_price, supplier_id, notes,
+  sort_order). `supplier_id` references the `suppliers` table which doesn't exist yet (Sprint 6
+  scope) — make it a nullable unconstrained column for now (no FK) rather than building supplier
+  management early; add the FK constraint when `suppliers` lands.
+- **Templates**: the PRD's UX spec (§4.1) requires starting a BOQ "from office template, then
+  customize without changing the master template," but the ERD has no explicit template tables.
+  Resolve this by adding organization-scoped template tables that mirror the project-scoped ones
+  (e.g. `boq_template_categories`, `boq_template_items` — no `project_id`, scoped by
+  `organization_id` instead) and an "apply template to project" operation that **copies**
+  template rows into a project's `boq_categories`/`boq_items` (new rows, new ids) rather than
+  referencing the template — this is what "without changing the master template" requires:
+  editing the cloned project BOQ must never mutate the template.
+- **Calculations**: per-item `direct_cost = (material_unit_cost + labor_unit_cost +
+  other_unit_cost) * quantity` and `client_total = client_unit_price * quantity`. This is the
+  per-item math only — organization-wide markup layers/fees/discounts (`pricing_rules` table) are
+  Sprint 3. Category and room subtotals roll up from items.
+- **Client-facing exposure**: even in Sprint 2, never return `material_unit_cost`,
+  `labor_unit_cost`, `other_unit_cost`, or `supplier_id` in any client-facing/public serializer —
+  this rule starts now, not when Sprint 3's pricing views are built.
+- **Import/export**: CSV (not full Excel binary) import of BOQ items into a project, and CSV
+  export of a project's current BOQ. Note this as a scope decision — the PRD says "Excel/CSV
+  import/export," CSV covers the accounting/offline-review use case without adding a
+  spreadsheet-parsing dependency; revisit if a customer specifically needs .xlsx.
+- **API** (PRD §3 "BOQ & pricing" group, BOQ portion only): `GET /projects/{id}/boq`,
+  `POST /projects/{id}/boq/categories`, `POST /projects/{id}/boq/items`,
+  `PATCH /boq/items/{itemId}`, `DELETE /boq/items/{itemId}` (archive/soft-delete, not hard
+  delete — BOQ items may already be referenced by a sent proposal in later sprints, so plan for
+  a `deleted_at` / `archived_at` column now even though nothing reads it yet).
+- **UX**: S07 BOQ Builder only, per PRD §4.1 "detailed interaction" notes — spreadsheet-like
+  inline editing, keyboard navigation, duplicate row, drag/reorder, multi-select + bulk category
+  assignment, quantity × unit price live recalculation without page refresh, room filter with
+  optional room subtotals, draft state is freely editable (no approved-version concept exists
+  yet — that's Sprint 4/5). Do NOT build S08 Pricing Panel yet.
+
+Stop and checkpoint with the user after this sprint before starting Pricing (Sprint 3).

@@ -66,4 +66,14 @@ class Organization extends Model
     {
         return $this->hasMany(AuditLog::class);
     }
+
+    public function boqTemplateCategories(): HasMany
+    {
+        return $this->hasMany(BoqTemplateCategory::class);
+    }
+
+    public function boqTemplateItems(): HasMany
+    {
+        return $this->hasMany(BoqTemplateItem::class);
+    }
 }
