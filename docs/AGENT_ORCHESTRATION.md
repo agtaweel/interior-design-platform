@@ -49,5 +49,7 @@ Responsibilities:
 
 ## Current status
 
-See TaskList in the active session for live sprint progress. As of project bootstrap: Sprint 1
-(Foundation) is in progress; Sprints 2–8 are not started pending user checkpoint after Sprint 1.
+Sprint 1 (Foundation) is **complete**: schema, auth/RBAC/tenant isolation, clients/properties/
+projects API, frontend screens S01–S06 with create flows, and 67 passing backend tests. Stopped
+here for user checkpoint per the agreed execution scope. Sprints 2–8 (BOQ, Pricing, Proposals,
+Approval+Contract, Payments, Change Orders, Polish) are not started.
