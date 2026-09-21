@@ -1,6 +1,13 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BoqCategoryController;
+use App\Http\Controllers\Api\BoqController;
+use App\Http\Controllers\Api\BoqImportController;
+use App\Http\Controllers\Api\BoqItemController;
+use App\Http\Controllers\Api\BoqTemplateCategoryController;
+use App\Http\Controllers\Api\BoqTemplateController;
+use App\Http\Controllers\Api\BoqTemplateItemController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\OrganizationMemberController;
 use App\Http\Controllers\Api\ProjectController;
@@ -62,6 +69,26 @@ Route::prefix('v1')->group(function () {
             Route::patch('/projects/{project}', [ProjectController::class, 'update']);
             Route::post('/projects/{project}/members', [ProjectMemberController::class, 'store']);
             Route::post('/projects/{project}/services', [ProjectServiceController::class, 'store']);
+
+            // BOQ (Sprint 2, PROJECT_CONTEXT.md). {project} follows the same manual-lookup
+            // convention as above. {item} (PATCH/DELETE) is likewise plain/manual — see
+            // BoqItemController's docblock for why implicit binding is unsafe here even though
+            // BoqItem itself carries no organization_id to scope by directly.
+            Route::get('/projects/{project}/boq', [BoqController::class, 'index']);
+            Route::get('/projects/{project}/boq/export', [BoqController::class, 'export']);
+            Route::post('/projects/{project}/boq/import', [BoqImportController::class, 'import']);
+            Route::post('/projects/{project}/boq/categories', [BoqCategoryController::class, 'store']);
+            Route::post('/projects/{project}/boq/items', [BoqItemController::class, 'store']);
+            Route::post('/projects/{project}/boq/apply-template/{templateCategory}', [BoqTemplateController::class, 'apply']);
+            Route::patch('/boq/items/{item}', [BoqItemController::class, 'update']);
+            Route::delete('/boq/items/{item}', [BoqItemController::class, 'destroy']);
+
+            // Organization-level BOQ templates (mirrors the project-scoped BOQ tables — see
+            // BoqTemplateCategory/BoqTemplateItem docblocks). Not a PRD-mandated screen this
+            // sprint, just the API surface "apply template to project" needs to be usable.
+            Route::get('/boq-templates/categories', [BoqTemplateCategoryController::class, 'index']);
+            Route::post('/boq-templates/categories', [BoqTemplateCategoryController::class, 'store']);
+            Route::post('/boq-templates/categories/{category}/items', [BoqTemplateItemController::class, 'store']);
         });
     });
 });

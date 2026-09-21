@@ -34,6 +34,19 @@ final class Permissions
      */
     public const VIEW_FINANCIALS = 'view_financials';
 
+    /**
+     * Create/update/archive a project's BOQ (categories, items), apply office templates to a
+     * project's BOQ, and manage the organization's BOQ templates themselves, plus BOQ CSV
+     * import. Sprint 2 introduces this as its own permission rather than reusing
+     * MANAGE_PROJECTS: BOQ editing is a distinct day-to-day workflow (designers/estimators)
+     * from project lifecycle management (status, membership, services), and later sprints
+     * (pricing, proposals) will likely want to grant/withhold BOQ access independently of
+     * full project-admin rights. Reads (GET boq / GET templates / CSV export) require no
+     * extra permission beyond an active membership, matching every other read endpoint in
+     * this codebase.
+     */
+    public const MANAGE_BOQ = 'manage_boq';
+
     public const ALL = [
         self::MANAGE_ORGANIZATION,
         self::MANAGE_MEMBERS,
@@ -41,5 +54,6 @@ final class Permissions
         self::MANAGE_PROJECTS,
         self::MANAGE_LEADS,
         self::VIEW_FINANCIALS,
+        self::MANAGE_BOQ,
     ];
 }

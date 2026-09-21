@@ -24,6 +24,7 @@ class RoleSeeder extends Seeder
             Permissions::MANAGE_PROJECTS => true,
             Permissions::MANAGE_LEADS => true,
             Permissions::VIEW_FINANCIALS => true,
+            Permissions::MANAGE_BOQ => true,
         ]);
 
         $this->upsert('Designer', [
@@ -33,6 +34,11 @@ class RoleSeeder extends Seeder
             Permissions::MANAGE_PROJECTS => true,
             Permissions::MANAGE_LEADS => true,
             Permissions::VIEW_FINANCIALS => false,
+            // Designers own the BOQ Builder day-to-day (PROJECT_CONTEXT.md S07) — they need
+            // to create/edit/archive BOQ items and apply templates even though they don't see
+            // financial rollups (VIEW_FINANCIALS is a separate, later-sprint concern for
+            // margin visibility, not for editing cost inputs).
+            Permissions::MANAGE_BOQ => true,
         ]);
 
         $this->upsert('Site Staff', array_fill_keys(Permissions::ALL, false));
