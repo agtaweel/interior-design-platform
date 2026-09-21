@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToOrganization;
 use Database\Factories\LeadFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Lead extends Model
 {
     /** @use HasFactory<LeadFactory> */
-    use HasFactory, BelongsToOrganization;
+    use HasFactory, BelongsToOrganization, Auditable;
 
     protected function casts(): array
     {

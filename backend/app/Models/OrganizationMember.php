@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use App\Models\Concerns\BelongsToOrganization;
 use Database\Factories\OrganizationMemberFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class OrganizationMember extends Model
 {
     /** @use HasFactory<OrganizationMemberFactory> */
-    use HasFactory, BelongsToOrganization;
+    use HasFactory, BelongsToOrganization, Auditable;
 
     public function user(): BelongsTo
     {
