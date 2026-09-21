@@ -137,6 +137,22 @@ Documents.
 - Role permissions prevent clients and site users from seeing internal cost/profit.
 - All commercial mutations are audited and historical approved documents remain immutable.
 
+## Local dev environment (already running)
+
+- `docker-compose.yml` at repo root defines three services: `postgres` (5440→5432, db
+  `interior_design_platform`, user `admin`/`password`), `redis` (6390→6379), and `app` (the
+  Laravel backend, built from `backend/Dockerfile`, port 8000, auto-runs
+  `composer install && php artisan migrate --force && php artisan serve`).
+- The `app` container mounts `./backend` live, so editing files on the host is immediately
+  reflected — no rebuild needed unless `Dockerfile` itself or system deps change.
+- Inside the Docker network, `backend/.env` points `DB_HOST=postgres` `DB_PORT=5432` and
+  `REDIS_HOST=redis` `REDIS_PORT=6379` (container-to-container, not the host-mapped ports).
+- To run artisan commands (migrations, tests, tinker): `docker compose exec app php artisan ...`
+  or `docker compose exec app php artisan test`.
+- From the host (e.g. `psql` for manual inspection), use `127.0.0.1:5440`.
+- Frontend (`frontend/`) is a plain Next.js app, not yet dockerized — run with `npm run dev`
+  inside `frontend/` (port 3000 by default).
+
 ## Sprint 1 scope (this checkpoint)
 
 Foundation only: auth, organizations, roles/RBAC, organization_members, clients, properties,
