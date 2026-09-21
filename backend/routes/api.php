@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectMemberController;
 use App\Http\Controllers\Api\ProjectServiceController;
 use App\Http\Controllers\Api\PropertyController;
+use App\Http\Controllers\Api\RoomController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -69,6 +70,16 @@ Route::prefix('v1')->group(function () {
             Route::patch('/projects/{project}', [ProjectController::class, 'update']);
             Route::post('/projects/{project}/members', [ProjectMemberController::class, 'store']);
             Route::post('/projects/{project}/services', [ProjectServiceController::class, 'store']);
+
+            // Rooms (Sprint 2 gap fix, PROJECT_CONTEXT.md). Not nested under /boq because a
+            // room is a structural property of the project itself (see Room model docblock),
+            // not a BOQ record — but it's grouped here since BOQ line items are its only
+            // consumer today (boq_items.room_id). {project} follows the same manual-lookup
+            // convention as above. GET requires only an active membership (read); POST requires
+            // Permissions::MANAGE_BOQ (checked inside StoreRoomRequest::authorize()), matching
+            // the BOQ write endpoints below since rooms only exist to organize BOQ line items.
+            Route::get('/projects/{project}/rooms', [RoomController::class, 'index']);
+            Route::post('/projects/{project}/rooms', [RoomController::class, 'store']);
 
             // BOQ (Sprint 2, PROJECT_CONTEXT.md). {project} follows the same manual-lookup
             // convention as above. {item} (PATCH/DELETE) is likewise plain/manual — see

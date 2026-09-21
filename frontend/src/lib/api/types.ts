@@ -196,6 +196,161 @@ export interface ProjectFormInput {
 }
 
 // ---------------------------------------------------------------------------
+// BOQ (Sprint 2 — BoqController/BoqCategoryController/BoqItemController/BoqTreeService).
+// Money fields arrive as decimal strings (e.g. "150.00") per the backend's decimal columns —
+// same convention as Property.area_m2. Route all display through formatEGP/formatTrimmedNumber,
+// never render these raw.
+// ---------------------------------------------------------------------------
+
+export interface BoqSubtotal {
+  direct_cost: string;
+  client_total: string;
+}
+
+export interface BoqItem {
+  id: number | string;
+  project_id: number | string;
+  category_id: number | string;
+  room_id: number | string | null;
+  name: string;
+  description: string | null;
+  quantity: number | string;
+  unit: string;
+  material_unit_cost: number | string;
+  labor_unit_cost: number | string;
+  other_unit_cost: number | string;
+  client_unit_price: number | string;
+  direct_cost: number | string;
+  client_total: number | string;
+  supplier_id: number | string | null;
+  notes: string | null;
+  sort_order: number;
+  archived_at: ISODateString | null;
+  created_at: ISODateString;
+  updated_at: ISODateString;
+}
+
+export interface BoqItemFormInput {
+  category_id: number | string;
+  room_id?: number | string | null;
+  name: string;
+  description?: string | null;
+  quantity: number | string;
+  unit: string;
+  material_unit_cost?: number | string;
+  labor_unit_cost?: number | string;
+  other_unit_cost?: number | string;
+  client_unit_price?: number | string;
+  supplier_id?: number | string | null;
+  notes?: string | null;
+  sort_order?: number;
+}
+
+/** Nested category node as returned inside GET /projects/{id}/boq's `categories[]` tree. */
+export interface BoqCategoryNode {
+  id: number | string;
+  project_id: number | string;
+  parent_id: number | string | null;
+  name: string;
+  sort_order: number;
+  subtotal: BoqSubtotal;
+  items: BoqItem[];
+  children: BoqCategoryNode[];
+}
+
+export interface BoqCategoryFormInput {
+  name: string;
+  parent_id?: number | string | null;
+  sort_order?: number;
+}
+
+export interface BoqRoom {
+  id: number | string;
+  project_id?: number | string;
+  name: string;
+  area_m2: number | string | null;
+  sort_order: number;
+  /** Present on rooms nested in GET /projects/{id}/boq's tree; absent from the plain
+   *  GET/POST /projects/{id}/rooms responses — room subtotals are always computed
+   *  client-side from `items` anyway (see computeSubtotal in boq/page.tsx), so callers
+   *  should never need to read this field. */
+  subtotal?: BoqSubtotal;
+  created_at?: ISODateString;
+  updated_at?: ISODateString;
+}
+
+/** POST /projects/{id}/rooms body. */
+export interface BoqRoomFormInput {
+  name: string;
+  area_m2?: number | string | null;
+  sort_order?: number;
+}
+
+/** GET /projects/{id}/boq — the full project BOQ tree. */
+export interface BoqTree {
+  categories: BoqCategoryNode[];
+  rooms: BoqRoom[];
+  grand_total: BoqSubtotal;
+  include_archived: boolean;
+}
+
+/** POST /projects/{id}/boq/categories' plain (non-nested) response shape. */
+export interface BoqCategory {
+  id: number | string;
+  project_id: number | string;
+  parent_id: number | string | null;
+  name: string;
+  sort_order: number;
+  created_at: ISODateString;
+  updated_at: ISODateString;
+}
+
+/** Nested template category node as returned inside GET /boq-templates/categories. */
+export interface BoqTemplateCategoryNode {
+  id: number | string;
+  organization_id: number | string;
+  parent_id: number | string | null;
+  name: string;
+  sort_order: number;
+  items: BoqTemplateItem[];
+  children: BoqTemplateCategoryNode[];
+}
+
+export interface BoqTemplateItem {
+  id: number | string;
+  organization_id: number | string;
+  category_id: number | string;
+  name: string;
+  description: string | null;
+  unit: string;
+  material_unit_cost: number | string;
+  labor_unit_cost: number | string;
+  other_unit_cost: number | string;
+  client_unit_price: number | string;
+  notes: string | null;
+  sort_order: number;
+}
+
+/** GET /boq-templates/categories. */
+export interface BoqTemplateTree {
+  organization_id: number | string;
+  categories: BoqTemplateCategoryNode[];
+}
+
+/** POST /projects/{id}/boq/apply-template/{templateCategoryId}. */
+export interface ApplyBoqTemplateResult {
+  applied_category_id: number | string;
+  boq: BoqTree;
+}
+
+/** POST /projects/{id}/boq/import. */
+export interface BoqImportResult {
+  created: number;
+  skipped: number;
+  errors: Array<{ row: number; reason: string }>;
+}
+
+// ---------------------------------------------------------------------------
 // Pagination envelope (Laravel's default paginate() JSON shape)
 // ---------------------------------------------------------------------------
 
