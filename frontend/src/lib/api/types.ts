@@ -786,3 +786,109 @@ export interface Paginated<T> {
   links: PaginationLinks;
   meta: PaginationMeta;
 }
+
+// ---------------------------------------------------------------------------
+// Reports (ReportController — PROJECT_CONTEXT.md Sprint 8 "Reports" / S21). Both endpoints
+// require Permissions::VIEW_FINANCIALS. `estimated_margin` is derived from BOQ pricing
+// (grand_total - direct_cost_total), never real expenses — label it "estimated" everywhere in
+// the UI, never "profit", per PROJECT_CONTEXT.md's explicit instruction.
+// ---------------------------------------------------------------------------
+
+export interface ReportSummary {
+  total_revenue: number | string;
+  total_receivables: number | string;
+  estimated_margin: number | string;
+  total_change_order_value: number | string;
+  project_count: number;
+  active_project_count: number;
+}
+
+export interface ReportProjectRow {
+  id?: number | string;
+  name: string;
+  code: string | null;
+  status: ProjectStatus;
+  contract_value: number | string;
+  collected: number | string;
+  outstanding: number | string;
+  estimated_margin: number | string;
+  change_order_value: number | string;
+  /** contract_value - the originating proposal's frozen grand_total. Equals change_order_value
+   *  exactly by construction (see ReportController docblock) — a good internal consistency
+   *  check, not just a display figure. */
+  budget_variance: number | string;
+}
+
+// ---------------------------------------------------------------------------
+// Notifications (NotificationController — PROJECT_CONTEXT.md Sprint 8 "Notifications").
+// GET /notifications is the current user's own, paginated, newest-first. Live-verified shape:
+// the envelope key is `payload` (already-decoded JSON, not a raw `payload_json` string) and
+// includes a `created_at` alongside `sent_at`/`read_at`.
+// ---------------------------------------------------------------------------
+
+export type NotificationType =
+  | "proposal_approved"
+  | "proposal_changes_requested"
+  | "contract_created"
+  | "payment_received"
+  | "change_order_approved"
+  | "change_order_rejected"
+  | string;
+
+export interface NotificationPayload {
+  /** Human-readable summary — render this when present, per PROJECT_CONTEXT.md's UX note. */
+  summary?: string;
+  project_id?: number | string;
+  project_name?: string;
+  [key: string]: unknown;
+}
+
+export interface Notification {
+  id: number | string;
+  channel: string;
+  type: NotificationType;
+  payload: NotificationPayload | null;
+  sent_at: ISODateString | null;
+  read_at: ISODateString | null;
+  created_at: ISODateString;
+}
+
+// ---------------------------------------------------------------------------
+// Organization profile + members (OrganizationController / OrganizationMemberController —
+// PROJECT_CONTEXT.md Sprint 8 "Settings" / S22, scoped down).
+// ---------------------------------------------------------------------------
+
+export interface OrganizationProfile {
+  id: number | string;
+  name: string;
+  legal_name: string | null;
+  logo_url: string | null;
+  phone: string | null;
+  email: string | null;
+  currency: string | null;
+  timezone: string | null;
+  created_at: ISODateString;
+  updated_at: ISODateString;
+}
+
+export interface OrganizationProfileFormInput {
+  name?: string;
+  legal_name?: string | null;
+  logo_url?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  currency?: string | null;
+  timezone?: string | null;
+}
+
+export interface OrganizationRoleSummary {
+  id: number | string;
+  name: string;
+}
+
+export interface OrganizationMember {
+  id: number | string;
+  user: UserSummary;
+  role: OrganizationRoleSummary | null;
+  status: string;
+}

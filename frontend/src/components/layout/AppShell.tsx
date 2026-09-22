@@ -3,8 +3,10 @@
 /**
  * Desktop top-level nav per docs/PROJECT_CONTEXT.md:
  *   Dashboard / Leads / Clients / Projects / Suppliers / Reports / Settings
- * Suppliers/Reports/Settings are later-sprint screens — rendered disabled (no href, not
- * clickable) rather than linking to an empty page, per the frontend-engineer task brief.
+ * Suppliers remains a later-sprint screen — rendered disabled (no href, not clickable) rather
+ * than linking to an empty page, per the frontend-engineer task brief. Reports/Settings are
+ * enabled as of Sprint 8 (PROJECT_CONTEXT.md "Reports"/"Settings" sections) — Suppliers is still
+ * out of scope (Phase 2 / `tasks`,`site_reports`,`snags`,... per the Sprint 8 scope boundary).
  */
 
 import Link from "next/link";
@@ -13,6 +15,7 @@ import type { ReactNode } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { Locale } from "@/lib/i18n/dictionaries";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 
 interface NavItem {
   key: "dashboard" | "leads" | "clients" | "projects" | "suppliers" | "reports" | "settings";
@@ -25,8 +28,8 @@ const NAV_ITEMS: NavItem[] = [
   { key: "clients", href: "/clients" },
   { key: "projects", href: "/projects" },
   { key: "suppliers", href: null },
-  { key: "reports", href: null },
-  { key: "settings", href: null },
+  { key: "reports", href: "/reports" },
+  { key: "settings", href: "/settings" },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -74,6 +77,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <label className="sr-only" htmlFor="locale-switcher">
               {t("nav.language")}
             </label>
