@@ -101,7 +101,19 @@ class RoomTest extends TestCase
         $this->assertDatabaseMissing('rooms', ['name' => 'Should Fail']);
     }
 
-    public function test_listing_rooms_only_requires_an_active_membership(): void
+    /**
+     * Sprint 8 "Permissions hardening" (PROJECT_CONTEXT.md): rooms only exist to organize BOQ
+     * line items, so listing them now requires Permissions::MANAGE_BOQ for consistency with the
+     * rest of the BOQ-adjacent read surface (BOQ tree, BOQ export, pricing rules/breakdown) —
+     * even though a Room itself carries no cost data. A read-only member (no manage_boq) is now
+     * forbidden. The privileged-user-succeeds half of this contract is already covered by
+     * test_full_room_crud_lifecycle_via_the_api() above (its $user holds
+     * Permissions::MANAGE_BOQ and successfully GETs this route twice) — deliberately NOT
+     * re-asserted here with a second HTTP-authenticated user in the same test method: see
+     * ProposalRbacTest's docblock for the documented Sanctum-guard test-harness quirk this
+     * sidesteps (only one user authenticates over real HTTP per test method here).
+     */
+    public function test_listing_rooms_requires_manage_boq_permission(): void
     {
         $organization = Organization::factory()->create();
         $project = $this->projectIn($organization);
@@ -110,8 +122,7 @@ class RoomTest extends TestCase
 
         $this->withHeaders($this->authHeader($readOnlyUser))
             ->getJson("/api/v1/projects/{$project->id}/rooms")
-            ->assertStatus(200)
-            ->assertJsonCount(1, 'data');
+            ->assertStatus(403);
     }
 
     public function test_rooms_are_tenant_isolated(): void

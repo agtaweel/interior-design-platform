@@ -11,6 +11,8 @@ use App\Http\Controllers\Api\BoqTemplateItemController;
 use App\Http\Controllers\Api\ChangeOrderController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\ContractController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\OrganizationMemberController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PaymentScheduleController;
@@ -24,6 +26,7 @@ use App\Http\Controllers\Api\PropertyController;
 use App\Http\Controllers\Api\ProposalVersionController;
 use App\Http\Controllers\Api\PublicChangeOrderController;
 use App\Http\Controllers\Api\PublicProposalController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\RoomController;
 use Illuminate\Support\Facades\Route;
 
@@ -63,6 +66,12 @@ Route::prefix('v1')->group(function () {
         // Organization-nested routes: {organization} is both the resource path and the
         // explicit tenant-context signal for the `tenant` middleware.
         Route::middleware('tenant')->group(function () {
+            // Sprint 8 "Settings" (S22, scoped down — PROJECT_CONTEXT.md): organization profile
+            // PATCH (gated behind Permissions::MANAGE_ORGANIZATION inside
+            // UpdateOrganizationRequest::authorize()) and the members list (no extra permission
+            // beyond active membership — see OrganizationMemberController::index()'s docblock).
+            Route::patch('/organizations/{organization}', [OrganizationController::class, 'update']);
+            Route::get('/organizations/{organization}/members', [OrganizationMemberController::class, 'index']);
             Route::post('/organizations/{organization}/members/invite', [OrganizationMemberController::class, 'invite']);
             Route::patch('/organizations/{organization}/members/{member}', [OrganizationMemberController::class, 'update']);
 
@@ -183,6 +192,23 @@ Route::prefix('v1')->group(function () {
             Route::patch('/change-orders/{changeOrder}', [ChangeOrderController::class, 'update']);
             Route::post('/change-orders/{changeOrder}/send', [ChangeOrderController::class, 'send']);
             Route::post('/change-orders/{changeOrder}/apply', [ChangeOrderController::class, 'apply']);
+
+            // Notifications (Sprint 8, PROJECT_CONTEXT.md). No Permissions::* gate on any of
+            // these three — a user only ever sees/mutates their OWN notification inbox (checked
+            // per-row inside NotificationController, not via a Gate ability); the `tenant`
+            // middleware still applies so Notification's OrganizationScope has a context to
+            // scope against.
+            Route::get('/notifications', [NotificationController::class, 'index']);
+            Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+            Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+
+            // Reports (Sprint 8, PROJECT_CONTEXT.md, S21). Organization-wide, not
+            // project-nested — both gated behind Permissions::VIEW_FINANCIALS (see
+            // ReportController's docblock). CSV export is its own route, mirroring BOQ's
+            // existing /boq vs /boq/export precedent.
+            Route::get('/reports/summary', [ReportController::class, 'summary']);
+            Route::get('/reports/projects', [ReportController::class, 'projects']);
+            Route::get('/reports/projects/export', [ReportController::class, 'projectsExport']);
         });
     });
 

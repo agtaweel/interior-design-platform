@@ -9,6 +9,7 @@ use App\Models\IdempotencyKey;
 use App\Models\Payment;
 use App\Models\PaymentSchedule;
 use App\Models\Project;
+use App\Services\Notifications\NotificationService;
 use App\Services\Payments\PaymentRecordingService;
 use App\Support\Authorization\Permissions;
 use Illuminate\Http\JsonResponse;
@@ -41,7 +42,10 @@ class PaymentController extends Controller
 {
     private const IDEMPOTENCY_SCOPE_PREFIX = 'payment_create';
 
-    public function __construct(private readonly PaymentRecordingService $recordingService) {}
+    public function __construct(
+        private readonly PaymentRecordingService $recordingService,
+        private readonly NotificationService $notificationService,
+    ) {}
 
     /**
      * ## Idempotency-key replay (PROJECT_CONTEXT.md: "implement the EXACT same replay
@@ -85,6 +89,18 @@ class PaymentController extends Controller
         }
 
         $payment = $this->recordingService->record($scheduleModel, $request->validated(), $request->file('receipt'));
+
+        // Only reached on a genuinely NEW successful record — a replay short-circuits above
+        // before this point, so a retried request with the same Idempotency-Key never fires a
+        // second notification for the same payment.
+        $project = $payment->project;
+        $this->notificationService->notify($project, 'payment_received', [
+            'project_id' => $project->id,
+            'project_name' => $project->name,
+            'payment_id' => $payment->id,
+            'amount' => $payment->amount,
+            'summary' => sprintf('Payment of EGP %s received for %s.', number_format((float) $payment->amount, 2), $project->name),
+        ]);
 
         $body = ['data' => (new PaymentResource($payment))->toArray($request)];
 

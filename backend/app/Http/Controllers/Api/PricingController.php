@@ -25,8 +25,12 @@ use Illuminate\Support\Facades\Gate;
  * body is empty — nothing to validate), so the permission check is an explicit Gate::authorize()
  * call, matching BoqItemController::destroy()'s exact pattern for body-less mutations.
  *
- * breakdown() is a read, so it requires only an active membership (`tenant` middleware), no
- * extra permission — matching GET /projects/{project}/boq's posture.
+ * breakdown() requires Permissions::MANAGE_BOQ (PROJECT_CONTEXT.md Sprint 8 "Permissions
+ * hardening" — this used to require only an active membership/`tenant` middleware, but the
+ * response is a full internal line-by-line rule breakdown including direct_cost_total and every
+ * markup/fee/discount value, exactly the internal pricing data the Definition of Done says site
+ * users must never see. Hardened via an explicit Gate::authorize() call, no FormRequest exists
+ * for this route (no body to validate) — matching BoqItemController::destroy()'s pattern.
  *
  * ## breakdown()'s live-vs-persisted design decision (documented per this sprint's "your
  * judgment" instruction)
@@ -111,6 +115,8 @@ class PricingController extends Controller
 
     public function breakdown(string $project): JsonResponse
     {
+        Gate::authorize(Permissions::MANAGE_BOQ);
+
         $projectModel = Project::find($project);
 
         if (! $projectModel) {

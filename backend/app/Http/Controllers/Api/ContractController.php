@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\ProposalVersion;
 use App\Services\Contracts\ContractPresenter;
 use App\Services\Contracts\ContractService;
+use App\Services\Notifications\NotificationService;
 use App\Support\Authorization\Permissions;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
@@ -42,6 +43,7 @@ class ContractController extends Controller
     public function __construct(
         private readonly ContractService $service,
         private readonly ContractPresenter $presenter,
+        private readonly NotificationService $notificationService,
     ) {}
 
     /**
@@ -119,6 +121,19 @@ class ContractController extends Controller
         }
 
         $contract = $this->service->fromProposal($projectModel, $proposalVersion);
+
+        // Fired after the (already-transactional, see ContractService::fromProposal()) creation
+        // commits, not inside its retry-loop transaction — a notification is not itself a
+        // commercial mutation that needs to share the contract's atomicity/retry semantics, and
+        // keeping it out here avoids a duplicate notification firing on a contract_no-conflict
+        // retry attempt.
+        $this->notificationService->notify($projectModel, 'contract_created', [
+            'project_id' => $projectModel->id,
+            'project_name' => $projectModel->name,
+            'contract_id' => $contract->id,
+            'contract_no' => $contract->contract_no,
+            'summary' => sprintf('Contract %s created for %s.', $contract->contract_no, $projectModel->name),
+        ]);
 
         return response()->json([
             'data' => new ContractResource($contract->fresh(self::RELATIONS)),

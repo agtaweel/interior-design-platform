@@ -16,11 +16,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * RBAC coverage for Sprint 3's pricing surface: rule mutations (create/update/delete) and
- * POST /pricing/recalculate require Permissions::MANAGE_BOQ (per StorePricingRuleRequest/
- * UpdatePricingRuleRequest/PricingController::recalculate()'s Gate::authorize() call), while
- * GET /pricing/rules and GET /pricing/breakdown only require an active membership — matching the
- * exact posture already established for BOQ reads/writes in BoqRbacTest.
+ * RBAC coverage for Sprint 3's pricing surface, updated for Sprint 8's "Permissions hardening"
+ * (PROJECT_CONTEXT.md): rule mutations (create/update/delete), POST /pricing/recalculate, AND
+ * (as of Sprint 8) GET /pricing/rules and GET /pricing/breakdown all require
+ * Permissions::MANAGE_BOQ — the two reads used to only require an active membership, but their
+ * responses expose markup percentages/values and a full internal cost/rule breakdown, exactly
+ * the internal pricing data the Definition of Done says site users must never see (see
+ * PricingRuleController/PricingController docblocks).
  */
 class PricingRbacTest extends TestCase
 {
@@ -52,7 +54,7 @@ class PricingRbacTest extends TestCase
         return Project::factory()->create(['organization_id' => $organization->id, 'client_id' => $client->id]);
     }
 
-    public function test_read_only_member_can_view_rules_and_breakdown_but_not_mutate_or_recalculate(): void
+    public function test_read_only_member_is_forbidden_from_every_pricing_read_write_and_recalculate(): void
     {
         $organization = Organization::factory()->create();
         $project = $this->projectIn($organization);
@@ -64,13 +66,13 @@ class PricingRbacTest extends TestCase
         $readOnlyUser = $this->memberWithPermissions($organization, []);
         $headers = $this->authHeader($readOnlyUser);
 
-        // --- Reads succeed ---
+        // --- Reads are forbidden (Sprint 8 hardening) ---
         $this->withHeaders($headers)
             ->getJson("/api/v1/projects/{$project->id}/pricing/rules")
-            ->assertStatus(200);
+            ->assertStatus(403);
         $this->withHeaders($headers)
             ->getJson("/api/v1/projects/{$project->id}/pricing/breakdown")
-            ->assertStatus(200);
+            ->assertStatus(403);
 
         // --- Writes/recalculate are forbidden ---
         $this->withHeaders($headers)
@@ -97,7 +99,7 @@ class PricingRbacTest extends TestCase
         $this->assertNull($project->fresh()->priced_at);
     }
 
-    public function test_a_member_with_manage_boq_can_perform_every_pricing_write_operation(): void
+    public function test_a_member_with_manage_boq_can_perform_every_pricing_write_operation_and_every_read(): void
     {
         $organization = Organization::factory()->create();
         $project = $this->projectIn($organization);
@@ -105,6 +107,14 @@ class PricingRbacTest extends TestCase
         BoqItem::factory()->create(['project_id' => $project->id, 'category_id' => $category->id]);
         $user = $this->memberWithPermissions($organization, [Permissions::MANAGE_BOQ => true]);
         $headers = $this->authHeader($user);
+
+        // Sprint 8 hardening: a MANAGE_BOQ holder (Designer/Admin/Owner) remains unaffected.
+        $this->withHeaders($headers)
+            ->getJson("/api/v1/projects/{$project->id}/pricing/rules")
+            ->assertStatus(200);
+        $this->withHeaders($headers)
+            ->getJson("/api/v1/projects/{$project->id}/pricing/breakdown")
+            ->assertStatus(200);
 
         $create = $this->withHeaders($headers)
             ->postJson("/api/v1/projects/{$project->id}/pricing/rules", [

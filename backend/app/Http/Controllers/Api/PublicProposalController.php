@@ -11,6 +11,7 @@ use App\Models\IdempotencyKey;
 use App\Models\OtpChallenge;
 use App\Models\ProposalVersion;
 use App\Models\SignedLink;
+use App\Services\Notifications\NotificationService;
 use App\Services\Proposals\OtpChallengeService;
 use App\Services\Proposals\OtpVerificationException;
 use App\Services\Proposals\ProposalPresenter;
@@ -44,6 +45,7 @@ class PublicProposalController extends Controller
         private readonly SignedLinkService $signedLinkService,
         private readonly OtpChallengeService $otpService,
         private readonly ProposalPresenter $presenter,
+        private readonly NotificationService $notificationService,
     ) {}
 
     private const PURPOSE = 'proposal_approval';
@@ -186,6 +188,14 @@ class PublicProposalController extends Controller
 
             $challenge->forceFill(['verified_at' => $approvedAt])->save();
 
+            $this->notificationService->notify($version->project, 'proposal_approved', [
+                'project_id' => $version->project_id,
+                'project_name' => $version->project->name,
+                'proposal_version_id' => $version->id,
+                'version_no' => $version->version_no,
+                'summary' => sprintf('Proposal v%d for %s was approved by the client.', $version->version_no, $version->project->name),
+            ]);
+
             return [
                 'status' => 'approved',
                 'approved_at' => $approvedAt->toJSON(),
@@ -255,6 +265,14 @@ class PublicProposalController extends Controller
                 'status' => 'changes_requested',
                 'comment' => $comment,
                 'ip_address' => $request->ip(),
+            ]);
+
+            $this->notificationService->notify($version->project, 'proposal_changes_requested', [
+                'project_id' => $version->project_id,
+                'project_name' => $version->project->name,
+                'proposal_version_id' => $version->id,
+                'version_no' => $version->version_no,
+                'summary' => sprintf('Client requested changes to Proposal v%d for %s.', $version->version_no, $version->project->name),
             ]);
         });
 

@@ -17,14 +17,41 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
- * Both endpoints here run behind the `auth:sanctum` + `tenant` middleware (see routes/api.php),
+ * All endpoints here run behind the `auth:sanctum` + `tenant` middleware (see routes/api.php),
  * with {organization} as the route-bound tenant context — so by the time these methods run,
  * ResolveTenantContext has already confirmed the requester has an ACTIVE membership in
- * $organization. What's left to check is that it's an admin-level one, via the manage_members
- * permission gate.
+ * $organization. invite()/update() additionally check that it's an admin-level membership, via
+ * the manage_members permission gate.
+ *
+ * index() (PROJECT_CONTEXT.md Sprint 8 "Settings" — S22 members list) is deliberately the one
+ * endpoint here that does NOT add an extra Gate::authorize() call: per that section, "active
+ * membership-only read is fine here (not financial data)" — same "reads need only active
+ * membership" posture as every other list endpoint in this codebase (ClientController::index,
+ * ProjectController::index, etc), matching the fact that member name/email/role/status carries
+ * no cost/margin information the stricter gates (MANAGE_BOQ/VIEW_FINANCIALS/MANAGE_ORGANIZATION)
+ * exist to protect.
  */
 class OrganizationMemberController extends Controller
 {
+    /**
+     * GET /organizations/{organization}/members — list every membership row (any status:
+     * active/invited/suspended, per memberPayload()'s existing shape) for the current tenant,
+     * not just active ones; "status" is part of what this listing exists to show (e.g. an admin
+     * needs to see pending invitations too), so it is a column in the payload, not a filter.
+     */
+    public function index(Organization $organization): JsonResponse
+    {
+        $members = OrganizationMember::query()
+            ->where('organization_id', $organization->id)
+            ->with(['user', 'role'])
+            ->orderBy('id')
+            ->get();
+
+        return response()->json([
+            'data' => $members->map(fn (OrganizationMember $member) => $this->memberPayload($member))->all(),
+        ]);
+    }
+
     public function invite(Request $request, Organization $organization): JsonResponse
     {
         Gate::authorize(Permissions::MANAGE_MEMBERS);

@@ -115,7 +115,20 @@ class BoqCsvExportTest extends TestCase
         $this->assertStringNotContainsString('Old Discontinued Item', $csv);
     }
 
-    public function test_export_requires_only_an_active_membership_not_manage_boq(): void
+    /**
+     * Sprint 8 "Permissions hardening" (PROJECT_CONTEXT.md): export includes the same
+     * material_unit_cost/labor_unit_cost/other_unit_cost columns as the BOQ tree view, so it now
+     * requires Permissions::MANAGE_BOQ — a read-only member (no manage_boq) is forbidden. The
+     * privileged-user-succeeds half of this contract is already covered by
+     * test_export_matches_current_non_archived_boq_state() above (its $user holds
+     * Permissions::MANAGE_BOQ) — deliberately NOT re-asserted here with a second HTTP-authenticated
+     * user in the same test method: this codebase's Sanctum-token test harness has a documented
+     * quirk where two different users hitting the same route within one test method can leave
+     * the second request resolving as the first user internally (see ProposalRbacTest's docblock
+     * for the full write-up) — only one user authenticates over real HTTP per test method here,
+     * matching that established workaround.
+     */
+    public function test_export_requires_manage_boq_permission(): void
     {
         $organization = Organization::factory()->create();
         $project = $this->projectIn($organization);
@@ -123,7 +136,7 @@ class BoqCsvExportTest extends TestCase
 
         $this->withHeaders($this->authHeader($readOnlyUser))
             ->get("/api/v1/projects/{$project->id}/boq/export")
-            ->assertStatus(200);
+            ->assertStatus(403);
     }
 
     public function test_export_is_tenant_isolated(): void

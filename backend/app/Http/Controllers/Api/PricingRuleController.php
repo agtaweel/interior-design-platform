@@ -23,10 +23,12 @@ use Illuminate\Support\Facades\Gate;
  * see model docblock), so resolveTenantScopedRule() re-resolves the owning project through the
  * OrganizationScope-guarded Project::find() before treating the row as belonging to this tenant.
  *
- * GET (index) requires only an active membership, matching every other BOQ/pricing read
- * endpoint in this codebase (BoqController::index, RoomController::index) — mutations require
- * Permissions::MANAGE_BOQ, checked inside the Store/Update FormRequests' authorize() or, for
- * destroy() (no request body to validate), via an explicit Gate::authorize() call matching
+ * GET (index) requires Permissions::MANAGE_BOQ (PROJECT_CONTEXT.md Sprint 8 "Permissions
+ * hardening" — this used to require only an active membership, but PricingRuleResource exposes
+ * markup percentages/values, exactly the internal pricing configuration the Definition of Done
+ * says site users must never see; hardened to match every mutation's gate below). Mutations
+ * require Permissions::MANAGE_BOQ, checked inside the Store/Update FormRequests' authorize() or,
+ * for destroy() (no request body to validate), via an explicit Gate::authorize() call matching
  * BoqItemController::destroy()'s exact pattern.
  *
  * Hard delete on destroy() is intentional here (unlike BoqItem's archive-only convention):
@@ -37,6 +39,8 @@ class PricingRuleController extends Controller
 {
     public function index(string $project): JsonResponse
     {
+        Gate::authorize(Permissions::MANAGE_BOQ);
+
         $projectModel = Project::find($project);
 
         if (! $projectModel) {

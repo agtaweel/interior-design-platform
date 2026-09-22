@@ -17,15 +17,21 @@ use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 /**
- * RBAC coverage for Sprint 2's BOQ surface: every BOQ *write* endpoint requires
- * Permissions::MANAGE_BOQ (per StoreBoqCategoryRequest/StoreBoqItemRequest/UpdateBoqItemRequest/
- * StoreRoomRequest/ImportBoqRequest/StoreBoqTemplateCategoryRequest/StoreBoqTemplateItemRequest
- * docblocks, plus Gate::authorize() calls in BoqItemController::destroy() and
- * BoqTemplateController::apply()), while every BOQ *read* endpoint only requires an active
- * organization membership — matching database/seeders/RoleSeeder.php, where the seeded
- * "Designer" role has manage_boq => true (they own the BOQ Builder day to day) but a member
- * with no permissions at all (e.g. the seeded "Site Staff" role, or any custom read-only role)
- * has manage_boq => false and must be able to view without being able to mutate.
+ * RBAC coverage for Sprint 2's BOQ surface, updated for Sprint 8's "Permissions hardening"
+ * (PROJECT_CONTEXT.md): every BOQ *write* endpoint requires Permissions::MANAGE_BOQ (per
+ * StoreBoqCategoryRequest/StoreBoqItemRequest/UpdateBoqItemRequest/StoreRoomRequest/
+ * ImportBoqRequest/StoreBoqTemplateCategoryRequest/StoreBoqTemplateItemRequest docblocks, plus
+ * Gate::authorize() calls in BoqItemController::destroy() and BoqTemplateController::apply()) —
+ * and, as of Sprint 8, so does GET /projects/{id}/boq, GET /projects/{id}/boq/export, and
+ * GET /projects/{id}/rooms, since their responses include material_unit_cost/labor_unit_cost/
+ * other_unit_cost (see IndexBoqRequest/BoqController/RoomController docblocks). The
+ * organization-level BOQ *template* list (GET /boq-templates/categories) is NOT part of that
+ * hardening — it carries no project-specific cost data and PROJECT_CONTEXT.md's Sprint 8 scope
+ * only names the five endpoints it explicitly hardens — so it still only requires an active
+ * membership. Matches database/seeders/RoleSeeder.php, where the seeded "Designer" role has
+ * manage_boq => true (they own the BOQ Builder day to day) but a member with no permissions at
+ * all (e.g. the seeded "Site Staff" role) is now correctly blocked from every cost-bearing BOQ
+ * read too, not just writes.
  */
 class BoqRbacTest extends TestCase
 {
@@ -57,7 +63,7 @@ class BoqRbacTest extends TestCase
         return Project::factory()->create(['organization_id' => $organization->id, 'client_id' => $client->id]);
     }
 
-    public function test_read_only_member_can_view_the_boq_but_not_mutate_it(): void
+    public function test_read_only_member_is_forbidden_from_every_cost_bearing_boq_read_and_every_write(): void
     {
         $organization = Organization::factory()->create();
         $project = $this->projectIn($organization);
@@ -69,11 +75,13 @@ class BoqRbacTest extends TestCase
         $readOnlyUser = $this->memberWithPermissions($organization, []);
         $headers = $this->authHeader($readOnlyUser);
 
-        // --- Reads succeed ---
-        $this->withHeaders($headers)->getJson("/api/v1/projects/{$project->id}/boq")->assertStatus(200);
-        $this->withHeaders($headers)->getJson("/api/v1/projects/{$project->id}/rooms")->assertStatus(200);
+        // --- Cost-bearing BOQ reads are forbidden (Sprint 8 hardening) ---
+        $this->withHeaders($headers)->getJson("/api/v1/projects/{$project->id}/boq")->assertStatus(403);
+        $this->withHeaders($headers)->getJson("/api/v1/projects/{$project->id}/rooms")->assertStatus(403);
+        $this->withHeaders($headers)->getJson("/api/v1/projects/{$project->id}/boq/export")->assertStatus(403);
+
+        // --- The organization-level template list is untouched by the hardening ---
         $this->withHeaders($headers)->getJson('/api/v1/boq-templates/categories')->assertStatus(200);
-        $this->withHeaders($headers)->getJson("/api/v1/projects/{$project->id}/boq/export")->assertStatus(200);
 
         // --- Writes are forbidden ---
         $this->withHeaders($headers)
@@ -125,7 +133,7 @@ class BoqRbacTest extends TestCase
         $this->assertDatabaseMissing('boq_items', ['name' => 'Tile']);
     }
 
-    public function test_a_member_with_manage_boq_can_perform_every_write_operation(): void
+    public function test_a_member_with_manage_boq_can_perform_every_write_operation_and_every_read(): void
     {
         $organization = Organization::factory()->create();
         $project = $this->projectIn($organization);
@@ -143,5 +151,11 @@ class BoqRbacTest extends TestCase
         $this->withHeaders($headers)
             ->postJson('/api/v1/boq-templates/categories', ['name' => 'Office Template'])
             ->assertStatus(201);
+
+        // Sprint 8 hardening: a MANAGE_BOQ holder (Designer/Admin/Owner) remains unaffected on
+        // every read this sprint hardened.
+        $this->withHeaders($headers)->getJson("/api/v1/projects/{$project->id}/boq")->assertStatus(200);
+        $this->withHeaders($headers)->getJson("/api/v1/projects/{$project->id}/rooms")->assertStatus(200);
+        $this->withHeaders($headers)->getJson("/api/v1/projects/{$project->id}/boq/export")->assertStatus(200);
     }
 }

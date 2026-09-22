@@ -12,6 +12,7 @@ use App\Models\IdempotencyKey;
 use App\Models\OtpChallenge;
 use App\Models\SignedLink;
 use App\Services\ChangeOrders\ChangeOrderSendService;
+use App\Services\Notifications\NotificationService;
 use App\Services\Proposals\OtpChallengeService;
 use App\Services\Proposals\OtpVerificationException;
 use App\Support\PublicLinks\SignedLinkException;
@@ -44,6 +45,7 @@ class PublicChangeOrderController extends Controller
     public function __construct(
         private readonly SignedLinkService $signedLinkService,
         private readonly OtpChallengeService $otpService,
+        private readonly NotificationService $notificationService,
     ) {}
 
     private const PURPOSE = ChangeOrderSendService::PURPOSE;
@@ -136,6 +138,14 @@ class PublicChangeOrderController extends Controller
 
             $challenge->forceFill(['verified_at' => $approvedAt])->save();
 
+            $this->notificationService->notify($changeOrder->project, 'change_order_approved', [
+                'project_id' => $changeOrder->project_id,
+                'project_name' => $changeOrder->project->name,
+                'change_order_id' => $changeOrder->id,
+                'number' => $changeOrder->number,
+                'summary' => sprintf('Change Order %s for %s was approved by the client.', $changeOrder->number, $changeOrder->project->name),
+            ]);
+
             return [
                 'status' => 'approved',
                 'approved_at' => $approvedAt->toJSON(),
@@ -194,6 +204,14 @@ class PublicChangeOrderController extends Controller
                 'status' => 'rejected',
                 'comment' => $comment,
                 'ip_address' => $request->ip(),
+            ]);
+
+            $this->notificationService->notify($changeOrder->project, 'change_order_rejected', [
+                'project_id' => $changeOrder->project_id,
+                'project_name' => $changeOrder->project->name,
+                'change_order_id' => $changeOrder->id,
+                'number' => $changeOrder->number,
+                'summary' => sprintf('Change Order %s for %s was rejected by the client.', $changeOrder->number, $changeOrder->project->name),
             ]);
         });
 

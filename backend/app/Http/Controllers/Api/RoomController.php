@@ -7,14 +7,20 @@ use App\Http\Requests\StoreRoomRequest;
 use App\Http\Resources\RoomResource;
 use App\Models\Project;
 use App\Models\Room;
+use App\Support\Authorization\Permissions;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * GET/POST /projects/{project}/rooms. {project} follows the same manual-lookup convention as
  * BoqController/BoqCategoryController/BoqItemController (see those docblocks / routes/api.php
- * for why implicit route-model binding is unsafe here). GET requires only an active membership
- * (read, matching GET /projects/{project}/boq); POST requires Permissions::MANAGE_BOQ, checked
- * inside StoreRoomRequest::authorize().
+ * for why implicit route-model binding is unsafe here). Both GET and POST require
+ * Permissions::MANAGE_BOQ — POST checked inside StoreRoomRequest::authorize(), GET via an
+ * explicit Gate::authorize() call (no FormRequest exists for this route). PROJECT_CONTEXT.md
+ * Sprint 8 "Permissions hardening": index() used to require only an active membership; rooms
+ * only exist to organize BOQ line items (see below), so — even though a room itself carries no
+ * cost data — it's hardened for consistency with the rest of the BOQ-adjacent read surface
+ * rather than leaving one endpoint on the looser rule.
  *
  * Before this controller existed, the only code path that created a Room row was
  * BoqCsvImporter's find-or-create-by-name during CSV import — a designer building a BOQ from
@@ -25,6 +31,8 @@ class RoomController extends Controller
 {
     public function index(string $project): JsonResponse
     {
+        Gate::authorize(Permissions::MANAGE_BOQ);
+
         $projectModel = Project::find($project);
 
         if (! $projectModel) {
