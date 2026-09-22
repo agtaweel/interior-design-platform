@@ -152,6 +152,18 @@ Documents.
 - From the host (e.g. `psql` for manual inspection), use `127.0.0.1:5440`.
 - Frontend (`frontend/`) is a plain Next.js app, not yet dockerized — run with `npm run dev`
   inside `frontend/` (port 3000 by default).
+- **Known gotcha, confirmed real (not a misdiagnosis) on 2026-09-22**: editor-style atomic-save
+  writes to `backend/` files (the kind Write/Edit tools make — write-to-temp-then-rename) do NOT
+  reliably propagate into the `idp-app` container's view of the bind mount, even though the host
+  file is correct. A plain in-place append (e.g. `echo >> file` from a shell) DOES propagate
+  instantly — only the temp-file+rename pattern is affected. Symptom: you edit a file, `docker
+  compose exec app grep ...` on that file inside the container shows the OLD content, and new
+  routes/classes silently don't register (no error — `route:list` just doesn't show them).
+  **Fix**: after editing existing `backend/` files (new files are unaffected), run `docker
+  compose restart app` before trusting `artisan route:list`/`artisan test`/any live curl call
+  against the server. Cheap (a few seconds) and safe — the `app` service's startup command
+  re-runs `composer install && migrate --force` harmlessly on restart. Don't skip this and then
+  conclude a route/class "doesn't exist" — verify against a fresh container first.
 
 ## Sprint 1 scope (complete)
 

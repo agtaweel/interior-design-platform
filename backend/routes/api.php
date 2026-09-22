@@ -11,9 +11,12 @@ use App\Http\Controllers\Api\BoqTemplateItemController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\ContractController;
 use App\Http\Controllers\Api\OrganizationMemberController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\PaymentScheduleController;
 use App\Http\Controllers\Api\PricingController;
 use App\Http\Controllers\Api\PricingRuleController;
 use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\Api\ProjectFinancialsController;
 use App\Http\Controllers\Api\ProjectMemberController;
 use App\Http\Controllers\Api\ProjectServiceController;
 use App\Http\Controllers\Api\PropertyController;
@@ -151,6 +154,19 @@ Route::prefix('v1')->group(function () {
             Route::get('/contracts/{contract}', [ContractController::class, 'show']);
             Route::patch('/contracts/{contract}', [ContractController::class, 'update']);
             Route::get('/contracts/{contract}/pdf', [ContractController::class, 'pdf']);
+
+            // Sprint 6 (PROJECT_CONTEXT.md "Payments"): schedule/payment mutations require
+            // Permissions::MANAGE_BOQ (same commercial-workflow convention as BOQ/pricing/
+            // proposals/contracts); reads of schedules/payments/financials require
+            // Permissions::VIEW_FINANCIALS instead of just active membership — this is the
+            // sprint that finally activates that permission (seeded since Sprint 1, unused
+            // until now) since profit-adjacent data is exactly what it exists to gate.
+            Route::post('/contracts/{contract}/payment-schedules', [PaymentScheduleController::class, 'store']);
+            Route::get('/contracts/{contract}/payment-schedules', [PaymentScheduleController::class, 'index']);
+            Route::post('/payment-schedules/{schedule}/payments', [PaymentController::class, 'store']);
+            Route::get('/payment-schedules/{schedule}/payments', [PaymentController::class, 'index']);
+            Route::get('/payments/{payment}/receipt', [PaymentController::class, 'receipt']);
+            Route::get('/projects/{project}/financials', [ProjectFinancialsController::class, 'show']);
         });
     });
 
