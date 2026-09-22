@@ -87,6 +87,11 @@ class Project extends Model
         return $this->hasMany(PricingRule::class);
     }
 
+    public function proposalVersions(): HasMany
+    {
+        return $this->hasMany(ProposalVersion::class);
+    }
+
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'project_members')
