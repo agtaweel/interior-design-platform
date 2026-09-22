@@ -201,3 +201,75 @@ BOQ only — not pricing/markup (that's Sprint 3). In scope:
   yet — that's Sprint 4/5). Do NOT build S08 Pricing Panel yet.
 
 Stop and checkpoint with the user after this sprint before starting Pricing (Sprint 3).
+
+## Sprint 3 scope (current)
+
+Pricing layers on top of Sprint 2's BOQ — not proposals (Sprint 4). The ERD's `pricing_rules`
+table is project-scoped and deliberately underspecified in the PRD; the design below resolves
+that ambiguity once so every agent this sprint builds the same mental model.
+
+**How project-level pricing relates to Sprint 2's per-item pricing** (this is the key design
+decision): each `boq_item` already carries a manually-set `client_unit_price` (Sprint 2) — that's
+the designer's line-item pricing. `pricing_rules` do NOT replace that; they add
+organization/project-wide layers **on top of** the summed line-item pricing — e.g. a design fee
+%, a supervision fee, a discount. Think of it as: line items are priced first (bottom-up), then
+project-level rules adjust the total (top-down).
+
+**Schema**: `pricing_rules` (id, project_id, name, type, method, value, base_selector, sort_order,
+active):
+- `type` enum: `markup` | `fee` | `discount` (supervision is just a fee named "Supervision" —
+  per the locked product decision to keep the base flexible/configurable rather than hardcoding
+  what supervision is computed on).
+- `method` enum: `percentage` | `fixed_amount`.
+- `value`: decimal — the percentage (e.g. 15.00 meaning 15%) or fixed EGP amount.
+- `base_selector` enum: `boq_direct_cost` (sum of item direct costs — for cost-plus-style
+  markups), `boq_client_subtotal` (sum of item client_totals — a fixed anchor, unaffected by
+  other rules), or `running_subtotal` (the total *after* previously-applied rules — for
+  cascading/compounding rules, e.g. a discount applied after fees). Order matters: rules apply
+  in `sort_order` sequence.
+- `active`: boolean — inactive rules are ignored by recalculation but not deleted (keeps history
+  visible/re-enable-able).
+- Also add cache columns to `projects` (or a small one-row-per-project cache table, your
+  judgment) to store the last computed `direct_cost_total`, `client_subtotal`,
+  `markup_total`, `fees_total`, `discount_total`, `grand_total`, `priced_at` — this is what
+  populates `ProjectResource`'s `financials.value` field (currently hardcoded 0) without
+  recomputing on every dashboard read. Recalculation is an explicit action (`POST
+  /projects/{id}/pricing/recalculate`), not automatic on every BOQ edit — matches the PRD's
+  explicit-recalculate-endpoint design and avoids recomputing on every keystroke.
+
+**Recalculation algorithm** (`POST /projects/{id}/pricing/recalculate`):
+1. `direct_cost_total` = sum of non-archived `boq_items.direct_cost`.
+2. `client_subtotal` = sum of non-archived `boq_items.client_total` (the fixed anchor for
+   `boq_client_subtotal`-based rules).
+3. `running_subtotal` starts at `client_subtotal`.
+4. For each active rule in `sort_order`: resolve `base` per `base_selector`; `amount = method ==
+   percentage ? base * value/100 : value`; if `type == discount`, amount is subtracted (store the
+   rule's contribution as a signed or unsigned number — your judgment, document which); add to
+   `running_subtotal`; accumulate into `markup_total`/`fees_total`/`discount_total` by `type`.
+5. `grand_total` = final `running_subtotal` — this is the project's client-facing price.
+6. Persist the cache columns/row. `gross_profit` in `ProjectResource.financials` stays deferred to
+   Sprint 6 (needs *actual* expenses, not estimated) — do not populate it from
+   `grand_total - direct_cost_total`, that would be an estimate mislabeled as actual profit.
+   `value` in `financials` SHOULD now populate from `grand_total`.
+
+**API** (PRD §3 "BOQ & pricing" group, pricing portion): `POST
+/projects/{id}/pricing/recalculate`, `GET /projects/{id}/pricing/breakdown` (internal view: full
+line-by-line rule breakdown with running subtotal after each step, per PRD's "show formulas
+clearly" requirement) — plus whatever CRUD routes are needed to manage `pricing_rules` themselves
+(not explicit in the PRD table but required to configure anything; keep them RESTful and
+consistent with existing route style, e.g. `GET/POST /projects/{id}/pricing/rules`, `PATCH/DELETE
+/pricing/rules/{id}`).
+
+**Client-facing exposure**: exactly like Sprint 2's BOQ resource split, build (or extend) a
+client-facing pricing view now that returns ONLY `grand_total` (no cost breakdown, no rule list,
+no margin) even though there's no client-facing consumer yet until Sprint 4's client portal —
+this is the seam Sprint 4 will plug into.
+
+**UX**: S08 Pricing Panel only, per PRD — direct cost, markup layers, design fee, supervision,
+discount, final client price; toggle internal/client view; "never leak internal margin to
+client" in the UI too (the toggle should be a real internal-only affordance, not just a display
+mode a client user could flip). Wire it into the existing project in-project nav (the "BOQ &
+Pricing" tab already exists from Sprint 2 — this sprint fills in the pricing half of that tab,
+likely as a panel alongside or below the BOQ grid rather than a separate route, your judgment).
+
+Stop and checkpoint with the user after this sprint before starting Proposals (Sprint 4).
