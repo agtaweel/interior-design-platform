@@ -420,6 +420,102 @@ export interface PricingBreakdown {
 }
 
 // ---------------------------------------------------------------------------
+// Proposals (Sprint 4 — S09 Proposal Editor / S10 Version History). `content_json` is a
+// flexible JSONB blob on the backend (no fixed columns) — the frontend picks a fixed set of
+// keys and uses them consistently between what it saves (PATCH/POST) and what it displays.
+// Money/decimal fields arrive as strings, same convention as BoqItem/PricingRule — always
+// format via formatEGP, never render raw. `snapshot_json` is intentionally left loosely typed
+// (Record<string, unknown>) — it's an internal frozen record we don't need to render field-by-
+// field (the flat `items`/totals columns already expose the client-shaped view we display).
+// ---------------------------------------------------------------------------
+
+export type ProposalStatus = "draft" | "sent" | "approved" | "changes_requested";
+
+/** The fixed set of editorial fields this frontend reads/writes inside `content_json`. The
+ *  backend stores this as an arbitrary JSON blob, so any key is technically legal — but every
+ *  screen that authors or displays proposal content must stick to exactly this shape or saved
+ *  content silently stops round-tripping through the UI. All fields optional/nullable since a
+ *  freshly created draft may have an empty or partially-filled content_json (or even `null`,
+ *  confirmed live: POST with no content_json body returns `content_json: null`). */
+export interface ProposalContent {
+  cover?: string | null;
+  scope?: string | null;
+  exclusions?: string | null;
+  timeline?: string | null;
+  terms?: string | null;
+  payment_plan?: string | null;
+}
+
+/** GET .../proposals list item shape (S10 version history rows). */
+export interface ProposalVersionSummary {
+  id: number | string;
+  version_no: number;
+  status: ProposalStatus;
+  grand_total: number | string;
+  created_by: UserSummary;
+  sent_at: ISODateString | null;
+  approved_at: ISODateString | null;
+}
+
+/** Frozen client-shaped line item copied from a boq_item at proposal-version-creation time —
+ *  never re-read from boq_items afterward. No cost/margin fields, matches BoqItem's client-
+ *  facing split (see PROJECT_CONTEXT.md Sprint 4 schema notes). */
+export interface ProposalItem {
+  id: number | string;
+  source_boq_item_id: number | string | null;
+  description: string;
+  quantity: number | string;
+  unit: string;
+  unit_price: number | string;
+  line_total: number | string;
+}
+
+/** GET /proposals/{id} and POST /projects/{id}/proposals response shape (full detail). */
+export interface ProposalVersion {
+  id: number | string;
+  project_id: number | string;
+  version_no: number;
+  status: ProposalStatus;
+  content_json: ProposalContent | null;
+  /** Full frozen snapshot (project/client/org/content/pricing/items at send time). Only
+   *  populated once the version is sent — `null` while still draft. Not rendered field-by-field
+   *  by this frontend; the flat `items`/totals fields above already give us what we display. */
+  snapshot_json: Record<string, unknown> | null;
+  subtotal: number | string;
+  markup_total: number | string;
+  fees_total: number | string;
+  discount_total: number | string;
+  grand_total: number | string;
+  items: ProposalItem[];
+  created_by: UserSummary;
+  sent_at: ISODateString | null;
+  approved_at: ISODateString | null;
+  created_at: ISODateString;
+  updated_at: ISODateString;
+}
+
+/** POST /projects/{id}/proposals request body. */
+export interface ProposalCreateInput {
+  content_json?: ProposalContent;
+}
+
+/** PATCH /proposals/{id} request body — only valid while status is 'draft', 409 otherwise. */
+export interface ProposalUpdateInput {
+  content_json: ProposalContent;
+}
+
+/** POST /proposals/{id}/send response — the one-time-only surface for the public link + OTP;
+ *  the OTP is stored hashed server-side and is never returned again by any other endpoint. */
+export interface ProposalSendResult {
+  id: number | string;
+  version_no: number;
+  status: ProposalStatus;
+  sent_at: ISODateString;
+  public_url: string;
+  otp_code: string;
+}
+
+// ---------------------------------------------------------------------------
 // Pagination envelope (Laravel's default paginate() JSON shape)
 // ---------------------------------------------------------------------------
 
