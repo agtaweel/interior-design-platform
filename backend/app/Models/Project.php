@@ -92,6 +92,11 @@ class Project extends Model
         return $this->hasMany(ProposalVersion::class);
     }
 
+    public function contracts(): HasMany
+    {
+        return $this->hasMany(Contract::class);
+    }
+
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'project_members')

@@ -24,16 +24,13 @@ use Tests\TestCase;
  * code is rejected distinctly as OTP_EXPIRED.
  *
  * IMPORTANT test-fixture note: OtpChallengeFactory's default `code_hash` is a plain
- * `hash('sha256', '123456')`, but the real OtpChallengeService hashes/verifies with
- * `Hash::make()`/`Hash::check()` (bcrypt) — and this app's hashing config has
- * `bcrypt.verify = true`, so `Hash::check()` against that sha256 string THROWS
- * `RuntimeException: This password does not use the Bcrypt algorithm` rather than returning
- * false (confirmed via tinker). Using the factory default against the real verify() path would
- * therefore crash the test (and would crash the real endpoint with a 500 if such a row ever
- * existed in production). Every test below either goes through the real POST .../send flow to
- * get a genuinely bcrypt-hashed challenge, or explicitly overrides `code_hash` with
- * `Hash::make('123456')` when a challenge needs to be hand-built. See this report's top-level
- * findings for the full writeup — flagged to the owning agent, not fixed here.
+ * `hash('sha256', '123456')`, not a real `Hash::make()` bcrypt hash. `OtpChallengeService::verify()`
+ * catches the `RuntimeException` that `Hash::check()` throws against a non-bcrypt string and
+ * fails closed (treats it as a wrong code) rather than letting it bubble up — see that method's
+ * inline comment. So a challenge built with the factory default DOES verify() safely, but always
+ * as "invalid", never as a match — it can never be used to test the success path. Every test
+ * below that needs a genuinely matchable OTP either goes through the real POST .../send flow, or
+ * explicitly overrides `code_hash` with `Hash::make('123456')` when hand-building a challenge.
  */
 class OtpVerificationTest extends TestCase
 {
@@ -219,21 +216,22 @@ class OtpVerificationTest extends TestCase
         $this->approve($token, '000000')->assertStatus(422)->assertJsonPath('error.code', 'OTP_LOCKED');
     }
 
-    public function test_otp_challenge_factory_default_hash_is_incompatible_with_the_real_verify_path(): void
+    public function test_otp_challenge_factory_default_hash_fails_closed_as_invalid_not_a_crash(): void
     {
         // Documents (rather than silently relying on) the factory/service hashing-scheme
         // mismatch described in this class's docblock: constructing a challenge via the
-        // factory's default state and feeding it through the REAL OtpChallengeService (not a
-        // hand-rolled sha256 check) throws, it does not gracefully return false/OTP_INVALID.
-        // This is a test-fixture correctness bug worth fixing (and a latent defensive-coding
-        // gap in OtpChallengeService::verify(), which has no guard around a malformed hash),
-        // reported to the owning agent rather than fixed in this test suite.
+        // factory's default (non-bcrypt) hash and feeding it through the REAL
+        // OtpChallengeService must fail closed as a wrong code — never throw, never match.
         $link = SignedLink::factory()->create();
         $challenge = OtpChallenge::factory()->create(['signed_link_id' => $link->id]);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('This password does not use the Bcrypt algorithm.');
+        $this->expectException(\App\Services\Proposals\OtpVerificationException::class);
 
-        app(\App\Services\Proposals\OtpChallengeService::class)->verify($challenge, '123456');
+        try {
+            app(\App\Services\Proposals\OtpChallengeService::class)->verify($challenge, '123456');
+        } finally {
+            $challenge->refresh();
+            $this->assertSame(1, $challenge->attempts, 'a malformed hash must still count as a failed attempt');
+        }
     }
 }

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * No direct organization_id column: this table is scoped indirectly through
@@ -84,6 +85,16 @@ class ProposalVersion extends Model
     public function approvals(): HasMany
     {
         return $this->hasMany(Approval::class, 'entity_id')->where('entity_type', self::ENTITY_TYPE);
+    }
+
+    /**
+     * The 0..1 contract converted from this proposal version, per the ERD's "Approved Proposal
+     * Version 1—0..1 Contract" relationship — enforced at the DB level by the unique
+     * constraint on contracts.proposal_version_id (see that migration).
+     */
+    public function contract(): HasOne
+    {
+        return $this->hasOne(Contract::class);
     }
 
     /**
