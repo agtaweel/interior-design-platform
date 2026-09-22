@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * No direct organization_id column: this table is scoped indirectly through
@@ -52,6 +53,15 @@ class Contract extends Model
     public function proposalVersion(): BelongsTo
     {
         return $this->belongsTo(ProposalVersion::class);
+    }
+
+    /**
+     * Sprint 6: a contract's installment plan. See PaymentSchedule's docblock for the
+     * three-hop indirect tenancy scoping this relation sits underneath.
+     */
+    public function paymentSchedules(): HasMany
+    {
+        return $this->hasMany(PaymentSchedule::class);
     }
 
     /**

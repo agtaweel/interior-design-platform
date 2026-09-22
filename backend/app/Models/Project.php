@@ -97,6 +97,17 @@ class Project extends Model
         return $this->hasMany(Contract::class);
     }
 
+    /**
+     * Sprint 6: direct relation, since payments carry project_id directly (unlike
+     * payment_schedules, which is only reachable from a project via contracts ->
+     * paymentSchedules). This is what backs project-wide payment queries independent of which
+     * contract/schedule a payment is against.
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'project_members')

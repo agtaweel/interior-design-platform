@@ -104,7 +104,10 @@ class PublicProposalViewTest extends TestCase
         foreach (['material_unit_cost', 'labor_unit_cost', 'other_unit_cost', 'source_boq_item_id'] as $forbidden) {
             $this->assertStringNotContainsString($forbidden, $body, "Public proposal view leaked '{$forbidden}'");
         }
-        foreach (['999', '888', '777'] as $costValue) {
+        // Checked as the exact decimal-cast serialization ("999.00"), not a bare "999" substring
+        // — the latter can coincidentally match unrelated Faker-generated data elsewhere in the
+        // body (e.g. a phone number containing "888"), which made this assertion flaky.
+        foreach (['999.00', '888.00', '777.00'] as $costValue) {
             $this->assertStringNotContainsString($costValue, $body, 'Public proposal view leaked a raw cost figure');
         }
 
