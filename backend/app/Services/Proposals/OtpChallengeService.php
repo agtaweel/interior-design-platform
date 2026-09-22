@@ -95,7 +95,17 @@ class OtpChallengeService
             throw new OtpVerificationException('expired');
         }
 
-        if (! Hash::check($code, $challenge->code_hash)) {
+        // Hash::check() throws (rather than returning false) if code_hash isn't a recognized
+        // hash format. That should never happen since issue() always writes via Hash::make(),
+        // but this is a public, unauthenticated endpoint — a corrupted row must fail closed
+        // (treated as a wrong code) rather than surface a 500 to an anonymous caller.
+        try {
+            $matches = Hash::check($code, $challenge->code_hash);
+        } catch (\RuntimeException) {
+            $matches = false;
+        }
+
+        if (! $matches) {
             $challenge->increment('attempts');
 
             throw new OtpVerificationException('invalid', max(0, self::MAX_ATTEMPTS - $challenge->attempts));
