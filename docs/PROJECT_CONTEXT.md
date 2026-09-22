@@ -274,7 +274,7 @@ likely as a panel alongside or below the BOQ grid rather than a separate route, 
 
 Stop and checkpoint with the user after this sprint before starting Proposals (Sprint 4).
 
-## Sprint 4 scope (current)
+## Sprint 4 scope (complete)
 
 Proposals: versioning, immutable snapshots, send + OTP-gated public approval, PDF, and the public
 client portal (S11). This is the largest sprint yet and touches almost every prior layer (BOQ,
@@ -413,3 +413,91 @@ it must not change under them.
 Stop and checkpoint with the user after this sprint before starting Approval + Contract (Sprint 5) —
 note Sprint 5 is literally "the rest of" what this sprint's `approve` endpoint stubs
 (`contract_conversion_available`), so keep the approvals/OTP mechanism generic and reusable.
+
+## Sprint 5 scope (current)
+
+Approval + Contract. The "approval" half is already done (Sprint 4's OTP-gated public approve
+endpoint) — this sprint is really "contract conversion + terms," per the MVP delivery order's own
+label. Do NOT build payment schedules or payment recording here — despite PRD §3 grouping
+"Contracts & payments" as one API table section, the MVP delivery order (§6) puts "Schedules,
+payment recording, receipts, receivables dashboard" in **Sprint 6**, not this one. `GET
+/projects/{id}/financials` also belongs to Sprint 6 (it needs real payment data — collected/
+outstanding — to be meaningful; this sprint doesn't touch it).
+
+### Key design decision: what "contract signing" means for MVP
+
+The locked product decision (PRD §8, PROJECT_CONTEXT.md's locked-decisions list, item 3) already
+settled this: "MVP approval is via secure link + OTP, not a formal e-signature vendor
+integration." Read literally, this means the **client's OTP approval of the proposal in Sprint 4
+IS the signing act** — there is no second client-facing signing ceremony for the contract itself.
+Concretely: contract creation is an **internal, authenticated** action (staff clicks "Convert to
+Contract" after seeing `contract_conversion_available: true`), not a new public/token flow. The
+contract is considered signed at creation time — set `signed_at = now()` on creation, no separate
+"send for signature" step. This keeps Sprint 5 much smaller than Sprint 4 and is consistent with
+the recommended-default's intent (avoid building e-signature complexity for MVP).
+
+### Immutability boundary for contracts (distinct from proposals')
+
+`contract_value` and `proposal_version_id` are permanently locked at creation — they must equal
+the source proposal's `grand_total` exactly, never recalculated or edited. This is the ERD's
+"Approved Proposal Version 1—0..1 Contract" relationship: one proposal converts to at most one
+contract (enforce a unique constraint on `proposal_version_id`; attempting to convert an
+already-converted proposal is a `409 CONTRACT_ALREADY_EXISTS`-style error, plain conflict
+handling — no idempotency-key mechanism needed here since this is an authenticated internal
+action, not the public money-moving surface Sprint 4's approve endpoint is).
+
+`start_date`, `end_date`, and `terms_json`, by contrast, ARE freely editable via `PATCH` after
+creation — per S12's "edits create controlled amendments," and per this sprint's scope decision,
+"controlled" is satisfied by the existing `Auditable` trait's before/after audit trail, not by
+building a separate formal amendment-approval workflow (that heavier mechanism, for changes that
+affect *commercial value*, is exactly what Sprint 7's Change Orders are for — don't build a
+lightweight duplicate of it here for non-commercial fields).
+
+### Schema
+
+`contracts` (project-scoped indirectly, same convention as `boq_items`/`pricing_rules`/
+`proposal_versions`): id, project_id, proposal_version_id (FK to proposal_versions, unique —
+enforces the 0..1 relationship), contract_no (string, auto-generated like `projects.code`'s
+`PRJ-00001` pattern — use `CTR-00001`, with the same conflict-fallback approach), status (string;
+`active` by default at creation — no draft state needed since creation IS signing; leave room for
+future values like `completed`/`terminated` but don't build transitions for them this sprint),
+contract_value (decimal(14,2), copied from the proposal's `grand_total` at creation, never
+recalculated), signed_at (timestamp, set at creation), start_date/end_date (nullable dates,
+editable), terms_json (jsonb, nullable — seed it from the proposal's `content_json` terms/
+exclusions/timeline/payment_plan sections as a starting draft, but store it as the contract's own
+independent copy so later proposal changes — there won't be any, the proposal is already
+immutable by this point — or future contract edits don't entangle the two records). Wire
+`Auditable`.
+
+### API
+
+- `POST /projects/{id}/contracts/from-proposal/{proposalId}` — validate the referenced proposal
+  version belongs to this project and has `status == 'approved'` (else 409/422, your choice of
+  code, document it), validate no contract already exists for it (409
+  `CONTRACT_ALREADY_EXISTS`), then in a DB transaction create the contract (contract_value =
+  proposal.grand_total, terms_json seeded from proposal.content_json, signed_at = now(),
+  status = 'active').
+- `GET /contracts/{id}` — full detail.
+- `PATCH /contracts/{id}` — update start_date/end_date/terms_json only; reject any attempt to set
+  contract_value or proposal_version_id (ignore silently or 422 if present in the payload — your
+  call, document it).
+- `GET /contracts/{id}/pdf` — internal-only PDF (no public contract-viewing surface exists in the
+  PRD; the client already reviewed and approved the commercial terms via Sprint 4's proposal
+  portal — a contract PDF here is for the office's/client's records, shared manually like the
+  proposal link, not a new public route).
+
+Permission: reuse whatever permission Sprint 4 settled on for proposals (`manage_boq`, per that
+sprint's documented choice) unless you have a strong reason to diverge — keep the commercial
+workflow's permission story consistent rather than fragmenting it further.
+
+### UX
+
+**S12 Contract** only (not S13 Payments — that's Sprint 6): contract metadata (contract_no,
+status, value, dates), parties (project's client + organization), terms (editable textareas
+mirroring the proposal editor's content-section pattern), a read-only reference back to the
+source proposal version, a PDF download action. Wire it into the project's in-project nav as a
+new enabled "Contract" tab (currently a disabled placeholder). If the project's approved proposal
+hasn't been converted yet, show a "Convert to Contract" call-to-action (only enabled when an
+approved proposal version exists and no contract exists yet) rather than an empty contract form.
+
+Stop and checkpoint with the user after this sprint before starting Payments (Sprint 6).
