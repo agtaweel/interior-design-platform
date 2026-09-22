@@ -649,6 +649,118 @@ export interface PaymentFormInput {
 }
 
 // ---------------------------------------------------------------------------
+// Change Orders (Sprint 7 — S14 Change Orders). Four-verb lifecycle: draft -> sent ->
+// approved|rejected -> applied (see docs/PROJECT_CONTEXT.md Sprint 7 scope). `apply` is a
+// separate staff-triggered step from client `approve` — approving never touches the BOQ/
+// contract by itself. Money/decimal fields (price_delta, unit prices) and quantity arrive as
+// decimal strings from the backend, same convention as BoqItem/ProposalVersion — always format
+// via formatEGP, never render raw. Draft-only editability mirrors proposals' immutability rule
+// exactly: PATCH only succeeds while status === 'draft' (409 CHANGE_ORDER_NOT_EDITABLE
+// otherwise) — see ChangeOrderController's docblock (verified against backend source).
+// ---------------------------------------------------------------------------
+
+export type ChangeOrderStatus = "draft" | "sent" | "approved" | "rejected" | "applied";
+
+export type ChangeOrderItemAction = "add" | "remove" | "modify";
+
+/** GET /change-orders/{id} item shape (internal — includes boq_item_id, never exposed on the
+ *  public/token-authenticated surface). line_delta is always computed server-side:
+ *    add    -> quantity * new_unit_price (positive)
+ *    remove -> -(quantity * old_unit_price) (negative)
+ *    modify -> quantity * (new_unit_price - old_unit_price) (sign follows price direction)
+ *  (verified against ChangeOrderService::computeLineDelta()). */
+export interface ChangeOrderItem {
+  id: number | string;
+  action: ChangeOrderItemAction;
+  boq_item_id: number | string | null;
+  description: string;
+  quantity: number | string;
+  unit: string;
+  old_unit_price: number | string | null;
+  new_unit_price: number | string | null;
+  line_delta: number | string;
+}
+
+/** One item row in the POST/PATCH request body. Per StoreChangeOrderRequest/
+ *  UpdateChangeOrderRequest (verified against backend source):
+ *   - 'add': boq_item_id and old_unit_price must be omitted; new_unit_price required.
+ *   - 'remove': boq_item_id required; new_unit_price must be omitted; old_unit_price optional
+ *     (falls back server-side to the referenced boq_item's current client_unit_price).
+ *   - 'modify': boq_item_id required; both old_unit_price (optional, same fallback) and
+ *     new_unit_price (required) apply.
+ *  description/quantity/unit are required for every action. */
+export interface ChangeOrderItemInput {
+  action: ChangeOrderItemAction;
+  boq_item_id?: number | string;
+  description: string;
+  quantity: number | string;
+  unit: string;
+  old_unit_price?: number | string;
+  new_unit_price?: number | string;
+}
+
+/** GET /projects/{id}/change-orders list item shape (ChangeOrderSummaryResource — verified
+ *  against backend source). Deliberately excludes reason/items, only in the full detail view. */
+export interface ChangeOrderSummary {
+  id: number | string;
+  number: string;
+  status: ChangeOrderStatus;
+  price_delta: number | string;
+  timeline_delta_days: number | null;
+  sent_at: ISODateString | null;
+  approved_at: ISODateString | null;
+  applied_at: ISODateString | null;
+}
+
+/** GET /change-orders/{id} and POST /projects/{id}/change-orders response shape
+ *  (ChangeOrderResource — verified against backend source). */
+export interface ChangeOrder {
+  id: number | string;
+  project_id: number | string;
+  number: string;
+  status: ChangeOrderStatus;
+  reason: string;
+  price_delta: number | string;
+  timeline_delta_days: number | null;
+  items: ChangeOrderItem[];
+  requested_by: UserSummary | null;
+  sent_at: ISODateString | null;
+  approved_at: ISODateString | null;
+  applied_at: ISODateString | null;
+  created_at: ISODateString;
+  updated_at: ISODateString;
+}
+
+/** POST /projects/{id}/change-orders request body. project_id/number/status/price_delta are
+ *  never accepted — price_delta is always computed server-side from items' line_delta. */
+export interface ChangeOrderCreateInput {
+  reason: string;
+  timeline_delta_days?: number | null;
+  items: ChangeOrderItemInput[];
+}
+
+/** PATCH /change-orders/{id} request body — only valid while status is 'draft', 409
+ *  CHANGE_ORDER_NOT_EDITABLE otherwise. `items`, when present, wholesale-replaces the entire
+ *  item set (delete-then-rebuild server-side) — see UpdateChangeOrderRequest's docblock. */
+export interface ChangeOrderUpdateInput {
+  reason?: string;
+  timeline_delta_days?: number | null;
+  items?: ChangeOrderItemInput[];
+}
+
+/** POST /change-orders/{id}/send response — the one-time-only surface for the public link +
+ *  OTP, same pattern as ProposalSendResult (the OTP is stored hashed server-side and never
+ *  returned again by any other endpoint). */
+export interface ChangeOrderSendResult {
+  id: number | string;
+  number: string;
+  status: ChangeOrderStatus;
+  sent_at: ISODateString;
+  public_url: string;
+  otp_code: string;
+}
+
+// ---------------------------------------------------------------------------
 // Pagination envelope (Laravel's default paginate() JSON shape)
 // ---------------------------------------------------------------------------
 
