@@ -514,7 +514,7 @@ approved proposal version exists and no contract exists yet) rather than an empt
 
 Stop and checkpoint with the user after this sprint before starting Payments (Sprint 6).
 
-## Sprint 6 scope (current)
+## Sprint 6 scope (complete)
 
 Payments: schedules, recording, receipts, receivables. This sprint introduces two things not yet
 present anywhere in the codebase — a second money-moving public-adjacent-risk surface (payment
@@ -637,4 +637,133 @@ for "no approved proposal yet"). Also update the **S06 Project Overview** financ
 (currently showing 0 for Collected/Outstanding since Sprint 1) to reflect the real
 `GET /projects/{id}` `financials.collected`/`.outstanding` values now that they're populated.
 
-Stop and checkpoint with the user after this sprint before starting Change Orders (Sprint 7).
+Stop and checkpoint with the user before starting Change Orders (Sprint 7).
+
+## Sprint 7 scope (current)
+
+Change Orders: the controlled-amendment mechanism Sprint 5 explicitly deferred ("changes that
+affect commercial value... is exactly what Sprint 7's Change Orders are for"). This sprint has
+four distinct lifecycle verbs (per the MVP delivery order's own label: "Create/send/approve/
+apply") and is the second real user of Sprint 4's generic OTP+idempotency+signed-link mechanism
+— it must be reused, not reimplemented.
+
+### Lifecycle (four verbs, four distinct steps — don't collapse any of them)
+
+`draft` → `sent` → `approved` | `rejected` → `applied` (only reachable from `approved`).
+
+1. **Create** (`draft`): staff specifies a list of BOQ deltas (see `change_order_items` below)
+   and a reason + `timeline_delta_days`. `price_delta` is COMPUTED from the items' `line_delta`
+   sum, not manually entered (same "compute from lines, don't trust a manual total" principle as
+   proposals' `grand_total`). Freely editable while draft (add/remove/edit items), same
+   convention as proposal drafts.
+2. **Send**: locks the draft (same immutability-at-sent boundary as proposals — Sprint 4's
+   pattern, don't invent a different boundary here), issues a signed link (`SignedLinkService`,
+   purpose e.g. `"change_order_approval"`) + a fresh OTP challenge (`OtpChallengeService`,
+   REUSE VERBATIM — don't reimplement hashing/expiry/attempt-cap logic), sets `sent_at`.
+3. **Approve** (client, public, OTP-gated): `POST /public/change-orders/{token}/approve` —
+   mirror Sprint 4's proposal-approval endpoint exactly: same OTP verification, same
+   Idempotency-Key replay semantics, same `409 CHANGE_ORDER_ALREADY_APPROVED`-style conflict
+   handling for a retry without a matching key. Creates an `approvals` row (`entity_type =
+   'change_order'` — this is exactly why that table's `entity_type`/`entity_id` was built
+   generic back in Sprint 4, not proposal-specific). Sets `status = 'approved'`, `approved_at`.
+   **Approving does NOT yet touch the BOQ or the contract** — that's the separate `apply` step
+   (see below for why these are kept distinct).
+4. **Reject** (client, public, NO OTP): `POST /public/change-orders/{token}/reject` — mirrors
+   proposals' `request-changes` (lower stakes than a binding commercial approval, no OTP
+   needed). Sets `status = 'rejected'`, creates an `approvals` row (`status = 'rejected'`). A
+   rejected change order is terminal — staff creates a new one if they want to try again (same
+   "new draft, don't reopen an old one" principle as proposal versioning).
+5. **Apply** (staff, internal, authenticated — NOT in the PRD's route table but required by the
+   sprint's own "...apply" label; add `POST /change-orders/{id}/apply`, only valid from
+   `approved`): this is the ONE controlled, audited exception to Sprint 5's contract immutability
+   rule (`contract_value` is otherwise permanently locked). Applying, in a DB transaction:
+   - Walks `change_order_items` and mutates the live `boq_items` accordingly (see actions below).
+   - Updates `contracts.contract_value += price_delta` directly (NOT via a full BOQ/pricing
+     recalculation — `price_delta` is the authoritative, already-computed delta; recomputing from
+     scratch could drift from what the client actually approved). This is why it bypasses
+     `UpdateContractRequest`'s prohibition on `contract_value` — that guard is for the generic
+     PATCH endpoint; `apply` is a distinct, purpose-built internal service method, not a
+     backdoor through the same route.
+   - Optionally extends `contracts.end_date` by `timeline_delta_days` if `end_date` is set (skip
+     if null — don't invent a start date to extend from).
+   - Sets `status = 'applied'` and a new `applied_at` timestamp (not in the ERD's literal column
+     list — add it, same pattern as adding `priced_at`/`archived_at` in earlier sprints when the
+     ERD didn't enumerate every timestamp a real workflow needs).
+   Why separate `approve` from `apply` instead of applying immediately on client approval: gives
+   staff a deliberate checkpoint to verify before the BOQ/contract actually change — the client
+   approving doesn't mean the office has necessarily scheduled the work yet.
+
+### Schema
+
+1. **`change_orders`** — project-scoped indirectly (same convention as `boq_items`/
+   `pricing_rules`/`proposal_versions`). Fields: id, project_id, number (string, auto-generated
+   like `contracts.contract_no`'s `CTR-00001` pattern — use `CO-00001`), status (string, default
+   `'draft'`), reason (text), price_delta (decimal(14,2), computed from items — see above),
+   timeline_delta_days (integer, nullable, can be negative for a schedule pull-forward),
+   requested_by (nullable FK to users), approved_at (nullable timestamp), applied_at (nullable
+   timestamp — added beyond the ERD's literal list, per above). Skip a literal `approved_by`
+   column — per the established pattern (`proposal_versions.approved_at` has no paired user_id
+   since the client isn't a `users` row), the `approvals` table is the detailed record of WHO
+   approved; don't duplicate that here. Wire `Auditable`.
+2. **`change_order_items`** — belongs to `change_orders` (two-hop indirect scoping, same pattern
+   as Sprint 4's `proposal_items` — check that model's docblock for the exact style). Fields: id,
+   change_order_id (FK, cascadeOnDelete), action (string: `'add'` | `'remove'` | `'modify'`),
+   boq_item_id (nullable FK to boq_items, nullOnDelete — null for `'add'` since there's no
+   existing item yet; required for `'remove'`/`'modify'`), description, quantity, unit,
+   old_unit_price (nullable — null for `'add'`), new_unit_price (nullable — null for
+   `'remove'`), line_delta (decimal(12,2), computed per action, see below). **Scope
+   simplification**: `'modify'` changes `new_unit_price` only, not quantity — if a real
+   quantity change is needed, model it as a `'remove'` + `'add'` pair rather than extending
+   `'modify'` to handle both dimensions; keeps the line-delta math unambiguous for MVP.
+   `line_delta` formulas: `add` → `quantity * new_unit_price` (positive); `remove` → `-(quantity
+   * old_unit_price)` (negative); `modify` → `quantity * (new_unit_price - old_unit_price)`
+   (sign follows whether the price went up or down).
+
+### API
+
+- `POST /projects/{id}/change-orders` — create draft (reason, timeline_delta_days, items[]).
+  Validate any referenced `boq_item_id` belongs to this project. Compute `price_delta` from
+  items server-side.
+- `GET /projects/{id}/change-orders` — list (number, status, price_delta, timeline_delta_days,
+  sent_at, approved_at, applied_at).
+- `GET /change-orders/{id}` — full detail including items.
+- `PATCH /change-orders/{id}` — edit reason/timeline_delta_days/items, only while `draft`
+  (recompute `price_delta`), 409 otherwise — mirror proposals' `PROPOSAL_NOT_EDITABLE` pattern
+  with an analogous code.
+- `POST /change-orders/{id}/send` — only from `draft`; mirror `ProposalVersionController::send()`
+  exactly (signed link + OTP issuance, response includes the plaintext OTP once).
+- `POST /change-orders/{id}/apply` — only from `approved`; see the Apply step above.
+- `GET /public/change-orders/{token}` — public, token-authenticated, rate-limited. Client-shaped
+  view: change order number/reason/timeline_delta_days/price_delta (this IS shown to the client —
+  unlike BOQ cost fields, a price delta is the whole point of what they're approving) and the
+  item list in client-shaped form (description/quantity/unit, old/new price — no
+  `boq_item_id`/internal linkage).
+- `POST /public/change-orders/{token}/approve` — body `{name, comment?, otp}`, optional
+  `Idempotency-Key` header — copy Sprint 4's `PublicProposalController::approve()` logic
+  structurally (same OTP service, same idempotency reconciliation), adapted for
+  `change_orders`/entity_type `'change_order'`.
+- `POST /public/change-orders/{token}/reject` — body `{name, comment}`, no OTP — mirrors
+  `request-changes`.
+
+**Permission**: reuse `manage_boq` for all mutations (create/update/send/apply), consistent with
+the established commercial-workflow convention. Reads (list/detail) need only active
+membership — do NOT gate behind `view_financials`; a change order's `price_delta` is a *pricing*
+concept (same tier as BOQ/pricing-rule/proposal/contract data, all of which only ever required
+active membership) rather than a *collected-money* concept (which is what `view_financials`
+was introduced in Sprint 6 specifically to protect). Keep that distinction intentional, don't
+default to the stricter gate just because it's newer.
+
+### UX
+
+**S14 Change Orders** (project tab, new — enable it, currently a disabled placeholder): list of
+change orders with status badges, an editor for a draft (reason, timeline delta, an
+additions/removals/modifications table against the current BOQ — let staff pick an existing BOQ
+item to remove or modify, or add a free-form new line), a running price-delta total, a Send
+action surfacing the copyable link+OTP exactly like the Proposal Editor's pattern, and an Apply
+action visible only once a change order is `approved`. A **public Change Order approval page**
+(new unauthenticated route, e.g. `/p/change-orders/[token]`, mirroring `/p/proposals/[token]`'s
+architecture and isolation from the authenticated app exactly) showing the change's reason, items,
+price delta, timeline impact, and Approve (name+OTP)/Reject (name+comment) actions.
+
+Stop and checkpoint with the user after this sprint before starting Polish (Sprint 8) — the
+final sprint of the MVP delivery order.
