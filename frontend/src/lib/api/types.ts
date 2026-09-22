@@ -351,6 +351,75 @@ export interface BoqImportResult {
 }
 
 // ---------------------------------------------------------------------------
+// Pricing (Sprint 3 — S08 Pricing Panel). `pricing_rules` are project-level layers applied on
+// top of the BOQ's summed line-item pricing (see docs/PROJECT_CONTEXT.md Sprint 3 scope) —
+// distinct from Sprint 2's per-item client_unit_price. Money/decimal fields arrive as strings
+// from the backend's bcmath-based PricingCalculator, same convention as BoqItem — always format
+// via formatEGP, never render raw.
+// ---------------------------------------------------------------------------
+
+export type PricingRuleType = "markup" | "fee" | "discount";
+export type PricingMethod = "percentage" | "fixed_amount";
+export type PricingBaseSelector = "boq_direct_cost" | "boq_client_subtotal" | "running_subtotal";
+
+/** GET/POST /projects/{id}/pricing/rules, PATCH /pricing/rules/{id} item shape. */
+export interface PricingRule {
+  id: number | string;
+  project_id: number | string;
+  name: string;
+  type: PricingRuleType;
+  method: PricingMethod;
+  value: number | string;
+  base_selector: PricingBaseSelector;
+  sort_order: number;
+  active: boolean;
+  created_at: ISODateString;
+  updated_at: ISODateString;
+}
+
+export interface PricingRuleFormInput {
+  name: string;
+  type: PricingRuleType;
+  method: PricingMethod;
+  value: number | string;
+  base_selector: PricingBaseSelector;
+  sort_order?: number;
+  active?: boolean;
+}
+
+/** One step of the ordered rule breakdown inside GET .../pricing/breakdown and the recalculate
+ *  response — see PricingCalculator's docblock for the unsigned-magnitude sign convention. */
+export interface PricingBreakdownRule {
+  id: number | string;
+  name: string;
+  type: PricingRuleType;
+  method: PricingMethod;
+  value: number | string;
+  base_selector: PricingBaseSelector;
+  base_amount_used: number | string;
+  computed_amount: number | string;
+  running_subtotal_after: number | string;
+}
+
+/**
+ * GET /projects/{id}/pricing/breakdown and POST /projects/{id}/pricing/recalculate response
+ * shape. When `priced` is false (project never recalculated) every total is null and `rules` is
+ * empty — render an explicit "recalculate to see pricing" prompt, never zeros, per
+ * PricingController's docblock.
+ */
+export interface PricingBreakdown {
+  priced: boolean;
+  direct_cost_total: number | string | null;
+  client_subtotal: number | string | null;
+  rules: PricingBreakdownRule[];
+  markup_total: number | string | null;
+  fees_total: number | string | null;
+  discount_total: number | string | null;
+  grand_total: number | string | null;
+  priced_at: ISODateString | null;
+}
+
+// ---------------------------------------------------------------------------
 // Pagination envelope (Laravel's default paginate() JSON shape)
 // ---------------------------------------------------------------------------
 

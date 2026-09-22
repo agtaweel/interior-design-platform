@@ -40,6 +40,7 @@ import {
   updateBoqItem,
 } from "@/lib/api/resources/boq";
 import { getProject } from "@/lib/api/resources/projects";
+import { PricingPanel } from "@/components/pricing/PricingPanel";
 import type {
   BoqCategoryNode,
   BoqImportResult,
@@ -1108,6 +1109,11 @@ export default function BoqBuilderPage() {
           </CardBody>
         </Card>
       </div>
+
+      {/* Pricing (S08) — project-level markup/fee/discount layers on top of the line-item
+          pricing above. Rendered as a sibling section within this same "BOQ & Pricing" tab
+          rather than a separate route, per PROJECT_CONTEXT.md Sprint 3 UX guidance. */}
+      <PricingPanel projectId={projectId} />
     </div>
   );
 }
