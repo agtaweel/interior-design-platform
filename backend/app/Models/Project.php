@@ -98,6 +98,15 @@ class Project extends Model
     }
 
     /**
+     * Sprint 7: a project's change-order history, scoped indirectly the same one-hop way as
+     * boqItems()/pricingRules()/proposalVersions()/contracts() above.
+     */
+    public function changeOrders(): HasMany
+    {
+        return $this->hasMany(ChangeOrder::class);
+    }
+
+    /**
      * Sprint 6: direct relation, since payments carry project_id directly (unlike
      * payment_schedules, which is only reachable from a project via contracts ->
      * paymentSchedules). This is what backs project-wide payment queries independent of which
