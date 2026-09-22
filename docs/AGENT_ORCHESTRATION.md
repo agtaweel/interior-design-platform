@@ -49,9 +49,31 @@ Responsibilities:
 
 ## Current status
 
-Sprints 1–5 (Foundation, BOQ, Pricing, Proposals, Approval+Contract) are **complete**. 226
-passing backend tests. Stopped here for user checkpoint. Sprints 6–8 (Payments, Change Orders,
-Polish) are not started.
+Sprints 1–6 (Foundation, BOQ, Pricing, Proposals, Approval+Contract, Payments) are **complete**.
+268 passing backend tests. Stopped here for user checkpoint. Sprints 7–8 (Change Orders, Polish)
+are not started.
+
+Sprint 6 delivered: payment schedules (percentage-of-contract or fixed amount, computed via
+bcmath) and payment recording reusing Sprint 4's idempotency-key mechanism verbatim, receipt file
+uploads (local disk behind the Storage facade, streamed back through an access-controlled route
+rather than a raw public path — a stand-in for a real object-storage signed URL), and the S13
+Payments tab with overdue/upcoming/paid filters and live remaining-balance tracking for partial
+payments. This sprint activated the `view_financials` permission that had sat unused since
+Sprint 1 — it's the first sprint where reads (not just writes) are permission-gated, since
+payment/financial data is exactly the profit-adjacent information the locked decisions care
+about. `actual_cost`/`gross_profit` remain deferred placeholders by design — expenses/suppliers
+aren't assigned to any of the PRD's 8 MVP sprints.
+
+**Process notes from this sprint**: I made a mistake mid-sprint — a `git checkout` intended to
+revert my own one-line test edit instead reverted an entire file, wiping out a subagent's route
+registrations (everything else, including the controllers/services, was untracked or otherwise
+safe and unaffected). Caught immediately via route:list showing 0 payment routes, fixed by
+re-adding the routes directly. Separately, a real recurring gotcha across several sprints
+(agents reporting Docker "staleness" requiring a restart) was finally confirmed and root-caused:
+editor-style atomic-save writes to existing `backend/` files don't reliably propagate into the
+`idp-app` container's bind-mount view, while plain shell appends do. Documented in
+`docs/PROJECT_CONTEXT.md`'s "Local dev environment" section — the fix is `docker compose restart
+app` after editing existing backend files, before trusting `artisan`/curl output.
 
 Sprint 5 delivered: contract conversion from an approved proposal (creation = signing, per the
 locked "OTP not e-signature" decision — no separate contract-signing ceremony), a DB-enforced
