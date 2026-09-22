@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\BoqTemplateCategoryController;
 use App\Http\Controllers\Api\BoqTemplateController;
 use App\Http\Controllers\Api\BoqTemplateItemController;
 use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\ContractController;
 use App\Http\Controllers\Api\OrganizationMemberController;
 use App\Http\Controllers\Api\PricingController;
 use App\Http\Controllers\Api\PricingRuleController;
@@ -134,6 +135,21 @@ Route::prefix('v1')->group(function () {
             Route::patch('/proposals/{proposal}', [ProposalVersionController::class, 'update']);
             Route::post('/proposals/{proposal}/send', [ProposalVersionController::class, 'send']);
             Route::get('/proposals/{proposal}/pdf', [ProposalVersionController::class, 'pdf']);
+
+            // Contracts (Sprint 5, PROJECT_CONTEXT.md). {project}/{proposal}/{contract} follow
+            // the same manual-lookup convention as above — see ContractController's docblock.
+            // Contract creation IS the signing act (no separate public/token signing flow —
+            // the client already OTP-approved the proposal in Sprint 4), so from-proposal is an
+            // authenticated, internal-only POST just like every other route in this group.
+            // GET routes (show/pdf) require only an active membership; from-proposal/update
+            // require Permissions::MANAGE_BOQ (see class docblock for why this reuses proposals'
+            // permission rather than introducing manage_contracts). No public contract-viewing
+            // route exists in the PRD — the PDF here is internal-only, shared manually like the
+            // proposal link.
+            Route::post('/projects/{project}/contracts/from-proposal/{proposal}', [ContractController::class, 'fromProposal']);
+            Route::get('/contracts/{contract}', [ContractController::class, 'show']);
+            Route::patch('/contracts/{contract}', [ContractController::class, 'update']);
+            Route::get('/contracts/{contract}/pdf', [ContractController::class, 'pdf']);
         });
     });
 
