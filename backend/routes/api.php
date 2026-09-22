@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\BoqItemController;
 use App\Http\Controllers\Api\BoqTemplateCategoryController;
 use App\Http\Controllers\Api\BoqTemplateController;
 use App\Http\Controllers\Api\BoqTemplateItemController;
+use App\Http\Controllers\Api\ChangeOrderController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\ContractController;
 use App\Http\Controllers\Api\OrganizationMemberController;
@@ -21,6 +22,7 @@ use App\Http\Controllers\Api\ProjectMemberController;
 use App\Http\Controllers\Api\ProjectServiceController;
 use App\Http\Controllers\Api\PropertyController;
 use App\Http\Controllers\Api\ProposalVersionController;
+use App\Http\Controllers\Api\PublicChangeOrderController;
 use App\Http\Controllers\Api\PublicProposalController;
 use App\Http\Controllers\Api\RoomController;
 use Illuminate\Support\Facades\Route;
@@ -167,6 +169,20 @@ Route::prefix('v1')->group(function () {
             Route::get('/payment-schedules/{schedule}/payments', [PaymentController::class, 'index']);
             Route::get('/payments/{payment}/receipt', [PaymentController::class, 'receipt']);
             Route::get('/projects/{project}/financials', [ProjectFinancialsController::class, 'show']);
+
+            // Change Orders (Sprint 7, PROJECT_CONTEXT.md). {project}/{changeOrder} follow the
+            // same manual-lookup convention as above — see ChangeOrderController's docblock.
+            // GET routes (index/show) require only an active membership; mutations
+            // (store/update/send/apply) require Permissions::MANAGE_BOQ — price_delta is a
+            // pricing concept (same tier as BOQ/pricing-rule/proposal/contract data), not a
+            // collected-money concept, so this deliberately does NOT reuse Sprint 6's
+            // VIEW_FINANCIALS gate for reads.
+            Route::get('/projects/{project}/change-orders', [ChangeOrderController::class, 'index']);
+            Route::post('/projects/{project}/change-orders', [ChangeOrderController::class, 'store']);
+            Route::get('/change-orders/{changeOrder}', [ChangeOrderController::class, 'show']);
+            Route::patch('/change-orders/{changeOrder}', [ChangeOrderController::class, 'update']);
+            Route::post('/change-orders/{changeOrder}/send', [ChangeOrderController::class, 'send']);
+            Route::post('/change-orders/{changeOrder}/apply', [ChangeOrderController::class, 'apply']);
         });
     });
 
@@ -182,5 +198,12 @@ Route::prefix('v1')->group(function () {
         Route::post('/public/proposals/{token}/approve', [PublicProposalController::class, 'approve']);
         Route::post('/public/proposals/{token}/request-changes', [PublicProposalController::class, 'requestChanges']);
         Route::get('/public/proposals/{token}/pdf', [PublicProposalController::class, 'pdf']);
+
+        // Public client change-order approval page (Sprint 7, PROJECT_CONTEXT.md S14) —
+        // deliberately OUTSIDE both the auth:sanctum and `tenant` middleware groups above, same
+        // token-authenticated-instead posture as the public proposal routes.
+        Route::get('/public/change-orders/{token}', [PublicChangeOrderController::class, 'show']);
+        Route::post('/public/change-orders/{token}/approve', [PublicChangeOrderController::class, 'approve']);
+        Route::post('/public/change-orders/{token}/reject', [PublicChangeOrderController::class, 'reject']);
     });
 });
