@@ -49,9 +49,20 @@ Responsibilities:
 
 ## Current status
 
-Sprints 1–4 (Foundation, BOQ, Pricing, Proposals) are **complete**. 196 passing backend tests.
-Stopped here for user checkpoint. Sprints 5–8 (Approval+Contract, Payments, Change Orders,
+Sprints 1–5 (Foundation, BOQ, Pricing, Proposals, Approval+Contract) are **complete**. 226
+passing backend tests. Stopped here for user checkpoint. Sprints 6–8 (Payments, Change Orders,
 Polish) are not started.
+
+Sprint 5 delivered: contract conversion from an approved proposal (creation = signing, per the
+locked "OTP not e-signature" decision — no separate contract-signing ceremony), a DB-enforced
+0..1 proposal-to-contract relationship, contract_value/proposal_version_id permanently locked
+while start_date/end_date/terms_json stay editable (with Auditable's trail satisfying "controlled
+amendments" rather than a separate approval workflow — that heavier mechanism is Sprint 7's
+Change Orders), and the S12 Contract tab. A real API gap was found and fixed mid-sprint: there
+was no way to look up an existing contract for a project (only a failing conversion attempt could
+reveal one, and even then without an id) — added `GET /projects/{id}/contracts` and included
+`contract_id` in the `409 CONTRACT_ALREADY_EXISTS` error, then removed a fragile localStorage
+workaround the frontend had used before that fix landed.
 
 Sprint 4 delivered: proposal versioning with immutable snapshots (locked at 'sent', not just
 'approved'), a generic OTP + idempotency-key mechanism (reusable by Sprint 7's change orders)
