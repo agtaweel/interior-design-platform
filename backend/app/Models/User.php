@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'phone', 'password', 'auth_provider', 'status'])]
@@ -18,7 +17,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory;
 
     /**
      * Get the attributes that should be cast.
@@ -73,6 +72,17 @@ class User extends Authenticatable
     public function auditLogs(): HasMany
     {
         return $this->hasMany(AuditLog::class, 'actor_user_id');
+    }
+
+    /**
+     * This user's in-app notification inbox (Sprint 8). Named `notifications()` deliberately —
+     * see App\Models\Notification's docblock for why this doesn't collide with the framework's
+     * Illuminate\Notifications\Notifiable trait (removed from this class as dead code; nothing
+     * in this app ever used it).
+     */
+    public function notifications(): HasMany
+    {
+        return $this->hasMany(Notification::class);
     }
 
     /**
