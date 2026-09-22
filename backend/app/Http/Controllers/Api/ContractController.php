@@ -45,6 +45,35 @@ class ContractController extends Controller
     ) {}
 
     /**
+     * GET /projects/{project}/contracts. Mirrors ProposalVersionController::index()'s shape
+     * exactly: manual project lookup (404 if missing/cross-tenant), read access needs only an
+     * active membership (no Gate::authorize call), plain array response ordered by created_at.
+     *
+     * In practice there will be 0 or 1 rows today — proposal_version_id is DB-unique (see
+     * Contract model docblock) and a project typically has one active/approved proposal — but
+     * this deliberately returns an array rather than assuming exactly one, since nothing here
+     * enforces "only one proposal per project" at the project level.
+     */
+    public function index(string $project): JsonResponse
+    {
+        $projectModel = Project::find($project);
+
+        if (! $projectModel) {
+            return $this->notFound();
+        }
+
+        $contracts = Contract::query()
+            ->where('project_id', $projectModel->id)
+            ->with(self::RELATIONS)
+            ->orderBy('created_at')
+            ->get();
+
+        return response()->json([
+            'data' => ContractResource::collection($contracts),
+        ]);
+    }
+
+    /**
      * Business-rule preconditions checked here (not in a FormRequest — there's no request body
      * to validate, matching ProposalVersionController::send()'s identical shape):
      *  - the proposal version must belong to THIS project (404 if not — same "don't reveal
@@ -83,8 +112,10 @@ class ContractController extends Controller
             return $this->error(409, 'PROPOSAL_NOT_APPROVED', 'Only an approved proposal version can be converted to a contract.');
         }
 
-        if ($proposalVersion->contract()->exists()) {
-            return $this->error(409, 'CONTRACT_ALREADY_EXISTS', 'A contract already exists for this proposal version.');
+        $existingContract = $proposalVersion->contract()->first();
+
+        if ($existingContract) {
+            return $this->error(409, 'CONTRACT_ALREADY_EXISTS', 'A contract already exists for this proposal version.', ['contract_id' => $existingContract->id]);
         }
 
         $contract = $this->service->fromProposal($projectModel, $proposalVersion);

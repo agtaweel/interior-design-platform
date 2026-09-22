@@ -4,9 +4,9 @@
  * In-project tab nav per docs/PROJECT_CONTEXT.md:
  *   Overview / BOQ & Pricing / Proposal / Contract / Payments / Change Orders / Execution /
  *   Documents / Activity
- * Overview (S06), BOQ & Pricing (S07/S08) and Proposal (S09/S10, Sprint 4) exist so far — the
- * rest render disabled (no href, not clickable), same treatment AppShell gives Suppliers/
- * Reports/Settings in the top-level nav.
+ * Overview (S06), BOQ & Pricing (S07/S08), Proposal (S09/S10, Sprint 4) and Contract (S12,
+ * Sprint 5) exist so far — the rest render disabled (no href, not clickable), same treatment
+ * AppShell gives Suppliers/Reports/Settings in the top-level nav.
  */
 
 import Link from "next/link";
@@ -25,14 +25,14 @@ interface TabItem {
     | "execution"
     | "documents"
     | "activity";
-  href: "" | "boq" | "proposal" | null;
+  href: "" | "boq" | "proposal" | "contract" | null;
 }
 
 const TAB_ITEMS: TabItem[] = [
   { key: "overview", href: "" },
   { key: "boq", href: "boq" },
   { key: "proposal", href: "proposal" },
-  { key: "contract", href: null },
+  { key: "contract", href: "contract" },
   { key: "payments", href: null },
   { key: "changeOrders", href: null },
   { key: "execution", href: null },

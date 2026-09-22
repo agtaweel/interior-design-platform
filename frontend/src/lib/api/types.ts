@@ -516,6 +516,60 @@ export interface ProposalSendResult {
 }
 
 // ---------------------------------------------------------------------------
+// Contracts (Sprint 5 — S12 Contract). Creation IS the signing act (no separate e-signature
+// step — see docs/PROJECT_CONTEXT.md Sprint 5's "what contract signing means for MVP"):
+// signed_at is set the moment POST .../from-proposal/{id} succeeds. contract_value and the
+// linked proposal_version are permanently locked at creation (copied from the source proposal's
+// grand_total, verified live to match exactly) — only start_date/end_date/terms_json are ever
+// editable via PATCH. `terms_json` is a flexible JSONB blob like proposals' `content_json`; this
+// frontend fixes on the same six-key subset shape convention.
+// ---------------------------------------------------------------------------
+
+export type ContractStatus = "active" | string;
+
+/** The fixed set of fields this frontend reads/writes inside `terms_json` — seeded server-side
+ *  from the source proposal's content_json at creation, then stored as the contract's own
+ *  independent copy (editing it never touches the original proposal). All optional/nullable,
+ *  same convention as ProposalContent. */
+export interface ContractTerms {
+  terms?: string | null;
+  exclusions?: string | null;
+  timeline?: string | null;
+  payment_plan?: string | null;
+  warranty_period?: string | null;
+  cancellation_policy?: string | null;
+}
+
+/** GET /contracts/{id} and POST .../contracts/from-proposal/{proposalId} response shape
+ *  (verified live — both use the same ContractResource with project.client/proposalVersion
+ *  eager-loaded). `project`/`client` are minimal summaries, not full resources. */
+export interface Contract {
+  id: number | string;
+  project_id: number | string;
+  contract_no: string;
+  status: ContractStatus;
+  contract_value: number | string;
+  signed_at: ISODateString;
+  start_date: ISODateString | null;
+  end_date: ISODateString | null;
+  terms_json: ContractTerms | null;
+  project: ProjectSummary | null;
+  client: ClientSummary | null;
+  proposal_version: { id: number | string; version_no: number } | null;
+  created_at: ISODateString;
+  updated_at: ISODateString;
+}
+
+/** PATCH /contracts/{id} request body. Deliberately has no contract_value/proposal_version_id
+ *  fields at all — the backend rejects either with 422 `prohibited` if sent (verified live), so
+ *  this type never gives a caller the option to try. */
+export interface ContractUpdateInput {
+  start_date?: string | null;
+  end_date?: string | null;
+  terms_json?: ContractTerms;
+}
+
+// ---------------------------------------------------------------------------
 // Pagination envelope (Laravel's default paginate() JSON shape)
 // ---------------------------------------------------------------------------
 

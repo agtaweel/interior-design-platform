@@ -141,11 +141,12 @@ Route::prefix('v1')->group(function () {
             // Contract creation IS the signing act (no separate public/token signing flow —
             // the client already OTP-approved the proposal in Sprint 4), so from-proposal is an
             // authenticated, internal-only POST just like every other route in this group.
-            // GET routes (show/pdf) require only an active membership; from-proposal/update
+            // GET routes (index/show/pdf) require only an active membership; from-proposal/update
             // require Permissions::MANAGE_BOQ (see class docblock for why this reuses proposals'
             // permission rather than introducing manage_contracts). No public contract-viewing
             // route exists in the PRD — the PDF here is internal-only, shared manually like the
             // proposal link.
+            Route::get('/projects/{project}/contracts', [ContractController::class, 'index']);
             Route::post('/projects/{project}/contracts/from-proposal/{proposal}', [ContractController::class, 'fromProposal']);
             Route::get('/contracts/{contract}', [ContractController::class, 'show']);
             Route::patch('/contracts/{contract}', [ContractController::class, 'update']);
