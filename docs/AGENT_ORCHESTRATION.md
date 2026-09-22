@@ -49,9 +49,26 @@ Responsibilities:
 
 ## Current status
 
-Sprints 1–6 (Foundation, BOQ, Pricing, Proposals, Approval+Contract, Payments) are **complete**.
-268 passing backend tests. Stopped here for user checkpoint. Sprints 7–8 (Change Orders, Polish)
-are not started.
+Sprints 1–7 (Foundation, BOQ, Pricing, Proposals, Approval+Contract, Payments, Change Orders) are
+**complete**. 335 passing backend tests. Stopped here for user checkpoint. Sprint 8 (Polish) —
+the final sprint of the MVP delivery order — is not started.
+
+Sprint 7 delivered the change-order lifecycle (draft → sent → approved|rejected → applied),
+reusing Sprint 4's OTP+idempotency mechanism a second time (for a different entity type, proving
+it really was built generic) and implementing the one controlled, audited exception to Sprint 5's
+contract-immutability rule: applying an approved change order mutates live BOQ items (add/
+archive/reprice) and nudges `contracts.contract_value` by exactly `price_delta` in one DB
+transaction. Verified live end-to-end multiple times with exact before/after values (e.g.
+31,815.00 → 32,615.00 on a +800.00 change order).
+
+**A real, high-severity bug was found by QA and fixed**: the create/update endpoint only derived
+`old_unit_price` from the live BOQ item when the client omitted it — if supplied, the client's
+value was trusted verbatim. Since this figure feeds `line_delta` → `price_delta` →
+`contract_value`, an internal caller could fabricate the commercial delta a client approves and
+that later lands on the contract, undermining the sprint's whole "auditable workflow" premise.
+Fixed by making `old_unit_price` always server-derived and rejecting it outright (422) if a
+client supplies it — verified independently in the browser by typing a fake old price into the
+UI's preview field and confirming the persisted value still came from the real BOQ price.
 
 Sprint 6 delivered: payment schedules (percentage-of-contract or fixed amount, computed via
 bcmath) and payment recording reusing Sprint 4's idempotency-key mechanism verbatim, receipt file
