@@ -33,11 +33,15 @@ class ProjectResource extends JsonResource
             'members' => ProjectMemberResource::collection($this->whenLoaded('projectMembers')),
             'services' => ProjectServiceResource::collection($this->whenLoaded('services')),
             'financials' => [
-                // value: contract/proposal commercial value. Populated in Sprint 4
-                // (Proposals) once an approved proposal snapshot exists, then superseded by
-                // the Sprint 5 (Approval + Contract) snapshot once the project has a signed
-                // contract.
-                'value' => 0,
+                // value: Sprint 3 (Pricing) populates this from the project's cached
+                // `grand_total` (POST /projects/{id}/pricing/recalculate), per
+                // PROJECT_CONTEXT.md's explicit instruction ("value in financials SHOULD now
+                // populate from grand_total"). Null-coalesced to 0 rather than left null: a
+                // project that has never been priced should read as "0", not force every
+                // consumer to special-case null. Superseded again in Sprint 4/5 once an
+                // approved proposal/contract snapshot exists (at that point the commercial
+                // value comes from the signed snapshot, not the live pricing cache).
+                'value' => $this->grand_total ?? 0,
                 // collected: sum of recorded payments. Populated in Sprint 6 (Payments).
                 'collected' => 0,
                 // outstanding: value - collected. Populated in Sprint 6 (Payments).

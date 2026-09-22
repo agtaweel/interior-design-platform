@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\BoqTemplateController;
 use App\Http\Controllers\Api\BoqTemplateItemController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\OrganizationMemberController;
+use App\Http\Controllers\Api\PricingController;
+use App\Http\Controllers\Api\PricingRuleController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectMemberController;
 use App\Http\Controllers\Api\ProjectServiceController;
@@ -93,6 +95,22 @@ Route::prefix('v1')->group(function () {
             Route::post('/projects/{project}/boq/apply-template/{templateCategory}', [BoqTemplateController::class, 'apply']);
             Route::patch('/boq/items/{item}', [BoqItemController::class, 'update']);
             Route::delete('/boq/items/{item}', [BoqItemController::class, 'destroy']);
+
+            // Pricing (Sprint 3, PROJECT_CONTEXT.md). {project} follows the same manual-lookup
+            // convention as above. /pricing/rules/{rule} (PATCH/DELETE) is likewise plain/
+            // manual, not nested under /projects/{project} — see PricingRuleController's
+            // docblock for why implicit binding is unsafe here even though PricingRule itself
+            // carries no organization_id to scope by directly. GET routes (rules index,
+            // breakdown) require only an active membership; mutations (rules
+            // create/update/delete, recalculate) require Permissions::MANAGE_BOQ — pricing is
+            // part of the same designer/estimator workflow as BOQ editing (see
+            // StorePricingRuleRequest's docblock).
+            Route::get('/projects/{project}/pricing/rules', [PricingRuleController::class, 'index']);
+            Route::post('/projects/{project}/pricing/rules', [PricingRuleController::class, 'store']);
+            Route::patch('/pricing/rules/{rule}', [PricingRuleController::class, 'update']);
+            Route::delete('/pricing/rules/{rule}', [PricingRuleController::class, 'destroy']);
+            Route::post('/projects/{project}/pricing/recalculate', [PricingController::class, 'recalculate']);
+            Route::get('/projects/{project}/pricing/breakdown', [PricingController::class, 'breakdown']);
 
             // Organization-level BOQ templates (mirrors the project-scoped BOQ tables — see
             // BoqTemplateCategory/BoqTemplateItem docblocks). Not a PRD-mandated screen this
