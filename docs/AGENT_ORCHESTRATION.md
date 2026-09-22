@@ -49,9 +49,21 @@ Responsibilities:
 
 ## Current status
 
-Sprints 1–3 (Foundation, BOQ, Pricing) are **complete**. 136 passing backend tests. Stopped here
-for user checkpoint. Sprints 4–8 (Proposals, Approval+Contract, Payments, Change Orders, Polish)
-are not started.
+Sprints 1–4 (Foundation, BOQ, Pricing, Proposals) are **complete**. 196 passing backend tests.
+Stopped here for user checkpoint. Sprints 5–8 (Approval+Contract, Payments, Change Orders,
+Polish) are not started.
+
+Sprint 4 delivered: proposal versioning with immutable snapshots (locked at 'sent', not just
+'approved'), a generic OTP + idempotency-key mechanism (reusable by Sprint 7's change orders)
+built on Sprint 1's dormant `SignedLinkService`, the full public/internal proposal API, PDF
+generation via barryvdh/laravel-dompdf, the internal S09 Proposal Editor + S10 Version History,
+and — the first unauthenticated surface in the app — the S11 public Client Proposal Portal at
+`/p/proposals/[token]`, verified live at mobile viewport width with zero cost/margin leakage in
+the JSON response, the PDF, or the DOM. The trickiest piece (idempotency-key replay vs.
+already-approved 409) was verified precisely in both directions by both the implementer and QA.
+One hardening fix applied post-QA: `OtpChallengeService::verify()` now fails closed instead of
+throwing a 500 if `code_hash` is ever malformed (defense-in-depth on a public endpoint; not
+reachable in normal operation since the hash is always written by the same code path).
 
 Sprint 2 delivered: rooms/boq_categories/boq_items schema, org-level BOQ templates (clone-not-
 reference semantics), full CRUD + nested tree/totals endpoint, CSV import/export, apply-template
