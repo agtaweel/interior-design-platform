@@ -56,6 +56,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Client Portal (frontend) URL
+    |--------------------------------------------------------------------------
+    |
+    | Base URL of the Next.js client portal (see PROJECT_CONTEXT.md Sprint 4 S11 — the public,
+    | mobile-first proposal portal lives at `{frontend_url}/p/proposals/{token}`, a top-level
+    | route on the frontend app, NOT an API path). Used by
+    | App\Services\Proposals\ProposalSendService to build the public URL returned to staff in
+    | POST /proposals/{id}/send's response, for them to copy/relay via WhatsApp manually (locked
+    | product decision — no WhatsApp Business API integration this MVP).
+    |
+    */
+
+    'frontend_url' => rtrim(env('FRONTEND_URL', 'http://localhost:3000'), '/'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

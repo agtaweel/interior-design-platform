@@ -44,6 +44,17 @@ final class Permissions
      * full project-admin rights. Reads (GET boq / GET templates / CSV export) require no
      * extra permission beyond an active membership, matching every other read endpoint in
      * this codebase.
+     *
+     * Sprint 4 (Proposals) also reuses this permission for proposal create/update/send rather
+     * than introducing a `manage_proposals` permission: PROJECT_CONTEXT.md explicitly left the
+     * choice to backend-api-engineer's judgment. Reusing MANAGE_BOQ was chosen because (a) it
+     * follows the precedent PricingRuleController already set for the identical "your
+     * judgment" call in Sprint 3 (pricing sits "on top of" BOQ, proposals sit on top of
+     * pricing — same designer/estimator workflow, not a separate approval role in this MVP),
+     * and (b) introducing a new permission key would require a data migration to backfill
+     * every already-seeded organization's custom Role.permissions_json blobs (RoleSeeder's
+     * Owner/Admin/Designer rows already have manage_boq=true from Sprint 2/3) before anyone
+     * could actually use this sprint's endpoints — reusing MANAGE_BOQ needs no such migration.
      */
     public const MANAGE_BOQ = 'manage_boq';
 

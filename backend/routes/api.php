@@ -16,6 +16,8 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectMemberController;
 use App\Http\Controllers\Api\ProjectServiceController;
 use App\Http\Controllers\Api\PropertyController;
+use App\Http\Controllers\Api\ProposalVersionController;
+use App\Http\Controllers\Api\PublicProposalController;
 use App\Http\Controllers\Api\RoomController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,7 +30,7 @@ use Illuminate\Support\Facades\Route;
 | bootstrap/app.php's withRouting(api: ...), the `v1` group below). All routes require
 | Sanctum auth except /auth/login; everything that touches tenant data additionally requires
 | the `tenant` middleware, which resolves + verifies the current organization (see
-| App\Http\Middleware\ResolveTenantContext). /public/... routes (later sprints) are the only
+| App\Http\Middleware\ResolveTenantContext). /public/... routes (Sprint 4 onward) are the only
 | ones that skip auth entirely, using signed tokens instead (App\Support\PublicLinks).
 |
 | Note on route parameters: {client}/{property}/{project} below are deliberately plain
@@ -118,6 +120,34 @@ Route::prefix('v1')->group(function () {
             Route::get('/boq-templates/categories', [BoqTemplateCategoryController::class, 'index']);
             Route::post('/boq-templates/categories', [BoqTemplateCategoryController::class, 'store']);
             Route::post('/boq-templates/categories/{category}/items', [BoqTemplateItemController::class, 'store']);
+
+            // Proposals (Sprint 4, PROJECT_CONTEXT.md). {project}/{proposal} follow the same
+            // manual-lookup convention as every other project-nested/cross-cutting controller
+            // above — see ProposalVersionController's docblock. GET routes (index/show/pdf)
+            // require only an active membership; mutations (store/update/send) require
+            // Permissions::MANAGE_BOQ, checked inside the Store/Update FormRequests'
+            // authorize() or, for send() (no request body to validate), via an explicit
+            // Gate::authorize() call matching BoqItemController::destroy()'s pattern.
+            Route::get('/projects/{project}/proposals', [ProposalVersionController::class, 'index']);
+            Route::post('/projects/{project}/proposals', [ProposalVersionController::class, 'store']);
+            Route::get('/proposals/{proposal}', [ProposalVersionController::class, 'show']);
+            Route::patch('/proposals/{proposal}', [ProposalVersionController::class, 'update']);
+            Route::post('/proposals/{proposal}/send', [ProposalVersionController::class, 'send']);
+            Route::get('/proposals/{proposal}/pdf', [ProposalVersionController::class, 'pdf']);
         });
+    });
+
+    // Public client proposal portal (Sprint 4, PROJECT_CONTEXT.md S11) — deliberately OUTSIDE
+    // both the auth:sanctum and `tenant` middleware groups above: these are unauthenticated,
+    // token-authenticated-instead endpoints (App\Support\PublicLinks\SignedLinkService), per
+    // the locked product decision (secure link + OTP, no login). `public-links` is the reusable
+    // rate limiter AppServiceProvider reserved for exactly this kind of enumerable-by-token
+    // public surface (originally named there for "signed proposal / change-order links, OTP
+    // requests" — this is its first real consumer).
+    Route::middleware('throttle:public-links')->group(function () {
+        Route::get('/public/proposals/{token}', [PublicProposalController::class, 'show']);
+        Route::post('/public/proposals/{token}/approve', [PublicProposalController::class, 'approve']);
+        Route::post('/public/proposals/{token}/request-changes', [PublicProposalController::class, 'requestChanges']);
+        Route::get('/public/proposals/{token}/pdf', [PublicProposalController::class, 'pdf']);
     });
 });
