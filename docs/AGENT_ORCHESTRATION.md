@@ -49,9 +49,9 @@ Responsibilities:
 
 ## Current status
 
-Sprint 1 (Foundation) and Sprint 2 (BOQ) are **complete**. 101 passing backend tests. Stopped
-here for user checkpoint. Sprints 3–8 (Pricing, Proposals, Approval+Contract, Payments, Change
-Orders, Polish) are not started.
+Sprints 1–3 (Foundation, BOQ, Pricing) are **complete**. 136 passing backend tests. Stopped here
+for user checkpoint. Sprints 4–8 (Proposals, Approval+Contract, Payments, Change Orders, Polish)
+are not started.
 
 Sprint 2 delivered: rooms/boq_categories/boq_items schema, org-level BOQ templates (clone-not-
 reference semantics), full CRUD + nested tree/totals endpoint, CSV import/export, apply-template
@@ -60,6 +60,21 @@ CSV import/export). A mid-sprint infrastructure bug was found and fixed: `docker
 app php artisan test` was silently running `migrate:fresh` against the real dev Postgres database
 instead of an isolated sqlite one, because `docker-compose.yml`'s `env_file` leaks real OS env
 vars that PHPUnit's `<env>` tags don't override without `force="true"`. Fixed in
-`backend/phpunit.xml` + `backend/tests/bootstrap.php` — verified holding as of Sprint 2's QA pass.
-A gap (no way to create a room from the UI, only via CSV import) was found during frontend
-testing and closed with a `POST /projects/{id}/rooms` endpoint + UI form.
+`backend/phpunit.xml` + `backend/tests/bootstrap.php` — verified holding through Sprint 3. A gap
+(no way to create a room from the UI, only via CSV import) was found during frontend testing and
+closed with a `POST /projects/{id}/rooms` endpoint + UI form.
+
+Sprint 3 delivered: `pricing_rules` (markup/fee/discount layers with three base_selector modes —
+cost-plus, fixed-anchor-on-line-item-total, and cascading-on-running-subtotal) applied on top of
+Sprint 2's per-item pricing, a recalculation engine with persisted cache columns on `projects`,
+an internal line-by-line breakdown endpoint, a client-facing seam (`ProjectPricingClientResource`,
+grand_total only, not yet wired to a route — Sprint 4 will use it), and the S08 Pricing Panel UI
+with a genuine internal/client view toggle (client mode never puts cost data in the DOM). A mass-
+assignment bug (cache-column writes silently dropped, response looked correct but DB write
+no-op'd) was caught and fixed during implementation. `financials.value` on the project overview
+now reflects real computed pricing instead of a placeholder zero.
+
+Known minor cleanup item (non-blocking): a handful of throwaway orgs/clients/projects from
+agents' own manual verification steps are still in the dev Postgres database (delete attempts
+are blocked by the environment's action classifier for both subagents and the supervisor) —
+harmless local dev clutter, not a functional issue.
