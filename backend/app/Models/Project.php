@@ -26,6 +26,19 @@ class Project extends Model
         return [
             'start_date' => 'date',
             'target_end_date' => 'date',
+            // Sprint 3 pricing cache columns (see
+            // 2026_09_22_000002_add_pricing_cache_columns_to_projects_table.php). Nullable with
+            // no default: null means "never priced yet", distinct from a legitimately computed
+            // 0 — decimal:2 preserves that null rather than coercing it to "0.00". Deliberately
+            // NOT added to #[Fillable] above: these are only ever written by the recalculation
+            // action (backend-api-engineer), never by a general project create/update request.
+            'direct_cost_total' => 'decimal:2',
+            'client_subtotal' => 'decimal:2',
+            'markup_total' => 'decimal:2',
+            'fees_total' => 'decimal:2',
+            'discount_total' => 'decimal:2',
+            'grand_total' => 'decimal:2',
+            'priced_at' => 'datetime',
         ];
     }
 
@@ -67,6 +80,11 @@ class Project extends Model
     public function boqItems(): HasMany
     {
         return $this->hasMany(BoqItem::class);
+    }
+
+    public function pricingRules(): HasMany
+    {
+        return $this->hasMany(PricingRule::class);
     }
 
     public function members(): BelongsToMany
