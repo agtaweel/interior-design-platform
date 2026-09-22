@@ -159,7 +159,7 @@ Foundation only: auth, organizations, roles/RBAC, organization_members, clients,
 projects, project_members, audit_logs — plus screens S01–S06 and their supporting tests. 67
 backend tests passing. See git log for the sequence of commits.
 
-## Sprint 2 scope (current)
+## Sprint 2 scope (complete)
 
 BOQ only — not pricing/markup (that's Sprint 3). In scope:
 
@@ -414,7 +414,7 @@ Stop and checkpoint with the user after this sprint before starting Approval + C
 note Sprint 5 is literally "the rest of" what this sprint's `approve` endpoint stubs
 (`contract_conversion_available`), so keep the approvals/OTP mechanism generic and reusable.
 
-## Sprint 5 scope (current)
+## Sprint 5 scope (complete)
 
 Approval + Contract. The "approval" half is already done (Sprint 4's OTP-gated public approve
 endpoint) — this sprint is really "contract conversion + terms," per the MVP delivery order's own
@@ -501,3 +501,128 @@ hasn't been converted yet, show a "Convert to Contract" call-to-action (only ena
 approved proposal version exists and no contract exists yet) rather than an empty contract form.
 
 Stop and checkpoint with the user after this sprint before starting Payments (Sprint 6).
+
+## Sprint 6 scope (current)
+
+Payments: schedules, recording, receipts, receivables. This sprint introduces two things not yet
+present anywhere in the codebase — a second money-moving public-adjacent-risk surface (payment
+recording, per the NFR "idempotency keys for payment creation and other money-moving POSTs") and
+the first real file upload (receipts) — plus it finally activates a permission that's been
+sitting unused since Sprint 1.
+
+### Scope boundary: what's explicitly OUT
+
+`expenses`, `suppliers`, and `purchase_orders` are in the ERD (§2) and have a UX screen (S18
+"Expenses / Suppliers"), but the PRD's own MVP delivery order (§6) does **not** assign them to
+any of the 8 sprints — Sprint 6 is specifically "Schedules, payment recording, receipts,
+receivables dashboard," which is all about money coming IN, not costs going out. Do not build
+expenses/suppliers this sprint. Consequently `ProjectResource.financials.actual_cost` and
+`.gross_profit` STAY at their Sprint 1/3 placeholder values (0 / null) — they need real expense
+data that has no assigned sprint in this PRD. Only `.value` (Sprint 3), `.collected`, and
+`.outstanding` (this sprint) get populated with real numbers. If the user wants expenses/
+suppliers built, that's an explicit addition beyond the documented 8-sprint plan — flag it back
+to the supervisor rather than quietly building it.
+
+### Schema
+
+1. **`payment_schedules`** — scoped indirectly, THREE hops this time: contract_id ->
+   contracts.project_id -> projects.organization_id (one hop deeper than proposal_items' two-hop
+   case in Sprint 4 — follow that model's documented pattern for how to note this in the
+   docblock). Fields: id, contract_id (FK, cascadeOnDelete), name, sequence_no (integer),
+   due_date (date), percentage (decimal, nullable), amount (decimal(14,2)), status (string,
+   default `'pending'`). **Status semantics — a deliberate simplification**: only two stored
+   values, `pending` and `paid` (flips to `paid` once cumulative recorded payments against this
+   schedule reach its `amount`). "Overdue" and "upcoming" are NOT stored statuses — they're
+   **computed at read time** as `pending AND due_date < today` / `pending AND due_date >= today`
+   respectively. This avoids needing a scheduled job to flip status over time and keeps the
+   stored source of truth simple; the UX's "filter overdue/upcoming/paid" is a presentation-layer
+   filter over this computed value, not a third database state. Wire `Auditable`.
+2. **`payments`** — per the ERD, directly `organization_id` + `project_id` scoped (unlike
+   `payment_schedules` — this is the ERD's own choice, not a convention deviation, since payments
+   are meant to be queryable project-wide even across multiple contracts/schedules). Fields: id,
+   organization_id, project_id, payment_schedule_id (FK), amount (decimal(14,2)), payment_method
+   (string), paid_at (timestamp), reference (string, nullable), receipt_url (string, nullable —
+   see file upload below), notes (text, nullable). Use `BelongsToOrganization` directly. Wire
+   `Auditable` (financial records are exactly what that trait exists for).
+3. **Idempotency reuse**: `POST /payment-schedules/{id}/payments` is a money-moving POST — reuse
+   Sprint 4's generic `idempotency_keys` table and its exact replay semantics (matching key
+   replays the stored response verbatim; no/different key applies normal rules). Scope string
+   e.g. `"payment_create:{payment_schedule_id}"`. This is an **authenticated internal** endpoint
+   (staff record payments they received, e.g. bank transfer/cash — recall the locked decision:
+   "payments recorded only, platform does NOT initiate collection"), so there's no OTP involved
+   here, just the idempotency-key replay mechanism, reused verbatim from Sprint 4's pattern.
+
+### File uploads (receipts) — new infrastructure this sprint
+
+No file/document upload exists anywhere in the codebase yet (the ERD's `documents` table isn't
+built either — that's implicitly bundled into whichever future work needs it, not explicitly
+scheduled; Sprint 6 only needs enough file handling for payment receipts specifically, don't
+build a general-purpose document-management feature). The NFR says "object storage with signed
+URLs; virus scanning and size/type restrictions" — for this dev environment, implement against
+Laravel's local filesystem disk (already configured, `FILESYSTEM_DISK=local`) behind the
+`Storage` facade so a later swap to S3-compatible object storage is a config change, not a code
+rewrite. Concretely:
+- `POST /payment-schedules/{id}/payments` accepts an optional multipart `receipt` file field
+  (image or PDF, reasonable size cap e.g. 10MB — validate mime type, don't just trust the
+  extension).
+- Store it via `Storage::disk('local')->putFile(...)` under a path scoped by organization/project
+  (e.g. `receipts/{organization_id}/{payment_id}.{ext}`), record the storage path (not a public
+  URL) in `payments.receipt_url`.
+- Add `GET /payments/{id}/receipt` (authenticated, tenant-checked) that streams/redirects to the
+  file — this is the "signed URL" in spirit (access-controlled via the app, not a truly public
+  S3 pre-signed URL, since there's no S3 in this dev environment) — don't expose a raw public
+  `/storage/...` path directly.
+- Skip virus scanning for MVP dev (no ClamAV or equivalent available in this environment) — note
+  this explicitly as a known gap for production hardening, don't silently skip it without saying
+  so.
+
+### Permission: activate `view_financials`
+
+`Permissions::VIEW_FINANCIALS` has existed since Sprint 1's `RoleSeeder` but has never gated
+anything — no endpoint has used it yet (BOQ/pricing/proposal/contract reads all only required
+active membership, which in hindsight is looser than the DoD's "role permissions prevent...
+site users from seeing internal cost/profit" really wants, but retrofitting that onto earlier
+sprints is out of scope here — don't touch those). Sprint 6 is where this matters most: payment
+schedules, payment records, and `GET /projects/{id}/financials` are exactly the profit-adjacent
+data the locked decisions care about. Gate **reads** of payment_schedules/payments/financials
+behind `view_financials`, not just active membership. Gate **mutations** (creating schedules,
+recording payments) behind `manage_boq`, consistent with the rest of the commercial workflow's
+permission convention — a designer can still record a payment, but a Site Staff role (which,
+per the seeded `RoleSeeder`, has neither permission) correctly can't even see the numbers.
+
+### API
+
+- `POST /contracts/{id}/payment-schedules` — create an installment. Accept either `amount`
+  directly, or `percentage` (in which case compute `amount = contract.contract_value *
+  percentage/100` via bcmath — never float). `sequence_no` and `due_date` required.
+- `GET /contracts/{id}/payment-schedules` — list, ordered by `sequence_no`.
+- `POST /payment-schedules/{id}/payments` — record a payment against a schedule (see idempotency
+  + file upload above). Support partial payments (amount less than the schedule's remaining
+  balance) — track cumulative payments, only flip the schedule to `'paid'` once the cumulative
+  total reaches the schedule's `amount`. In a DB transaction: create the payment row, update the
+  schedule's status if now fully paid.
+- `GET /payment-schedules/{id}/payments` — list payments recorded against one schedule (not in
+  the PRD's route table but a reasonable, consistent addition — needed for a receipts history
+  view; keep it RESTful like prior sprints' similar additions).
+- `GET /payments/{id}/receipt` — stream the uploaded receipt file (auth + tenant + `view_financials`).
+- `GET /projects/{id}/financials` — `{value, collected, outstanding, actual_cost: 0, gross_profit:
+  null}` (the last two stay placeholders per the scope-boundary section above). `collected` = sum
+  of all `payments.amount` for the project. `outstanding` = the project's contract's
+  `contract_value` minus `collected` (0 if no contract yet). Gate behind `view_financials`.
+- Also update `ProjectResource.financials` itself (the one embedded in `GET /projects/{id}`,
+  not just the standalone financials endpoint) to pull real `collected`/`outstanding` — it's
+  been returning 0 placeholders since Sprint 1.
+
+### UX
+
+**S13 Payments** (project tab, newly enabled — was a disabled placeholder): a receivables table
+listing payment schedules (name, due date, amount, status badge — computed overdue/upcoming/paid
+as described above) with filter tabs/buttons for those three states, a "Record Payment" action
+per schedule opening a form (amount, payment method, paid_at, reference, notes, receipt file
+upload), and a payment history/receipts list per schedule. If the project has no contract yet,
+show an empty state pointing at the Contract tab (mirroring Sprint 5's own empty-state pattern
+for "no approved proposal yet"). Also update the **S06 Project Overview** financials block
+(currently showing 0 for Collected/Outstanding since Sprint 1) to reflect the real
+`GET /projects/{id}` `financials.collected`/`.outstanding` values now that they're populated.
+
+Stop and checkpoint with the user after this sprint before starting Change Orders (Sprint 7).
