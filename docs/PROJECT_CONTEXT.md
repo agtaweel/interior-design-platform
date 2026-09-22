@@ -202,7 +202,7 @@ BOQ only — not pricing/markup (that's Sprint 3). In scope:
 
 Stop and checkpoint with the user after this sprint before starting Pricing (Sprint 3).
 
-## Sprint 3 scope (current)
+## Sprint 3 scope (complete)
 
 Pricing layers on top of Sprint 2's BOQ — not proposals (Sprint 4). The ERD's `pricing_rules`
 table is project-scoped and deliberately underspecified in the PRD; the design below resolves
@@ -273,3 +273,143 @@ Pricing" tab already exists from Sprint 2 — this sprint fills in the pricing h
 likely as a panel alongside or below the BOQ grid rather than a separate route, your judgment).
 
 Stop and checkpoint with the user after this sprint before starting Proposals (Sprint 4).
+
+## Sprint 4 scope (current)
+
+Proposals: versioning, immutable snapshots, send + OTP-gated public approval, PDF, and the public
+client portal (S11). This is the largest sprint yet and touches almost every prior layer (BOQ,
+pricing, tenancy, the `SignedLinkService` primitive built in Sprint 1, and Sprint 3's
+`ProjectPricingClientResource` seam). The design below resolves several real ambiguities in the
+ERD/PRD once, so every agent works from the same model — read this whole section before writing
+code, don't re-derive from the PDF alone.
+
+### Schema
+
+1. **`proposal_versions`** (project-scoped indirectly via project_id, per the established
+   pattern): id, project_id, version_no (integer, unique per project, auto-incrementing per
+   project starting at 1), status (`draft` | `sent` | `approved` | `changes_requested` —
+   plain string per the established no-DB-enum convention), subtotal, markup_total, fees_total,
+   discount_total, grand_total (decimal(14,2), mirroring Sprint 3's pricing cache columns —
+   populated by copying the project's current pricing breakdown at creation time, not
+   recalculated later), `content_json` (jsonb — cover note, scope text, exclusions, timeline,
+   terms, payment plan description; the ERD doesn't enumerate these as columns, so bundle them
+   here per S09's "Cover, scope, BOQ presentation, exclusions, timeline, terms, payment schedule,
+   branding" requirement), `snapshot_json` (jsonb — the full frozen record: project/client/org
+   info, every proposal_item, the pricing rule breakdown, and `content_json`'s contents at
+   send/approve time — this is what makes the sent/approved version legally/commercially
+   immutable even if the project's BOQ or pricing rules change afterward), created_by
+   (user_id), sent_at, approved_at (both nullable timestamps). Wire `Auditable`.
+2. **`proposal_items`** (id, proposal_version_id, source_boq_item_id nullable [traceability back
+   to the BOQ item it was copied from — nullable because a future manually-added proposal line
+   with no BOQ source should still be possible], description, quantity, unit, unit_price,
+   line_total). These are a **frozen copy** made at proposal-version-creation time — never
+   re-read from `boq_items` after creation, and never mutated once the parent version leaves
+   `draft` status (see "Immutability rule" below). NEVER include cost/margin fields here — this
+   table is inherently client-facing shaped (matches what S11 shows), unlike `boq_items`.
+3. **`approvals`** (per the ERD, not yet built in any prior sprint): id, organization_id,
+   project_id, entity_type (string, e.g. `"proposal_version"` — will also be used by change
+   orders in Sprint 7, so keep it generic now), entity_id, approver_type (`client` | `internal`),
+   user_id (nullable — null for client approvals since a client isn't a `users` row), status
+   (`approved` | `changes_requested` | `rejected`), comment, approved_at, ip_address. Every
+   public approve/request-changes action creates one row here — this is what the PRD's
+   `approval_id` in the approve response refers to.
+4. **OTP + idempotency mechanism** (not in the ERD at all — needed to implement the locked
+   decision "OTP-based approval" and the NFR "idempotency keys for money-moving POSTs"; design it
+   generically now since Sprint 7's change-order public approval will need the identical
+   mechanism — do not build something proposal-specific that has to be redone):
+   - Reuse Sprint 1's `signed_links` table/`SignedLinkService` for the token in the public URL
+     (`/public/proposals/{token}`) — one signed link per sent version, purpose e.g.
+     `"proposal_approval"`, entity = the proposal_version id.
+   - Add an `otp_challenges` table: id, signed_link_id (FK), code_hash (never store the raw
+     code), expires_at, verified_at (nullable), attempts (integer, default 0 — cap and lock out
+     after e.g. 5 failed attempts, return a clear error rather than allowing brute force). A new
+     OTP is generated whenever a proposal is (re)sent. Since there's no WhatsApp/email
+     integration this MVP (locked decision — links are shared manually by staff), the OTP code
+     itself is also just displayed to staff in the internal UI to relay manually, exactly like
+     the link.
+   - Add an `idempotency_keys` table: id, scope (string, e.g. `"proposal_approve:{proposal_version_id}"`),
+     key (the client-supplied `Idempotency-Key` header value), response_status, response_body
+     (jsonb), created_at. Unique on (scope, key). **Behavior**: if a request includes an
+     `Idempotency-Key` header matching a stored one for that scope, replay the stored response
+     verbatim regardless of current state. If the header is absent, or present but new, apply
+     normal state-conflict rules — i.e. approving an already-approved version without a matching
+     idempotency key returns `409 PROPOSAL_ALREADY_APPROVED` (per PRD §3.3's exact error example).
+     This reconciles the PRD's two seemingly-contradictory statements ("must be idempotent" +
+     the 409-already-approved error example) — document this reconciliation in code, don't just
+     implement one half.
+
+### Immutability rule (critical NFR)
+
+A `proposal_version` is editable (PATCH content, regenerate items from current BOQ/pricing) only
+while `status == 'draft'`. The moment it's sent (`status` becomes `'sent'`), it is locked —
+`content_json`, `proposal_items`, and the pricing totals become read-only, and `snapshot_json` is
+finalized. To make a change after sending, the designer creates a **new** proposal_version
+(`version_no + 1`), which starts as a fresh draft seeded from current BOQ/pricing (not from the
+old version — always pull fresh data into a new draft, never clone a stale one). Approval further
+locks it (`approved`) but the immutability boundary is already at `sent`, not `approved` — don't
+wait until approval to freeze it, since a client could be viewing/reviewing a "sent" version and
+it must not change under them.
+
+### API
+
+- `POST /projects/{id}/proposals` — create a new draft version: snapshot current BOQ (via
+  non-archived `boq_items`) into `proposal_items`, current pricing breakdown into the totals
+  columns (call the Sprint 3 `PricingCalculator` directly rather than re-deriving the math), and
+  accept `content_json` in the request body for the editorial content.
+- `GET /projects/{id}/proposals` — list versions (id, version_no, status, grand_total, created_by,
+  sent_at, approved_at) for S10's version history.
+- `GET /proposals/{id}` — full internal detail (items, content, snapshot, totals).
+- `PATCH /proposals/{id}` — update `content_json` (and re-snapshot items/pricing if still BOQ-
+  linked) — only while `status == 'draft'`; `409` otherwise.
+- `POST /proposals/{id}/send` — transitions `draft` → `sent`, finalizes `snapshot_json`, creates
+  the `signed_links` row + `otp_challenges` row, sets `sent_at`. Returns the public URL and the
+  OTP code in the response (internal-only response — this is how staff get what to relay
+  manually, per the locked WhatsApp decision). Requires `manage_boq` permission (proposals are
+  part of the same commercial workflow) — or introduce a `manage_proposals` permission if you
+  think the distinction is warranted; your judgment, document the choice.
+- `GET /public/proposals/{token}` — public, token-authenticated (no Sanctum), returns the
+  client-shaped view: project/client header info, `content_json`, `proposal_items` (description/
+  quantity/unit/unit_price/line_total — no cost fields, matches `boq_items`' existing
+  internal/client resource split), and **only** `grand_total` from the pricing block (reuse/
+  extend `ProjectPricingClientResource`'s shape) — never subtotal/markup/fees/discount
+  breakdown, never `source_boq_item_id`. Rate-limit this endpoint (a public, enumerable-by-token
+  surface).
+- `POST /public/proposals/{token}/approve` — body `{name, comment?, otp}`, optional
+  `Idempotency-Key` header. Validates token (not expired/revoked), validates OTP (hash match,
+  not expired, attempt count under limit — increment attempts on failure), then in a DB
+  transaction: sets `proposal_versions.status = 'approved'`, `approved_at`, creates an
+  `approvals` row (`approver_type = 'client'`, `user_id = null`, capture `ip_address`), marks the
+  `otp_challenges.verified_at`. Returns `{status: 'approved', approved_at, approval_id,
+  contract_conversion_available: true}` (per PRD §3.2's exact example — `contract_conversion_available`
+  is just `true` here since actual contract creation is Sprint 5, not built yet).
+- `POST /public/proposals/{token}/request-changes` — body `{name, comment}`, no OTP required
+  (lower stakes than approval — a comment, not a binding commercial action). Sets
+  `proposal_versions.status = 'changes_requested'`, creates an `approvals` row
+  (`status = 'changes_requested'`). Does NOT lock the version any further than `sent` already
+  did — designer creates a new draft version in response.
+- **PDF**: not in the PRD's route table but required by the Definition of Done ("generated as
+  PDF"). Add `GET /proposals/{id}/pdf` (internal, authenticated) and `GET
+  /public/proposals/{token}/pdf` (public, same token auth as the portal). Use `barryvdh/laravel-
+  dompdf` (pure-PHP, no headless-browser dependency needed in the Docker image) rendering a
+  Blade view built from the same client-shaped data as the public JSON endpoint — never render
+  cost/margin fields into the PDF either.
+
+### UX
+
+- **S09 Proposal Editor** (internal): author `content_json` (cover, scope, exclusions, timeline,
+  terms, payment plan description), preview exactly what the client will see (reuse the public
+  portal's rendering or a close approximation), a "Send" action that surfaces the copyable public
+  link + OTP code prominently (staff need to actually copy these to relay via WhatsApp/email
+  manually).
+- **S10 Proposal Version History** (internal): list of versions with status/created-by/timestamps,
+  a way to view any past version's frozen content (read-only for non-draft versions).
+- **S11 Client Proposal Portal** (public, mobile-first, NEW top-level route not under the internal
+  app's auth — e.g. `/p/proposals/[token]` — no dashboard nav, no login): project header, scope,
+  selected BOQ (client-shaped line items), total, payment plan, terms, Approve (prompts for name +
+  OTP) / Request Changes (prompts for name + comment) actions. Never render internal cost data —
+  this is the client-facing surface the entire "never leak margin" NFR has been building toward
+  since Sprint 2; treat it with the same care as the backend's resource-splitting discipline.
+
+Stop and checkpoint with the user after this sprint before starting Approval + Contract (Sprint 5) —
+note Sprint 5 is literally "the rest of" what this sprint's `approve` endpoint stubs
+(`contract_conversion_available`), so keep the approvals/OTP mechanism generic and reusable.
