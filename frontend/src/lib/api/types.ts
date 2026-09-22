@@ -570,6 +570,85 @@ export interface ContractUpdateInput {
 }
 
 // ---------------------------------------------------------------------------
+// Payments (Sprint 6 — S13 Payments). `payment_schedules` only ever stores two statuses,
+// `pending` and `paid` — "overdue"/"upcoming" are NOT separate stored states, they're computed
+// at read time from `pending AND due_date` vs today (see docs/PROJECT_CONTEXT.md Sprint 6 schema
+// notes) and exposed here as the three booleans below so the frontend never needs to re-derive
+// the date comparison itself (timezone/off-by-one risk) — always filter/badge off
+// is_overdue/is_upcoming/is_paid, never off `status` directly. Money/decimal fields arrive as
+// strings from the backend's bcmath-based calculations, same convention as BoqItem/Contract —
+// always format via formatEGP, never render raw.
+// ---------------------------------------------------------------------------
+
+export type PaymentScheduleStatus = "pending" | "paid";
+
+/** GET /contracts/{id}/payment-schedules and POST .../payment-schedules response shape. */
+export interface PaymentSchedule {
+  id: number | string;
+  contract_id: number | string;
+  name: string;
+  sequence_no: number;
+  due_date: ISODateString;
+  /** Only set if the schedule was created via the percentage input mode; null if created via a
+   *  direct fixed amount. Purely informational — `amount` is always the authoritative stored
+   *  value either way (computed server-side via bcmath when percentage is given). */
+  percentage: number | string | null;
+  amount: number | string;
+  status: PaymentScheduleStatus;
+  is_overdue: boolean;
+  is_upcoming: boolean;
+  is_paid: boolean;
+  created_at: ISODateString;
+  updated_at: ISODateString;
+}
+
+/** POST /contracts/{id}/payment-schedules body. Exactly one of `percentage`/`amount` should be
+ *  sent per the "percentage of contract value vs fixed amount" toggle in the UI — the backend
+ *  requires at least one (422 otherwise) and computes `amount` from `percentage * contract_value`
+ *  via bcmath when percentage is given (see StorePaymentScheduleRequest's docblock). */
+export interface PaymentScheduleFormInput {
+  name: string;
+  sequence_no: number;
+  due_date: string;
+  percentage?: number | string;
+  amount?: number | string;
+}
+
+/** The three payment methods surfaced in the Record Payment form's select. The backend stores
+ *  this as a free-form string (no DB enum, matching the codebase's established convention), so
+ *  this union is a frontend-only convenience, not a hard backend constraint. */
+export type PaymentMethod = "bank_transfer" | "cash" | "cheque";
+
+/** GET /payment-schedules/{id}/payments and POST .../payments response shape. Deliberately has
+ *  no `receipt_url` field — only the `has_receipt` boolean — per the backend's discipline of
+ *  never exposing the raw local-disk storage path; fetch the file itself via the dedicated
+ *  GET /payments/{id}/receipt route (see downloadPaymentReceipt in resources/payments.ts). */
+export interface Payment {
+  id: number | string;
+  project_id: number | string;
+  payment_schedule_id: number | string;
+  amount: number | string;
+  payment_method: string;
+  paid_at: ISODateString;
+  reference: string | null;
+  has_receipt: boolean;
+  notes: string | null;
+  created_at: ISODateString;
+  updated_at: ISODateString;
+}
+
+/** POST /payment-schedules/{id}/payments body — sent as multipart/form-data (not JSON) because
+ *  of the optional `receipt` file field, see resources/payments.ts's recordPayment(). */
+export interface PaymentFormInput {
+  amount: number | string;
+  payment_method: PaymentMethod | string;
+  paid_at: string;
+  reference?: string;
+  notes?: string;
+  receipt?: File | null;
+}
+
+// ---------------------------------------------------------------------------
 // Pagination envelope (Laravel's default paginate() JSON shape)
 // ---------------------------------------------------------------------------
 
