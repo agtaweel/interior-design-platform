@@ -47,10 +47,10 @@ class UpdateChangeOrderRequest extends FormRequest
             'items.*.description' => ['required', 'string', 'max:255'],
             'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
             'items.*.unit' => ['required', 'string', 'max:50'],
-            'items.*.old_unit_price' => [
-                'nullable', 'numeric', 'min:0',
-                'prohibited_if:items.*.action,add',
-            ],
+            // Prohibited for every action — see StoreChangeOrderRequest's docblock for why
+            // old_unit_price is never client-supplied (always derived server-side from the
+            // referenced boq_item since it's commercially load-bearing).
+            'items.*.old_unit_price' => ['prohibited'],
             'items.*.new_unit_price' => [
                 'nullable', 'numeric', 'min:0',
                 'required_if:items.*.action,add,modify',

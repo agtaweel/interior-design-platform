@@ -14,16 +14,19 @@ use Illuminate\Validation\Rule;
  * trust a manual total" principle as proposals' grand_total.
  *
  * Per-item validation mirrors ChangeOrderItem's model docblock exactly:
- *   - 'add': boq_item_id prohibited (no existing item yet), old_unit_price prohibited (no prior
- *     price), new_unit_price required.
+ *   - 'add': boq_item_id prohibited (no existing item yet), new_unit_price required.
  *   - 'remove': boq_item_id required (existence-checked against THIS project's non-archived
  *     boq_items only, via the route project's id — same scoping rationale as
  *     StoreBoqItemRequest's category_id/room_id checks), new_unit_price prohibited (no new
- *     price, the line is being removed), old_unit_price optional (falls back to the referenced
- *     boq_item's current client_unit_price at write time if omitted — see
- *     ChangeOrderService::resolveOldUnitPrice()).
- *   - 'modify': boq_item_id required (same existence check as 'remove'), both old_unit_price
- *     (optional, same fallback) and new_unit_price (required) apply.
+ *     price, the line is being removed).
+ *   - 'modify': boq_item_id required (same existence check as 'remove'), new_unit_price
+ *     required.
+ *
+ * `old_unit_price` is prohibited for EVERY action (not just 'add') — it's always derived
+ * server-side from the referenced boq_item's current client_unit_price at write time
+ * (ChangeOrderService::resolveOldUnitPrice()), never accepted from the client. This value is
+ * commercially load-bearing (feeds line_delta -> price_delta -> contracts.contract_value on
+ * apply), so trusting a client-supplied figure here would let it be fabricated.
  *
  * description/quantity/unit are required for every action — the model's line_delta/apply-step
  * math needs them regardless of action, and 'add' has no other source for them.
@@ -60,10 +63,14 @@ class StoreChangeOrderRequest extends FormRequest
             'items.*.description' => ['required', 'string', 'max:255'],
             'items.*.quantity' => ['required', 'numeric', 'min:0.01'],
             'items.*.unit' => ['required', 'string', 'max:50'],
-            'items.*.old_unit_price' => [
-                'nullable', 'numeric', 'min:0',
-                'prohibited_if:items.*.action,add',
-            ],
+            // Prohibited for EVERY action, not just 'add': old_unit_price is always derived
+            // server-side from the referenced boq_item's current client_unit_price
+            // (ChangeOrderService::resolveOldUnitPrice()) since it's commercially load-bearing —
+            // it feeds line_delta, which feeds price_delta, which is added directly to
+            // contracts.contract_value on apply. Accepting a client-supplied value here would
+            // let an internal caller fabricate the commercial delta a client approves. Rejecting
+            // outright (rather than silently ignoring) surfaces the mistake instead of masking it.
+            'items.*.old_unit_price' => ['prohibited'],
             'items.*.new_unit_price' => [
                 'nullable', 'numeric', 'min:0',
                 'required_if:items.*.action,add,modify',

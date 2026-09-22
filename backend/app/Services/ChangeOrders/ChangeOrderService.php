@@ -144,9 +144,9 @@ class ChangeOrderService
         if ($action === 'add') {
             $newUnitPrice = (string) $itemInput['new_unit_price'];
         } elseif ($action === 'remove') {
-            $oldUnitPrice = $this->resolveOldUnitPrice($itemInput, $boqItem);
+            $oldUnitPrice = $this->resolveOldUnitPrice($boqItem);
         } else { // modify
-            $oldUnitPrice = $this->resolveOldUnitPrice($itemInput, $boqItem);
+            $oldUnitPrice = $this->resolveOldUnitPrice($boqItem);
             $newUnitPrice = (string) $itemInput['new_unit_price'];
         }
 
@@ -164,19 +164,20 @@ class ChangeOrderService
     }
 
     /**
-     * "if old_unit_price isn't supplied for remove/modify, look it up from the referenced
-     * boq_item's current client_unit_price rather than trusting client input, since that's the
-     * authoritative 'old' price" (PROJECT_CONTEXT.md verbatim) — the client MAY still supply an
-     * explicit old_unit_price (it's an optional request field per the API summary), in which
-     * case that value is used as-is; the fallback only kicks in when it's absent, and always
-     * reads the BOQ item's price at write time (never a stale client-cached figure).
+     * "look it up from the referenced boq_item's current client_unit_price rather than trusting
+     * client input, since that's the authoritative 'old' price" (PROJECT_CONTEXT.md verbatim).
+     *
+     * `old_unit_price` is commercially load-bearing: it feeds `line_delta`, which sums into
+     * `price_delta`, which is added directly to `contracts.contract_value` on apply — bypassing
+     * the normal PATCH-based immutability guard by design (see ChangeOrderApplyService). Any
+     * client-supplied `old_unit_price` is therefore ALWAYS ignored for remove/modify, even if
+     * present in the request payload — accepting a client-trusted value here would let an
+     * internal caller (accidentally or not) fabricate the commercial delta a client approves
+     * and that later lands on the contract. Always re-derive from the live BOQ item at write
+     * time (never a stale client-cached figure).
      */
-    private function resolveOldUnitPrice(array $itemInput, ?BoqItem $boqItem): string
+    private function resolveOldUnitPrice(?BoqItem $boqItem): string
     {
-        if (array_key_exists('old_unit_price', $itemInput) && $itemInput['old_unit_price'] !== null) {
-            return (string) $itemInput['old_unit_price'];
-        }
-
         return (string) ($boqItem->client_unit_price ?? '0.00');
     }
 

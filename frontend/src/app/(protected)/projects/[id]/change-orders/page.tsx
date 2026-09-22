@@ -188,6 +188,14 @@ function rowIsValid(row: ItemFormRow): boolean {
   return true;
 }
 
+/**
+ * old_unit_price is NEVER sent — the backend rejects it outright for every action
+ * (StoreChangeOrderRequest/UpdateChangeOrderRequest: `'items.*.old_unit_price' =>
+ * ['prohibited']`) because it's commercially load-bearing (feeds line_delta -> price_delta ->
+ * contracts.contract_value on apply) and must always be derived server-side from the live BOQ
+ * item, never client-supplied. The form's old_unit_price field (see previewLineDelta()) is
+ * preview-only, exactly as already documented above.
+ */
 function rowToInput(row: ItemFormRow): ChangeOrderItemInput {
   const input: ChangeOrderItemInput = {
     action: row.action,
@@ -197,9 +205,6 @@ function rowToInput(row: ItemFormRow): ChangeOrderItemInput {
   };
   if (row.action !== "add") {
     input.boq_item_id = Number(row.boq_item_id);
-    if (row.old_unit_price.trim() !== "") {
-      input.old_unit_price = Number(row.old_unit_price);
-    }
   }
   if (row.action !== "remove") {
     input.new_unit_price = Number(row.new_unit_price);
