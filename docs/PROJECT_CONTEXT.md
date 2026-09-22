@@ -639,7 +639,7 @@ for "no approved proposal yet"). Also update the **S06 Project Overview** financ
 
 Stop and checkpoint with the user before starting Change Orders (Sprint 7).
 
-## Sprint 7 scope (current)
+## Sprint 7 scope (complete)
 
 Change Orders: the controlled-amendment mechanism Sprint 5 explicitly deferred ("changes that
 affect commercial value... is exactly what Sprint 7's Change Orders are for"). This sprint has
@@ -767,3 +767,152 @@ price delta, timeline impact, and Approve (name+OTP)/Reject (name+comment) actio
 
 Stop and checkpoint with the user after this sprint before starting Polish (Sprint 8) — the
 final sprint of the MVP delivery order.
+
+## Sprint 8 scope (current) — final sprint
+
+Polish: "Reports, permissions hardening, notifications, QA, analytics, deployment" (PRD §6's own
+label). Read this whole section before writing code — it draws a scope boundary that matters,
+resolves a real security gap found by inspection (not by an agent's smoke test this time, by the
+supervisor directly reading the existing read-permission code), and reuses several established
+patterns (dormant-permission activation, CSV export, bell/dropdown notification UI) rather than
+inventing new ones.
+
+### Scope boundary: what's explicitly OUT (again — this is the last chance to say it)
+
+The ERD (§2) and UX spec (§4) describe `tasks`, `site_reports`, `snags`, `handover_records`,
+`documents`, `expenses`, `suppliers`, `purchase_orders`, and screens S16–S20 (Tasks/Site, Site
+Report, Expenses/Suppliers, Snagging, Handover). **None of these are in the PRD's 8-sprint MVP
+delivery order** (§6) — the API spec itself labels that whole group "Execution — Phase 2." Sprint
+8 is Polish on the 7 sprints already built, not a place to sneak in Phase 2 scope. Do not build
+any of the above. This also means `ProjectResource.financials.actual_cost`/`.gross_profit` STAY
+at their placeholder values (0/null) — real actual-cost tracking needs `expenses`, which isn't
+being built. Reports (below) work entirely from data already in the system: BOQ-estimated
+direct cost, contract value, and recorded payments — never real expenses.
+
+### Permissions hardening (a real gap, found by direct inspection)
+
+Every BOQ and pricing-rule GET endpoint since Sprint 2/3 has required only "active membership,"
+not `Permissions::MANAGE_BOQ` — but `BoqItemResource` (and the BOQ tree/export responses) include
+`material_unit_cost`/`labor_unit_cost`/`other_unit_cost`, and pricing-rule reads expose markup
+percentages. The seeded `Site Staff` role has every permission set to `false` (see
+`RoleSeeder`), yet because reads never checked a permission at all, a Site Staff member — an
+active org member — can currently call `GET /projects/{id}/boq` (or its CSV export) and see
+every internal cost figure. This directly contradicts the Definition of Done: "Role permissions
+prevent clients and site users from seeing internal cost/profit." Fix: change the following GET
+endpoints to require `Permissions::MANAGE_BOQ` (matching their sibling write endpoints, which
+already require it) instead of just active membership:
+- `GET /projects/{id}/boq`, `GET /projects/{id}/boq/export`
+- `GET /projects/{id}/pricing/rules`, `GET /projects/{id}/pricing/breakdown`
+- `GET /projects/{id}/rooms` — arguably lower stakes (no cost data), but rooms only exist to
+  organize BOQ line items (per Sprint 2's own routing comment) — harden it too for consistency
+  rather than leaving one BOQ-adjacent read endpoint on the looser rule.
+
+Do NOT touch proposal/contract/change-order read endpoints — those response shapes were already
+built cost-free from Sprint 4 onward (proposal_items, change_order public/internal views, etc.
+never had cost fields to begin with), so "active membership" reads there were never a leak. Only
+touch the endpoints named above. After hardening, re-verify (or have QA re-verify) that Designer/
+Admin/Owner workflows are unaffected (they all have `MANAGE_BOQ`) and that Site Staff is now
+correctly blocked (403) from the endpoints above while still able to read clients/projects/
+proposals/contracts/payments-financials-summary as before (Site Staff's existing access to
+non-cost data is unchanged).
+
+### Notifications (activates the ERD's unused `notifications` table)
+
+Schema: `notifications` (id, organization_id, user_id, channel, type, payload_json, sent_at,
+read_at) — directly organization+user scoped (`BelongsToOrganization`), per the ERD. `channel` is
+always `'in_app'` for this MVP (no email/SMS/WhatsApp sending infrastructure exists — the column
+supports future channels, don't build them now). `type` is a short string identifying the event
+(e.g. `'proposal_approved'`, `'contract_created'`, `'payment_received'`,
+`'change_order_approved'`, `'change_order_rejected'`). `payload_json` carries whatever the
+frontend needs to render/link the notification (project id/name, entity id, a human summary).
+
+**Who gets notified**: the project's `responsible_user_id` if set; otherwise every organization
+member holding `MANAGE_BOQ` (a reasonable fallback so a notification is never silently dropped).
+Wire notification creation into the existing controllers/services for these events (all from
+already-built features, don't invent new trigger points):
+- Proposal approved (`PublicProposalController::approve()`)
+- Proposal changes requested (`PublicProposalController::requestChanges()`)
+- Contract created (`ContractService`/`ContractController::fromProposal()`)
+- Payment received (`PaymentRecordingService`)
+- Change order approved (`PublicChangeOrderController::approve()`)
+- Change order rejected (`PublicChangeOrderController::reject()`)
+
+API: `GET /notifications` (current user's own, paginated, newest first, auth:sanctum + tenant —
+no extra permission needed, a user only ever sees their own), `POST
+/notifications/{id}/read` (mark one read), `POST /notifications/read-all`.
+
+UX: a bell icon with an unread-count badge in the app shell's top nav (visible on every
+authenticated page, not project-scoped), opening a dropdown/panel listing recent notifications
+with a way to mark them read and a "read-all" action. Keep it simple — no push notifications, no
+polling requirement beyond a reasonable refresh-on-navigation.
+
+### Reports (S21)
+
+Two endpoints, both gated behind `Permissions::VIEW_FINANCIALS` (this is exactly the
+profit-adjacent data that permission exists to protect):
+- `GET /reports/summary` — organization-wide KPIs: `total_revenue` (sum of all `payments.amount`
+  org-wide), `total_receivables` (sum of `contract_value - collected` across every project with a
+  contract), `estimated_margin` (sum of `grand_total - direct_cost_total` across every priced
+  project — label this "estimated," not "profit," in both the API shape and the UI, since it's
+  derived from BOQ pricing, not real expenses), `total_change_order_value` (sum of `price_delta`
+  across every `applied` change order org-wide), `project_count`, `active_project_count`.
+- `GET /reports/projects` — per-project breakdown table: project name/code/status,
+  `contract_value`, `collected`, `outstanding`, `estimated_margin`, `change_order_value` (sum of
+  that project's applied change orders' `price_delta`), and `budget_variance` (`contract_value -`
+  the originating proposal's frozen `grand_total`, via `contract.proposalVersion` — this should
+  equal the project's `change_order_value` exactly by construction, since that's the only thing
+  that moves `contract_value` after creation; a good internal consistency check for QA to verify,
+  not just a display figure to trust blindly). Support CSV export via a `format=csv` query
+  param or a separate `GET /reports/projects/export` route — your call, mirror whichever
+  precedent (BOQ CSV export from Sprint 2) reads more naturally. Skip PDF export — CSV covers the
+  accounting/reconciliation use case (same reasoning Sprint 2 used to skip Excel), and this is
+  the last sprint, keep it scoped.
+
+UX: a new "Reports" page — the top-level nav item has been a disabled placeholder since Sprint 1,
+enable it now. KPI cards (from `/reports/summary`) + a sortable per-project table (from
+`/reports/projects`) + a CSV export button. Not project-scoped — lives at the organization level
+alongside Dashboard/Clients/Projects.
+
+### Settings (S22, scoped down)
+
+Full S22 (branding, numbering templates, markup templates, proposal templates, notification
+preferences) is more than this sprint should absorb — most of those "templates" concepts don't
+have dedicated schema and inventing one now, in the last sprint, isn't justified by any DoD
+bullet. Scope down to what's genuinely useful and low-risk:
+1. **Organization profile**: `PATCH /organizations/{id}` for the branding fields that already
+   exist as columns since Sprint 1 (`name`, `legal_name`, `logo_url`, `phone`, `email`,
+   `currency`, `timezone`) — this endpoint doesn't exist yet, add it. Gate behind
+   `Permissions::MANAGE_ORGANIZATION` (seeded since Sprint 1, never used by any endpoint until
+   now — same "activate a dormant permission" pattern as Sprint 6's `VIEW_FINANCIALS`).
+2. **Members & roles**: a UI for the organization-member invite/role-change APIs that have
+   existed since Sprint 1 (`POST /organizations/{id}/members/invite`, `PATCH
+   /organizations/{id}/members/{member}`) but never got a frontend — add `GET
+   /organizations/{id}/members` (list, doesn't exist yet either) plus the UI to invite a member
+   and change their role.
+
+UX: a "Settings" page — top-level nav item, disabled placeholder since Sprint 1, enable it now.
+An organization profile edit form + a members list with an "Invite" action and per-member role
+dropdown.
+
+### Deployment readiness (documentation, not an actual live deploy)
+
+Write `docs/DEPLOYMENT.md` covering what's needed to run this in a real environment: required
+environment variables and what changes from dev (`APP_ENV=production`, `APP_DEBUG=false`, real
+Postgres/Redis credentials, swapping the receipt-storage `Storage::disk('local')` for a real
+S3-compatible disk — the seam for this was explicitly built in Sprint 6 to make this a config
+change, not a code change), running migrations, building the frontend for production, and a
+queue-worker note (nothing currently queues background jobs, but note it for future email/PDF
+generation work). Do NOT attempt to actually provision or deploy to any live infrastructure —
+that requires hosting/credential decisions only the user can make; this is a readiness document,
+not an action.
+
+### QA scope for this sprint
+
+Beyond testing the new endpoints above, specifically verify the permissions-hardening change
+doesn't regress Designer/Admin/Owner access (they all have `MANAGE_BOQ`) while confirming Site
+Staff is now blocked from the hardened endpoints. Also do a final Definition-of-Done pass across
+*all* 8 sprints (not just this one) — the project is complete after this sprint, so this is the
+last checkpoint to catch anything that slipped through an earlier sprint's review.
+
+This is the final sprint. After it, do a full-project summary rather than a "start Sprint 9"
+checkpoint — there is no Sprint 9 in the PRD's delivery order.
