@@ -10,13 +10,10 @@
  * this file never even gives a caller the option of sending them — the backend would reject
  * either with 422 `prohibited` regardless (verified live).
  *
- * Discoverability gap (verified live against the actual API, not assumed): there is no
- * `GET /projects/{id}/contracts` or any other index/lookup-by-project endpoint, and
- * POST .../from-proposal/{id}'s 409 CONTRACT_ALREADY_EXISTS response carries no contract id in
- * its body (`error.details` is `{}`). That means once a contract exists, the only way to fetch
- * it again is by its numeric id — the Contract tab page component works around this by caching
- * the last-known id per project in localStorage (see that file for the fallback UX when even
- * that cache is empty, e.g. a contract created from a different browser/session).
+ * `GET /projects/{id}/contracts` now exists (returns 0, 1, or more contracts for the project,
+ * ordered by created_at) and the 409 CONTRACT_ALREADY_EXISTS response from the from-proposal
+ * conversion now carries `details.contract_id`. The Contract tab page uses both to resolve
+ * state without any client-side caching.
  */
 
 import { apiGetResource, apiPatchResource, apiPostResource, API_BASE_URL } from "@/lib/api/client";
@@ -40,6 +37,13 @@ export function createContractFromProposal(
 /** GET /contracts/{id} — full detail. */
 export function getContract(contractId: string | number) {
   return apiGetResource<Contract>(`/contracts/${contractId}`);
+}
+
+/** GET /projects/{id}/contracts — 0, 1, or more contracts for the project, ordered by
+ *  created_at. In practice there's at most one today (proposal_version_id is DB-unique), but
+ *  the endpoint deliberately returns an array rather than assuming exactly one. */
+export function getProjectContracts(projectId: string | number) {
+  return apiGetResource<Contract[]>(`/projects/${projectId}/contracts`);
 }
 
 /** PATCH /contracts/{id} — updates start_date/end_date/terms_json only (see file docblock). */

@@ -10,15 +10,14 @@
  *   3. A contract exists -> metadata + parties + a locked reference back to the source proposal
  *      version + an editable start_date/end_date/terms_json form + a PDF download action.
  *
- * Discoverability gap (see lib/api/resources/contracts.ts's docblock — verified live against
- * the real API, not assumed): there is no `GET /projects/{id}/contracts` or any other
- * index/lookup-by-project endpoint, and a 409 CONTRACT_ALREADY_EXISTS response from the convert
- * action carries no contract id in its body. So this screen can't ask "does a contract already
- * exist" up front — it infers state 2 vs 3 by trying the conversion and handling the possible
- * 409, and caches the resulting contract id in localStorage (keyed by project id) so a page
- * reload on the same browser doesn't lose track of it. If even that cache is empty (a contract
- * created from a different browser/session, or before this cache existed), a small manual
- * "load by ID" fallback lets staff recover the view instead of getting stuck on a raw error.
+ * `GET /projects/{id}/contracts` (see lib/api/resources/contracts.ts) tells this screen up
+ * front whether a contract already exists for the project, so state resolution on page load is
+ * a single fetch — no client-side caching needed, and the page is correct on first load from
+ * any browser/device. The from-proposal conversion's 409 CONTRACT_ALREADY_EXISTS response now
+ * also carries `details.contract_id`, so even the race where a contract was created between
+ * this page's initial load and the user clicking "Convert" resolves automatically by fetching
+ * that id — the manual "load by ID" input only appears as a last-resort fallback if that id is
+ * ever missing from the error details.
  */
 
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
@@ -30,6 +29,7 @@ import {
   createContractFromProposal,
   downloadContractPdf,
   getContract,
+  getProjectContracts,
   updateContract,
 } from "@/lib/api/resources/contracts";
 import type { Contract, ContractTerms, ProposalVersionSummary } from "@/lib/api/types";
@@ -46,28 +46,6 @@ import { formatEGP, type Locale } from "@/lib/format/currency";
 import { formatDate, formatDateTime } from "@/lib/format/date";
 
 type T = (key: TranslationKey) => string;
-
-const CONTRACT_CACHE_PREFIX = "idp.contract.projectContractId.";
-
-/** Best-effort localStorage cache of "which contract id belongs to this project" — see file
- *  docblock for why the API gives us no other way to answer that question after the fact. */
-function getCachedContractId(projectId: string): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.localStorage.getItem(CONTRACT_CACHE_PREFIX + projectId);
-  } catch {
-    return null;
-  }
-}
-
-function setCachedContractId(projectId: string, contractId: string | number) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(CONTRACT_CACHE_PREFIX + projectId, String(contractId));
-  } catch {
-    // localStorage unavailable (private browsing, quota) — non-fatal, the cache is best-effort.
-  }
-}
 
 const TERMS_FIELDS: Array<{ key: keyof ContractTerms; labelKey: TranslationKey; rows: number }> = [
   { key: "terms", labelKey: "contract.form.fields.terms", rows: 3 },
@@ -134,20 +112,14 @@ export default function ContractPage() {
     setPhase("loading");
     setLoadError(null);
 
-    const cachedId = getCachedContractId(projectId);
-    if (cachedId) {
-      try {
-        const found = await getContract(cachedId);
-        setContract(found);
+    try {
+      const contracts = await getProjectContracts(projectId);
+      if (contracts.length > 0) {
+        setContract(contracts[0]);
         setPhase("contract");
         return;
-      } catch {
-        // Stale/invalid cache entry — fall through to the normal discovery flow below rather
-        // than getting stuck on it.
       }
-    }
 
-    try {
       const versions = await getProjectProposals(projectId);
       const approved = versions.find((v) => v.status === "approved") ?? null;
       setCandidateProposal(approved);
@@ -166,7 +138,6 @@ export default function ContractPage() {
   }, [projectId]);
 
   function handleConverted(created: Contract) {
-    setCachedContractId(projectId, created.id);
     setContract(created);
     setPhase("contract");
   }
@@ -176,7 +147,6 @@ export default function ContractPage() {
   }
 
   function handleManualLoaded(found: Contract) {
-    setCachedContractId(projectId, found.id);
     setContract(found);
     setPhase("contract");
   }
@@ -271,6 +241,20 @@ function ConvertCard({
       onConverted(created);
     } catch (err) {
       if (err instanceof ApiError && err.code === "CONTRACT_ALREADY_EXISTS") {
+        // The 409 tells us the contract's id directly now — fetch and show it automatically
+        // rather than making the user type anything. Only fall back to the manual "load by ID"
+        // input in the (should-never-happen) case where the id is missing from the error
+        // details.
+        const contractId = err.details.contract_id;
+        if (typeof contractId === "string" || typeof contractId === "number") {
+          try {
+            const found = await getContract(contractId);
+            onConverted(found);
+            return;
+          } catch {
+            // Fall through to the manual fallback below — the id we were given didn't resolve.
+          }
+        }
         onAlreadyExists();
         return;
       }
