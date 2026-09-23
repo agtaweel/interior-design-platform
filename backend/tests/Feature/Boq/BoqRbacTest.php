@@ -22,16 +22,19 @@ use Tests\TestCase;
  * StoreBoqCategoryRequest/StoreBoqItemRequest/UpdateBoqItemRequest/StoreRoomRequest/
  * ImportBoqRequest/StoreBoqTemplateCategoryRequest/StoreBoqTemplateItemRequest docblocks, plus
  * Gate::authorize() calls in BoqItemController::destroy() and BoqTemplateController::apply()) —
- * and, as of Sprint 8, so does GET /projects/{id}/boq, GET /projects/{id}/boq/export, and
+ * and, as of Sprint 8, so does GET /projects/{id}/boq, GET /projects/{id}/boq/export,
  * GET /projects/{id}/rooms, since their responses include material_unit_cost/labor_unit_cost/
- * other_unit_cost (see IndexBoqRequest/BoqController/RoomController docblocks). The
- * organization-level BOQ *template* list (GET /boq-templates/categories) is NOT part of that
- * hardening — it carries no project-specific cost data and PROJECT_CONTEXT.md's Sprint 8 scope
- * only names the five endpoints it explicitly hardens — so it still only requires an active
- * membership. Matches database/seeders/RoleSeeder.php, where the seeded "Designer" role has
- * manage_boq => true (they own the BOQ Builder day to day) but a member with no permissions at
- * all (e.g. the seeded "Site Staff" role) is now correctly blocked from every cost-bearing BOQ
- * read too, not just writes.
+ * other_unit_cost (see IndexBoqRequest/BoqController/RoomController docblocks).
+ *
+ * GET /boq-templates/categories was initially left ungated on the reasoning that a template
+ * "carries no project-specific cost data" — that reasoning was wrong (flagged by QA's final
+ * project-wide Definition of Done review): the response still includes the same three cost
+ * fields, just organization-scoped rather than project-scoped. It's now gated behind
+ * Permissions::MANAGE_BOQ too (BoqTemplateCategoryController::index()), matching every other
+ * cost-bearing BOQ read. Matches database/seeders/RoleSeeder.php, where the seeded "Designer"
+ * role has manage_boq => true (they own the BOQ Builder day to day) but a member with no
+ * permissions at all (e.g. the seeded "Site Staff" role) is now correctly blocked from every
+ * cost-bearing BOQ read, not just writes.
  */
 class BoqRbacTest extends TestCase
 {
@@ -80,8 +83,8 @@ class BoqRbacTest extends TestCase
         $this->withHeaders($headers)->getJson("/api/v1/projects/{$project->id}/rooms")->assertStatus(403);
         $this->withHeaders($headers)->getJson("/api/v1/projects/{$project->id}/boq/export")->assertStatus(403);
 
-        // --- The organization-level template list is untouched by the hardening ---
-        $this->withHeaders($headers)->getJson('/api/v1/boq-templates/categories')->assertStatus(200);
+        // --- The organization-level template list is also cost-bearing, also forbidden ---
+        $this->withHeaders($headers)->getJson('/api/v1/boq-templates/categories')->assertStatus(403);
 
         // --- Writes are forbidden ---
         $this->withHeaders($headers)
