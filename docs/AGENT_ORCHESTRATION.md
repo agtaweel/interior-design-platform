@@ -49,9 +49,21 @@ Responsibilities:
 
 ## Current status
 
-Sprints 1–7 (Foundation, BOQ, Pricing, Proposals, Approval+Contract, Payments, Change Orders) are
-**complete**. 335 passing backend tests. Stopped here for user checkpoint. Sprint 8 (Polish) —
-the final sprint of the MVP delivery order — is not started.
+**All 8 sprints of the MVP delivery order are complete.** 369 passing backend tests. This is the
+final checkpoint — there is no Sprint 9.
+
+Sprint 8 (Polish) delivered: permissions hardening (closed a real, verified gap where Site Staff
+— a role with zero permissions — could read internal BOQ/pricing cost data because those
+endpoints only checked active membership, not a specific permission; QA's final review caught a
+second instance of the same gap on the org-level BOQ template list after the first pass, which
+was also fixed), the `notifications` table + in-app bell/dropdown wired to six real events
+(proposal approved/changes-requested, contract created, payment received, change-order
+approved/rejected), organization-wide Reports (revenue/receivables/estimated-margin/change-order-
+value KPIs + a per-project table with CSV export — `estimated_margin` deliberately labeled as an
+estimate, not profit, since it's derived from BOQ pricing not real expenses), a Settings page
+(organization branding + the first-ever UI for the member-invite/role-change APIs that have
+existed since Sprint 1), and `docs/DEPLOYMENT.md` (production-readiness documentation, not an
+actual deploy).
 
 Sprint 7 delivered the change-order lifecycle (draft → sent → approved|rejected → applied),
 reusing Sprint 4's OTP+idempotency mechanism a second time (for a different entity type, proving
