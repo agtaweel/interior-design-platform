@@ -4,10 +4,12 @@
  * S06 — Project Overview.
  *
  * Status, value/collected/outstanding/actual cost/profit come straight from GET /projects/{id}
- * `financials` — all placeholders (0/null) for Sprint 1 per ProjectResource's docblock; this
- * screen renders them via the shared EGP formatter regardless, so no code change is needed once
- * later sprints populate real numbers. "Progress" and "Recent activity" have no backing data
- * source yet (execution/tasks and audit-log surfacing are later-sprint scope) — both stubbed.
+ * `financials`, rendered via the shared EGP formatter. `value` (Sprint 3), `collected` and
+ * `outstanding` (Sprint 6) are real computed numbers; `actual_cost`/`gross_profit` remain
+ * permanent placeholders (0/null) by design — they need real expense tracking, which is
+ * explicitly out of scope for this 8-sprint MVP (see PROJECT_CONTEXT.md's Sprint 6/8 scope-
+ * boundary sections). "Progress" and "Recent activity" have no backing data source (execution/
+ * tasks and audit-log surfacing are Phase 2, also out of scope) — both stubbed permanently.
  */
 
 import { useEffect, useState } from "react";
