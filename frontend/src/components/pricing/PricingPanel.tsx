@@ -44,7 +44,8 @@ import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { Badge } from "@/components/ui/Badge";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
-import { formatEGP, type Locale } from "@/lib/format/currency";
+import { type Locale } from "@/lib/format/currency";
+import { useMoneyFormatter } from "@/lib/format/useMoneyFormatter";
 import { formatDateTime } from "@/lib/format/date";
 
 const INPUT_CLASSES =
@@ -62,8 +63,11 @@ const TYPE_BADGE_TONE: Record<PricingRuleType, "blue" | "amber" | "red"> = {
 
 type T = (key: TranslationKey) => string;
 
-function formatRuleValue(rule: Pick<PricingRule, "method" | "value">, locale: Locale): string {
-  return rule.method === "percentage" ? `${rule.value}%` : formatEGP(rule.value, locale);
+function formatRuleValue(
+  rule: Pick<PricingRule, "method" | "value">,
+  formatMoney: (amount: number | string | null | undefined) => string,
+): string {
+  return rule.method === "percentage" ? `${rule.value}%` : formatMoney(rule.value);
 }
 
 interface PricingPanelProps {
@@ -280,6 +284,8 @@ function PricingClientView({
   t: T;
   locale: Locale;
 }) {
+  const { formatMoney } = useMoneyFormatter();
+
   return (
     <Card>
       <CardHeader>
@@ -288,7 +294,7 @@ function PricingClientView({
       </CardHeader>
       <CardBody>
         {priced ? (
-          <p className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">{formatEGP(grandTotal, locale)}</p>
+          <p className="text-3xl font-semibold text-zinc-900 dark:text-zinc-50">{formatMoney(grandTotal)}</p>
         ) : (
           <div className="py-6 text-center">
             <p className="text-sm font-medium text-zinc-700 dark:text-zinc-200">{t("pricing.empty.title")}</p>
@@ -309,6 +315,8 @@ function PricingBreakdownCard({
   t: T;
   locale: Locale;
 }) {
+  const { formatMoney } = useMoneyFormatter();
+
   return (
     <Card>
       <CardHeader>
@@ -325,13 +333,13 @@ function PricingBreakdownCard({
             <div className="flex items-baseline justify-between">
               <span className="text-zinc-600 dark:text-zinc-300">{t("pricing.breakdown.directCost")}</span>
               <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                {formatEGP(breakdown.direct_cost_total, locale)}
+                {formatMoney(breakdown.direct_cost_total)}
               </span>
             </div>
             <div className="flex items-baseline justify-between border-b border-zinc-200 pb-4 dark:border-zinc-800">
               <span className="text-zinc-600 dark:text-zinc-300">{t("pricing.breakdown.clientSubtotal")}</span>
               <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                {formatEGP(breakdown.client_subtotal, locale)}
+                {formatMoney(breakdown.client_subtotal)}
               </span>
             </div>
 
@@ -367,17 +375,17 @@ function PricingBreakdownCard({
                             <Badge tone={TYPE_BADGE_TONE[rule.type]}>{t(`pricing.rules.type.${rule.type}`)}</Badge>
                           </td>
                           <td className="whitespace-nowrap px-2 py-2 text-right align-top text-zinc-500 dark:text-zinc-400">
-                            {formatEGP(rule.base_amount_used, locale)}
+                            {formatMoney(rule.base_amount_used)}
                           </td>
                           <td className="whitespace-nowrap px-2 py-2 text-right align-top font-medium text-zinc-900 dark:text-zinc-100">
                             {rule.type === "discount" ? "− " : "+ "}
-                            {formatEGP(rule.computed_amount, locale)}
+                            {formatMoney(rule.computed_amount)}
                             <span className="ml-1 text-xs font-normal text-zinc-400">
-                              ({formatRuleValue(rule, locale)})
+                              ({formatRuleValue(rule, formatMoney)})
                             </span>
                           </td>
                           <td className="whitespace-nowrap px-2 py-2 text-right align-top font-medium text-zinc-900 dark:text-zinc-100">
-                            {formatEGP(rule.running_subtotal_after, locale)}
+                            {formatMoney(rule.running_subtotal_after)}
                           </td>
                         </tr>
                       ))}
@@ -390,15 +398,15 @@ function PricingBreakdownCard({
             <div className="flex flex-col gap-1 border-t border-zinc-200 pt-3 dark:border-zinc-800">
               <div className="flex items-baseline justify-between text-zinc-600 dark:text-zinc-300">
                 <span>{t("pricing.breakdown.markupTotal")}</span>
-                <span>{formatEGP(breakdown.markup_total, locale)}</span>
+                <span>{formatMoney(breakdown.markup_total)}</span>
               </div>
               <div className="flex items-baseline justify-between text-zinc-600 dark:text-zinc-300">
                 <span>{t("pricing.breakdown.feesTotal")}</span>
-                <span>{formatEGP(breakdown.fees_total, locale)}</span>
+                <span>{formatMoney(breakdown.fees_total)}</span>
               </div>
               <div className="flex items-baseline justify-between text-zinc-600 dark:text-zinc-300">
                 <span>{t("pricing.breakdown.discountTotal")}</span>
-                <span>− {formatEGP(breakdown.discount_total, locale)}</span>
+                <span>− {formatMoney(breakdown.discount_total)}</span>
               </div>
             </div>
 
@@ -407,7 +415,7 @@ function PricingBreakdownCard({
                 {t("pricing.breakdown.grandTotal")}
               </span>
               <span className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-                {formatEGP(breakdown.grand_total, locale)}
+                {formatMoney(breakdown.grand_total)}
               </span>
             </div>
           </div>
@@ -442,6 +450,7 @@ function PricingRulesCard({
   t,
   locale,
 }: PricingRulesCardProps) {
+  const { formatMoney } = useMoneyFormatter();
   const [showAddRule, setShowAddRule] = useState(false);
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
 
@@ -539,7 +548,7 @@ function PricingRulesCard({
                       {t(`pricing.rules.method.${rule.method}`)}
                     </td>
                     <td className="px-3 py-2 text-right align-top text-zinc-900 dark:text-zinc-100">
-                      {formatRuleValue(rule, locale)}
+                      {formatRuleValue(rule, formatMoney)}
                     </td>
                     <td className="px-3 py-2 align-top text-xs text-zinc-500 dark:text-zinc-400">
                       {t(`pricing.rules.base.${rule.base_selector}`)}

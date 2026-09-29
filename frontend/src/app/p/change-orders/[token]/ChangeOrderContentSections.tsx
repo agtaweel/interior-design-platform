@@ -16,12 +16,12 @@ function toNumber(value: number | string | null | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** Prefixes an explicit "+"/"-" sign onto an EGP amount so a price increase vs. decrease reads
+/** Prefixes an explicit "+"/"-" sign onto an amount so a price increase vs. decrease reads
  *  unambiguously at a glance — `formatEGP` alone renders a negative with a leading minus but a
  *  positive with none, which isn't distinct enough for a number this consequential. */
-function formatSignedEGP(amount: number | string): string {
+function formatSignedEGP(amount: number | string, currency: string): string {
   const n = toNumber(amount);
-  const magnitude = formatEGP(Math.abs(n));
+  const magnitude = formatEGP(Math.abs(n), "en", currency);
   if (n === 0) return magnitude;
   return n > 0 ? `+${magnitude}` : `-${magnitude}`;
 }
@@ -55,7 +55,13 @@ export function ChangeOrderReason({ reason }: { reason: string }) {
  * most needs to register. Color-coded so the direction is legible without reading the sign:
  * amber for an increase (the client owes more), green for a decrease/credit, neutral for zero.
  */
-export function ChangeOrderPriceImpact({ priceDelta }: { priceDelta: number | string }) {
+export function ChangeOrderPriceImpact({
+  priceDelta,
+  currency = "EGP",
+}: {
+  priceDelta: number | string;
+  currency?: string;
+}) {
   const n = toNumber(priceDelta);
   const tone =
     n > 0
@@ -67,7 +73,7 @@ export function ChangeOrderPriceImpact({ priceDelta }: { priceDelta: number | st
   return (
     <div className={`flex items-center justify-between rounded-lg px-4 py-4 ${tone}`}>
       <span className="text-sm font-medium uppercase tracking-wide opacity-80">Price Impact</span>
-      <span className="text-xl font-semibold">{formatSignedEGP(priceDelta)}</span>
+      <span className="text-xl font-semibold">{formatSignedEGP(priceDelta, currency)}</span>
     </div>
   );
 }
@@ -89,35 +95,42 @@ export function ChangeOrderTimelineImpact({ timelineDeltaDays }: { timelineDelta
  *  through), or modified (old -> new). Which case applies is inferred from which of
  *  `old_unit_price`/`new_unit_price` is present, since the public payload has no `action`
  *  field (see publicChangeOrderTypes.ts's docblock). */
-function ItemPriceChange({ item }: { item: PublicChangeOrderItem }) {
+function ItemPriceChange({ item, currency }: { item: PublicChangeOrderItem; currency: string }) {
   const hasOld = item.old_unit_price !== null && item.old_unit_price !== undefined;
   const hasNew = item.new_unit_price !== null && item.new_unit_price !== undefined;
 
   if (hasOld && hasNew) {
     return (
       <span className="text-zinc-500 dark:text-zinc-400">
-        {formatEGP(item.old_unit_price)} <span aria-hidden="true">&rarr;</span> {formatEGP(item.new_unit_price)}
+        {formatEGP(item.old_unit_price, "en", currency)} <span aria-hidden="true">&rarr;</span>{" "}
+        {formatEGP(item.new_unit_price, "en", currency)}
       </span>
     );
   }
   if (hasNew) {
     return (
       <span className="text-zinc-500 dark:text-zinc-400">
-        New item &middot; {formatEGP(item.new_unit_price)}
+        New item &middot; {formatEGP(item.new_unit_price, "en", currency)}
       </span>
     );
   }
   if (hasOld) {
     return (
       <span className="text-zinc-500 dark:text-zinc-400">
-        Removed &middot; <span className="line-through">{formatEGP(item.old_unit_price)}</span>
+        Removed &middot; <span className="line-through">{formatEGP(item.old_unit_price, "en", currency)}</span>
       </span>
     );
   }
   return null;
 }
 
-export function ChangeOrderItemsTable({ items }: { items: PublicChangeOrderItem[] }) {
+export function ChangeOrderItemsTable({
+  items,
+  currency = "EGP",
+}: {
+  items: PublicChangeOrderItem[];
+  currency?: string;
+}) {
   if (items.length === 0) {
     return <p className="text-sm text-zinc-500 dark:text-zinc-400">No line items on this change order.</p>;
   }
@@ -147,11 +160,11 @@ export function ChangeOrderItemsTable({ items }: { items: PublicChangeOrderItem[
                       : "text-zinc-900 dark:text-zinc-50"
                 }`}
               >
-                {formatSignedEGP(item.line_delta)}
+                {formatSignedEGP(item.line_delta, currency)}
               </span>
             </div>
             <div className="mt-0.5 text-sm">
-              <ItemPriceChange item={item} />
+              <ItemPriceChange item={item} currency={currency} />
             </div>
           </div>
         );

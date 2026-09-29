@@ -1,0 +1,103 @@
+# Render Blueprint for a free-tier demo deploy of the interior-design-platform monorepo.
+# Deploy: push this repo to GitHub, then in Render click New -> Blueprint and point it at the
+# repo. Render will create the Postgres database and both web services from this file.
+#
+# Service URLs are hardcoded as https://idp-backend.onrender.com and
+# https://idp-frontend.onrender.com because Render assigns a service's public URL from its
+# `name` field before the other service exists yet, so there's no `fromService` value to
+# reference at first apply. If you rename either service below, update every URL that mentions
+# it (APP_URL, FRONTEND_URL, NEXT_PUBLIC_API_BASE_URL) to match, or the two services won't be
+# able to talk to each other / build links correctly.
+#
+# Known free-tier tradeoffs, worth knowing going in:
+#  - Free web services spin down after ~15 min idle and take ~30-60s to wake back up on the
+#    next request — fine for a demo link, not for anything latency-sensitive.
+#  - Free web services have no persistent disk: any file uploaded through Media/Documents (or
+#    change-order/proposal attachments) is lost on the next restart or redeploy. Fine for a demo
+#    walkthrough, not for data you need to keep.
+#  - Render's free Postgres plan has historically come with an expiry window (it's changed
+#    over time) — check the current terms when you create it; if it applies, you'll need to
+#    either upgrade that one database to a paid plan or recreate it periodically.
+#  - MAIL_MAILER is left as `log` (same as local dev) — password-reset/OTP/notification emails
+#    write to the backend service's log output instead of actually sending. Fine to view via
+#    Render's log tab for a demo; swap in a real MAIL_* config if you need emails to actually
+#    arrive.
+
+databases:
+  - name: idp-postgres
+    plan: free
+    databaseName: interior_design_platform
+    user: idp
+
+services:
+  - type: web
+    name: idp-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile.render
+    dockerContext: ./backend
+    envVars:
+      - key: APP_NAME
+        value: Interior Design Platform
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      # Generated fresh for this deploy (`php artisan key:generate --show`) — committing it is
+      # an acceptable shortcut for a one-click demo blueprint, not a production practice. Rotate
+      # it (or switch this to `sync: false` and set it in the Render dashboard instead) if this
+      # deployment ever needs to be taken seriously.
+      - key: APP_KEY
+        value: base64:b/oSS29NFvK42rYNGuiOEoS+ocMgm++NWmqNDIbKT+c=
+      - key: APP_URL
+        value: https://idp-backend.onrender.com
+      - key: FRONTEND_URL
+        value: https://idp-frontend.onrender.com
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: idp-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: idp-postgres
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: idp-postgres
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: idp-postgres
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: idp-postgres
+          property: password
+      # Redis isn't provisioned at all for this deploy — session/cache/queue already default to
+      # `database` in this app's own .env (see backend/.env), so nothing here actually needs
+      # Redis to function; it's only in docker-compose.yml for local parity with a future queue
+      # worker that doesn't exist yet.
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: MAIL_MAILER
+        value: log
+
+  - type: web
+    name: idp-frontend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./frontend/Dockerfile.render
+    dockerContext: ./frontend
+    envVars:
+      # Inlined into the client JS bundle at `npm run build` time (see Dockerfile.render) — this
+      # must already be correct when Render builds the image, not just at container start.
+      - key: NEXT_PUBLIC_API_BASE_URL
+        value: https://idp-backend.onrender.com/api/v1

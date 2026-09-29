@@ -1,0 +1,32 @@
+# Production image for Render's free Docker web service tier — separate from the root
+# Dockerfile, which stays dev-only (bind-mounted source, `artisan serve` on a fixed port) for
+# docker-compose. This one COPIES the source in, installs without dev dependencies, and binds
+# to Render's dynamically assigned $PORT instead of a fixed port.
+FROM php:8.4-cli
+
+RUN apt-get update && apt-get install -y \
+        libpq-dev libzip-dev libpng-dev libonig-dev git unzip \
+    && docker-php-ext-install pdo_pgsql pgsql bcmath zip gd exif \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www
+
+COPY . .
+
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress \
+    && chmod -R 775 storage bootstrap/cache
+
+EXPOSE 8000
+
+# Deliberately no config:cache/route:cache — env vars come entirely from Render's dashboard at
+# container start, and caching them at build time (before those vars exist) would bake in wrong
+# values. Migrations + RoleSeeder run on every boot rather than as a separate Render "pre-deploy
+# command" step, keeping this a single self-contained image for a free-tier demo deploy — both
+# are idempotent (migrate skips already-run migrations; RoleSeeder uses updateOrCreate), so
+# re-running them on every restart/redeploy is safe. RoleSeeder specifically matters here: a
+# fresh database has no "Owner" role row yet, and self-serve signup (POST /auth/register) 404s
+# without one (OrganizationSignupService looks it up with firstOrFail()) — confirmed by testing
+# this image against a brand-new database before wiring this line in.
+CMD ["sh", "-c", "php artisan migrate --force && php artisan db:seed --class=RoleSeeder --force && php artisan serve --host 0.0.0.0 --port ${PORT:-8000}"]

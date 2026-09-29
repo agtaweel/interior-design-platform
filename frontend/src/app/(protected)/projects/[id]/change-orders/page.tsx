@@ -51,7 +51,8 @@ import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
-import { formatEGP, type Locale } from "@/lib/format/currency";
+import { type Locale } from "@/lib/format/currency";
+import { useMoneyFormatter } from "@/lib/format/useMoneyFormatter";
 import { formatDateTime } from "@/lib/format/date";
 
 type T = (key: TranslationKey) => string;
@@ -453,6 +454,8 @@ function ChangeOrderList({
   t: T;
   locale: Locale;
 }) {
+  const { formatMoney } = useMoneyFormatter();
+
   return (
     <Card className="h-fit">
       <CardHeader>
@@ -480,7 +483,7 @@ function ChangeOrderList({
                   <Badge tone={STATUS_TONE[s.status]}>{t(`changeOrders.status.${s.status}`)}</Badge>
                 </div>
                 <span className={`text-xs ${active ? "text-white/80 dark:text-zinc-900/70" : "text-zinc-400"}`}>
-                  {t("changeOrders.list.priceDelta")}: {formatEGP(s.price_delta, locale)} ·{" "}
+                  {t("changeOrders.list.priceDelta")}: {formatMoney(s.price_delta)} ·{" "}
                   {formatTimelineDelta(s.timeline_delta_days, t)}
                 </span>
                 <span className={`text-xs ${active ? "text-white/70 dark:text-zinc-900/60" : "text-zinc-400"}`}>
@@ -527,6 +530,7 @@ function ChangeOrderPanel({
   t,
   locale,
 }: ChangeOrderPanelProps) {
+  const { formatMoney } = useMoneyFormatter();
   const isCreate = detail === null;
   const isDraft = isCreate || detail.status === "draft";
 
@@ -657,7 +661,7 @@ function ChangeOrderPanel({
               label={t("changeOrders.detail.appliedAt")}
               value={detail.applied_at ? formatDateTime(detail.applied_at, locale) : t("changeOrders.detail.notAppliedYet")}
             />
-            <Field label={t("changeOrders.detail.priceDelta")} value={formatEGP(detail.price_delta, locale)} />
+            <Field label={t("changeOrders.detail.priceDelta")} value={formatMoney(detail.price_delta)} />
             <Field label={t("changeOrders.detail.timelineDelta")} value={formatTimelineDelta(detail.timeline_delta_days, t)} />
           </CardBody>
         ) : null}
@@ -765,7 +769,7 @@ function ChangeOrderPanel({
                   <p className="mt-0.5 text-xs text-zinc-400">{t("changeOrders.editor.total.note")}</p>
                 </div>
                 <span className={`text-xl font-semibold ${totalPreview < 0 ? "text-red-600 dark:text-red-400" : "text-zinc-900 dark:text-zinc-100"}`}>
-                  {formatEGP(totalPreview, locale)}
+                  {formatMoney(totalPreview)}
                 </span>
               </div>
 
@@ -822,6 +826,7 @@ function ItemRow({
   t: T;
   locale: Locale;
 }) {
+  const { formatMoney } = useMoneyFormatter();
   const showBoqPicker = row.action !== "add";
   const showNewPrice = row.action !== "remove";
   const delta = previewLineDelta(row, boqById);
@@ -891,7 +896,7 @@ function ItemRow({
             </option>
             {boqItems.map((b) => (
               <option key={b.id} value={b.id}>
-                {b.categoryPath} — {b.name} ({formatEGP(b.clientUnitPrice, locale)})
+                {b.categoryPath} — {b.name} ({formatMoney(b.clientUnitPrice)})
               </option>
             ))}
           </select>
@@ -953,7 +958,7 @@ function ItemRow({
       <div className="flex items-center justify-between border-t border-zinc-100 pt-2 text-xs dark:border-zinc-800/60">
         <span className="text-zinc-400">{t("changeOrders.editor.items.fields.lineDeltaPreview")}</span>
         <span className={`font-medium ${delta < 0 ? "text-red-600 dark:text-red-400" : "text-zinc-900 dark:text-zinc-100"}`}>
-          {formatEGP(delta, locale)}
+          {formatMoney(delta)}
         </span>
       </div>
     </div>
@@ -961,6 +966,8 @@ function ItemRow({
 }
 
 function ReadonlyChangeOrderContent({ detail, t, locale }: { detail: ChangeOrder; t: T; locale: Locale }) {
+  const { formatMoney } = useMoneyFormatter();
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -994,13 +1001,13 @@ function ReadonlyChangeOrderContent({ detail, t, locale }: { detail: ChangeOrder
                   <td className="px-3 py-2 text-right align-top text-zinc-600 dark:text-zinc-300">{item.quantity}</td>
                   <td className="px-3 py-2 align-top text-zinc-600 dark:text-zinc-300">{item.unit}</td>
                   <td className="px-3 py-2 text-right align-top text-zinc-600 dark:text-zinc-300">
-                    {item.old_unit_price !== null ? formatEGP(item.old_unit_price, locale) : t("common.na")}
+                    {item.old_unit_price !== null ? formatMoney(item.old_unit_price) : t("common.na")}
                   </td>
                   <td className="px-3 py-2 text-right align-top text-zinc-600 dark:text-zinc-300">
-                    {item.new_unit_price !== null ? formatEGP(item.new_unit_price, locale) : t("common.na")}
+                    {item.new_unit_price !== null ? formatMoney(item.new_unit_price) : t("common.na")}
                   </td>
                   <td className="px-3 py-2 text-right align-top font-medium text-zinc-900 dark:text-zinc-100">
-                    {formatEGP(item.line_delta, locale)}
+                    {formatMoney(item.line_delta)}
                   </td>
                 </tr>
               ))}
@@ -1011,7 +1018,7 @@ function ReadonlyChangeOrderContent({ detail, t, locale }: { detail: ChangeOrder
 
       <div className="flex items-center justify-between border-t border-zinc-200 pt-3 dark:border-zinc-800">
         <span className="text-base font-semibold text-zinc-900 dark:text-zinc-50">{t("changeOrders.detail.priceDelta")}</span>
-        <span className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">{formatEGP(detail.price_delta, locale)}</span>
+        <span className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">{formatMoney(detail.price_delta)}</span>
       </div>
     </div>
   );

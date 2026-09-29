@@ -7,14 +7,16 @@
 import type { PublicProposalContent, PublicProposalItem } from "@/lib/api/publicTypes";
 import { formatEGP } from "@/lib/format/currency";
 import { directionFor } from "@/lib/i18n/textDirection";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
+import type { TranslationKey } from "@/lib/i18n/dictionaries";
 
-const CONTENT_FIELDS: Array<{ key: keyof PublicProposalContent; label: string }> = [
-  { key: "cover", label: "Introduction" },
-  { key: "scope", label: "Scope of Work" },
-  { key: "exclusions", label: "Exclusions" },
-  { key: "timeline", label: "Timeline" },
-  { key: "terms", label: "Terms" },
-  { key: "payment_plan", label: "Payment Plan" },
+const CONTENT_FIELDS: Array<{ key: keyof PublicProposalContent; labelKey: TranslationKey }> = [
+  { key: "cover", labelKey: "proposalContent.introduction" },
+  { key: "scope", labelKey: "proposalContent.scope" },
+  { key: "exclusions", labelKey: "proposalContent.exclusions" },
+  { key: "timeline", labelKey: "proposalContent.timeline" },
+  { key: "terms", labelKey: "proposalContent.terms" },
+  { key: "payment_plan", labelKey: "proposalContent.paymentPlan" },
 ];
 
 /** Skip a content field entirely if it's empty, whitespace-only, or a literal "not specified"
@@ -34,6 +36,7 @@ function toNumber(value: number | string): number {
 }
 
 export function ProposalContentSections({ content }: { content: PublicProposalContent | null }) {
+  const { t } = useLocale();
   const fields = CONTENT_FIELDS.filter((f) => isMeaningful(content?.[f.key]));
 
   if (fields.length === 0) return null;
@@ -45,7 +48,7 @@ export function ProposalContentSections({ content }: { content: PublicProposalCo
         return (
           <section key={field.key}>
             <h2 className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              {field.label}
+              {t(field.labelKey)}
             </h2>
             <p
               dir={directionFor(value)}
@@ -69,9 +72,19 @@ export function ProposalContentSections({ content }: { content: PublicProposalCo
  * mobile receipt/invoice pattern — every column of data is still present, just reflowed so
  * nothing is clipped at 375px width.
  */
-export function ProposalItemsTable({ items }: { items: PublicProposalItem[] }) {
+export function ProposalItemsTable({
+  items,
+  currency = "EGP",
+}: {
+  items: PublicProposalItem[];
+  /** Platform Readiness Review finding #06 — sourced from the proposal's own
+   *  `organization.currency` (public payloads carry no AuthContext to read it from). */
+  currency?: string;
+}) {
+  const { t, locale } = useLocale();
+
   if (items.length === 0) {
-    return <p className="text-sm text-zinc-500 dark:text-zinc-400">No line items on this proposal.</p>;
+    return <p className="text-sm text-zinc-500 dark:text-zinc-400">{t("proposalContent.noItems")}</p>;
   }
 
   return (
@@ -86,10 +99,10 @@ export function ProposalItemsTable({ items }: { items: PublicProposalItem[] }) {
           </p>
           <div className="mt-1 flex items-baseline justify-between gap-3 text-sm">
             <span className="text-zinc-500 dark:text-zinc-400">
-              {toNumber(item.quantity)} {item.unit} &times; {formatEGP(item.unit_price)}
+              {toNumber(item.quantity)} {item.unit} &times; {formatEGP(item.unit_price, locale, currency)}
             </span>
             <span className="shrink-0 font-semibold text-zinc-900 dark:text-zinc-50">
-              {formatEGP(item.line_total)}
+              {formatEGP(item.line_total, locale, currency)}
             </span>
           </div>
         </div>
@@ -98,11 +111,18 @@ export function ProposalItemsTable({ items }: { items: PublicProposalItem[] }) {
   );
 }
 
-export function ProposalGrandTotal({ grandTotal }: { grandTotal: number | string }) {
+export function ProposalGrandTotal({
+  grandTotal,
+  currency = "EGP",
+}: {
+  grandTotal: number | string;
+  currency?: string;
+}) {
+  const { t, locale } = useLocale();
   return (
     <div className="flex items-center justify-between rounded-lg bg-zinc-900 px-4 py-4 text-white dark:bg-zinc-100 dark:text-zinc-900">
-      <span className="text-sm font-medium uppercase tracking-wide opacity-80">Total</span>
-      <span className="text-xl font-semibold">{formatEGP(grandTotal)}</span>
+      <span className="text-sm font-medium uppercase tracking-wide opacity-80">{t("proposalContent.total")}</span>
+      <span className="text-xl font-semibold">{formatEGP(grandTotal, locale, currency)}</span>
     </div>
   );
 }

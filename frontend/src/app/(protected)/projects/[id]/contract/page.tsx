@@ -42,7 +42,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
-import { formatEGP, type Locale } from "@/lib/format/currency";
+import { type Locale } from "@/lib/format/currency";
+import { useMoneyFormatter } from "@/lib/format/useMoneyFormatter";
 import { formatDate, formatDateTime } from "@/lib/format/date";
 
 type T = (key: TranslationKey) => string;
@@ -230,6 +231,7 @@ function ConvertCard({
   t: T;
   locale: Locale;
 }) {
+  const { formatMoney } = useMoneyFormatter();
   const [converting, setConverting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -279,7 +281,7 @@ function ConvertCard({
             {t("proposal.list.version")} {proposal.version_no}
           </span>
           <span className="font-medium text-zinc-900 dark:text-zinc-100">
-            {t("proposal.list.grandTotal")}: {formatEGP(proposal.grand_total, locale)}
+            {t("proposal.list.grandTotal")}: {formatMoney(proposal.grand_total)}
           </span>
         </div>
         {error ? <ErrorBanner message={error} /> : null}
@@ -374,6 +376,7 @@ function ContractDetail({
   t: T;
   locale: Locale;
 }) {
+  const { formatMoney } = useMoneyFormatter();
   const savedTerms = normalizeTerms(contract.terms_json);
   const savedStartDate = toDateInputValue(contract.start_date);
   const savedEndDate = toDateInputValue(contract.end_date);
@@ -447,7 +450,7 @@ function ContractDetail({
         <CardBody className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
           <Field
             label={t("contract.detail.value")}
-            value={formatEGP(contract.contract_value, locale)}
+            value={formatMoney(contract.contract_value)}
             note={t("contract.detail.valueLockedNote")}
           />
           <Field label={t("contract.detail.signedAt")} value={formatDateTime(contract.signed_at, locale)} />

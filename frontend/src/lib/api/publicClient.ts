@@ -89,3 +89,12 @@ export const publicPost = <T>(path: string, body?: unknown, headers?: Record<str
 /** For endpoints that respond `{"data": T}` (the GET and request-changes endpoints). */
 export const publicGetResource = async <T>(path: string): Promise<T> =>
   (await publicGet<{ data: T }>(path)).data;
+
+/** For endpoints that respond `{"data": T, "organization": {"currency": string} | null}` — the
+ *  client-portal list endpoints (proposals/contract/payments/change-orders), which need the
+ *  org's currency (Platform Readiness Review finding #06) without folding it into `data` itself,
+ *  since `data` there is a bare array/resource shared with other call sites. */
+export const publicGetResourceWithOrg = <T>(
+  path: string,
+): Promise<{ data: T; organization: { currency: string } | null }> =>
+  publicGet<{ data: T; organization: { currency: string } | null }>(path);

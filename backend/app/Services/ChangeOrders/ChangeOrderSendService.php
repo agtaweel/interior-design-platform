@@ -2,11 +2,13 @@
 
 namespace App\Services\ChangeOrders;
 
+use App\Mail\OtpCodeMail;
 use App\Models\ChangeOrder;
 use App\Models\SignedLink;
 use App\Services\Proposals\OtpChallengeService;
 use App\Support\PublicLinks\SignedLinkService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * POST /change-orders/{id}/send (PROJECT_CONTEXT.md Sprint 7). Only ever called by
@@ -41,7 +43,7 @@ class ChangeOrderSendService
      */
     public function send(ChangeOrder $changeOrder): array
     {
-        return DB::transaction(function () use ($changeOrder) {
+        $result = DB::transaction(function () use ($changeOrder) {
             $sentAt = now();
 
             $changeOrder->forceFill(['status' => 'sent', 'sent_at' => $sentAt])->save();
@@ -64,5 +66,39 @@ class ChangeOrderSendService
                 'public_url' => sprintf('%s/p/change-orders/%s', config('app.frontend_url'), $token),
             ];
         });
+
+        // Post-commit, same reasoning as ProposalSendService::deliverOtpByEmail()'s docblock.
+        $this->deliverOtpByEmail($result['change_order'], $result['otp_code'], $result['public_url']);
+
+        return $result;
+    }
+
+    /**
+     * Platform Readiness Review finding #03 — see ProposalSendService::deliverOtpByEmail()'s
+     * identical rationale. Best-effort and additive: a missing client email, or a mail transport
+     * failure, must never fail send() itself.
+     */
+    private function deliverOtpByEmail(ChangeOrder $changeOrder, string $code, string $publicUrl): void
+    {
+        $changeOrder->loadMissing(['project.client', 'project.organization']);
+        $client = $changeOrder->project->client;
+
+        if (! $client || ! $client->email) {
+            return;
+        }
+
+        try {
+            Mail::to($client->email)->send(new OtpCodeMail(
+                recipientName: $client->name,
+                code: $code,
+                documentLabel: 'change order',
+                projectName: $changeOrder->project->name,
+                organizationName: $changeOrder->project->organization->name,
+                publicUrl: $publicUrl,
+                expiryHours: OtpChallengeService::EXPIRY_HOURS,
+            ));
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 }

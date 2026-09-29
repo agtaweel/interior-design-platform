@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BoqCategoryController;
 use App\Http\Controllers\Api\BoqController;
@@ -10,24 +11,39 @@ use App\Http\Controllers\Api\BoqTemplateController;
 use App\Http\Controllers\Api\BoqTemplateItemController;
 use App\Http\Controllers\Api\ChangeOrderController;
 use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\ClientPortalLinkController;
 use App\Http\Controllers\Api\ContractController;
+use App\Http\Controllers\Api\ExecutionMediaController;
+use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\Api\InvoiceDocumentController;
+use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OrganizationController;
 use App\Http\Controllers\Api\OrganizationMemberController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PaymentScheduleController;
+use App\Http\Controllers\Api\PlatformAnalyticsController;
 use App\Http\Controllers\Api\PricingController;
 use App\Http\Controllers\Api\PricingRuleController;
+use App\Http\Controllers\Api\ProjectCloseoutController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectFinancialsController;
+use App\Http\Controllers\Api\ProjectMediaController;
 use App\Http\Controllers\Api\ProjectMemberController;
 use App\Http\Controllers\Api\ProjectServiceController;
 use App\Http\Controllers\Api\PropertyController;
 use App\Http\Controllers\Api\ProposalVersionController;
 use App\Http\Controllers\Api\PublicChangeOrderController;
+use App\Http\Controllers\Api\PublicClientPortalController;
 use App\Http\Controllers\Api\PublicProposalController;
+use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\RoomController;
+use App\Http\Controllers\Api\HandoverController;
+use App\Http\Controllers\Api\SiteReportController;
+use App\Http\Controllers\Api\SnagController;
+use App\Http\Controllers\Api\SupplierController;
+use App\Http\Controllers\Api\TaskController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -58,6 +74,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:auth-login');
+    // Platform Readiness Review finding #01 — public, unauthenticated, own rate limiter.
+    Route::post('/auth/register', [AuthController::class, 'register'])->middleware('throttle:auth-register');
+    // Platform Readiness Review finding #04 — public, unauthenticated, own rate limiter.
+    Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:password-reset');
+    Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:password-reset');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -75,6 +96,15 @@ Route::prefix('v1')->group(function () {
             Route::post('/organizations/{organization}/members/invite', [OrganizationMemberController::class, 'invite']);
             Route::patch('/organizations/{organization}/members/{member}', [OrganizationMemberController::class, 'update']);
 
+            // Leads (BRD "CRM/Leads"). {lead} follows the same manual-lookup convention as
+            // above — see LeadController's docblock. Reads require only an active membership;
+            // mutations (store/update/convert) require Permissions::MANAGE_LEADS.
+            Route::get('/leads', [LeadController::class, 'index']);
+            Route::post('/leads', [LeadController::class, 'store']);
+            Route::get('/leads/{lead}', [LeadController::class, 'show']);
+            Route::patch('/leads/{lead}', [LeadController::class, 'update']);
+            Route::post('/leads/{lead}/convert', [LeadController::class, 'convert']);
+
             Route::get('/clients', [ClientController::class, 'index']);
             Route::post('/clients', [ClientController::class, 'store']);
             Route::get('/clients/{client}', [ClientController::class, 'show']);
@@ -89,6 +119,18 @@ Route::prefix('v1')->group(function () {
             Route::patch('/projects/{project}', [ProjectController::class, 'update']);
             Route::post('/projects/{project}/members', [ProjectMemberController::class, 'store']);
             Route::post('/projects/{project}/services', [ProjectServiceController::class, 'store']);
+
+            // Attachments (Documents tab): designs/process photos/final pictures, backed by
+            // Spatie Media Library (Project::MEDIA_COLLECTIONS). {project} follows the same
+            // manual-lookup convention as above; {media} is Spatie's own polymorphic Media
+            // model, resolved+tenant-checked inside ProjectMediaController (see its docblock).
+            // GET /media (no {project}) is the org-wide "Media" gallery across every project —
+            // see ProjectMediaController::galleryIndex()'s docblock.
+            Route::get('/media', [ProjectMediaController::class, 'galleryIndex']);
+            Route::get('/projects/{project}/media', [ProjectMediaController::class, 'index']);
+            Route::post('/projects/{project}/media', [ProjectMediaController::class, 'store']);
+            Route::get('/media/{media}/file', [ProjectMediaController::class, 'show']);
+            Route::delete('/media/{media}', [ProjectMediaController::class, 'destroy']);
 
             // Rooms (Sprint 2 gap fix, PROJECT_CONTEXT.md). Not nested under /boq because a
             // room is a structural property of the project itself (see Room model docblock),
@@ -177,6 +219,8 @@ Route::prefix('v1')->group(function () {
             Route::post('/payment-schedules/{schedule}/payments', [PaymentController::class, 'store']);
             Route::get('/payment-schedules/{schedule}/payments', [PaymentController::class, 'index']);
             Route::get('/payments/{payment}/receipt', [PaymentController::class, 'receipt']);
+            // BRD v3 §4: correcting a payment posts a reversal, never edits/deletes it.
+            Route::post('/payments/{payment}/reverse', [PaymentController::class, 'reverse']);
             Route::get('/projects/{project}/financials', [ProjectFinancialsController::class, 'show']);
 
             // Change Orders (Sprint 7, PROJECT_CONTEXT.md). {project}/{changeOrder} follow the
@@ -192,6 +236,77 @@ Route::prefix('v1')->group(function () {
             Route::patch('/change-orders/{changeOrder}', [ChangeOrderController::class, 'update']);
             Route::post('/change-orders/{changeOrder}/send', [ChangeOrderController::class, 'send']);
             Route::post('/change-orders/{changeOrder}/apply', [ChangeOrderController::class, 'apply']);
+
+            // Procurement (BRD "Procurement & Supplier Intelligence"). {project}/{po} follow
+            // the same manual-lookup convention as above — see PurchaseOrderController's
+            // docblock. Every route here (reads included) requires
+            // Permissions::MANAGE_PROCUREMENT — see that constant's docblock for why supplier/
+            // cost data is gated even for reads.
+            Route::get('/suppliers', [SupplierController::class, 'index']);
+            Route::post('/suppliers', [SupplierController::class, 'store']);
+            Route::get('/suppliers/{supplier}', [SupplierController::class, 'show']);
+            Route::patch('/suppliers/{supplier}', [SupplierController::class, 'update']);
+            Route::get('/suppliers/{supplier}/price-history', [SupplierController::class, 'priceHistory']);
+            Route::get('/projects/{project}/purchase-orders', [PurchaseOrderController::class, 'index']);
+            Route::post('/projects/{project}/purchase-orders', [PurchaseOrderController::class, 'store']);
+            Route::get('/purchase-orders/{po}', [PurchaseOrderController::class, 'show']);
+            Route::post('/purchase-orders/{po}/send', [PurchaseOrderController::class, 'send']);
+            Route::post('/purchase-orders/{po}/receive', [PurchaseOrderController::class, 'receive']);
+            Route::post('/purchase-orders/{po}/cancel', [PurchaseOrderController::class, 'cancel']);
+
+            // BRD v3 §7 "Invoice / Receipt Vault". Same MANAGE_PROCUREMENT gating as above.
+            Route::get('/projects/{project}/invoices', [InvoiceDocumentController::class, 'index']);
+            Route::post('/projects/{project}/invoices', [InvoiceDocumentController::class, 'store']);
+            Route::post('/invoices/{invoice}/supersede', [InvoiceDocumentController::class, 'supersede']);
+            Route::get('/invoices/{invoice}/file', [InvoiceDocumentController::class, 'file']);
+
+            // BRD v3 §12 "Reconciliation & Closeout". force-close requires
+            // Permissions::MANAGE_FINANCIAL_CLOSEOUT (Owner/Admin only); the rest reuse
+            // Permissions::MANAGE_BOQ — see ProjectCloseoutController's docblock.
+            Route::post('/projects/{project}/closeout/start', [ProjectCloseoutController::class, 'start']);
+            Route::post('/projects/{project}/closeout/check', [ProjectCloseoutController::class, 'check']);
+            Route::post('/projects/{project}/closeout/close', [ProjectCloseoutController::class, 'close']);
+            Route::post('/projects/{project}/closeout/force-close', [ProjectCloseoutController::class, 'forceClose']);
+
+            // BRD v3 §17 "Client Portal" — issuing/revoking the long-lived portal link. The
+            // portal itself is served by the token-authenticated public routes below.
+            Route::post('/projects/{project}/client-portal-link', [ClientPortalLinkController::class, 'store']);
+            Route::post('/projects/{project}/client-portal-link/revoke', [ClientPortalLinkController::class, 'revoke']);
+
+            // Expenses (BRD "Expenses: project expenses, receipts, supplier linkage"). Mirrors
+            // Payments' exact permission split (store->MANAGE_BOQ, reads->VIEW_FINANCIALS) —
+            // see ExpenseController's docblock.
+            Route::get('/projects/{project}/expenses', [ExpenseController::class, 'index']);
+            Route::post('/projects/{project}/expenses', [ExpenseController::class, 'store']);
+            Route::get('/expenses/{expense}/receipt', [ExpenseController::class, 'receipt']);
+
+            // Execution (BRD "Execution": tasks, site reports, photos — S16/S17). Reads
+            // require only an active membership; mutations require
+            // Permissions::MANAGE_EXECUTION — see that constant's docblock.
+            Route::get('/projects/{project}/tasks', [TaskController::class, 'index']);
+            Route::post('/projects/{project}/tasks', [TaskController::class, 'store']);
+            Route::patch('/tasks/{task}', [TaskController::class, 'update']);
+            Route::get('/projects/{project}/site-reports', [SiteReportController::class, 'index']);
+            Route::post('/projects/{project}/site-reports', [SiteReportController::class, 'store']);
+            Route::get('/site-reports/{report}', [SiteReportController::class, 'show']);
+            Route::get('/site-reports/{report}/pdf', [SiteReportController::class, 'pdf']);
+            Route::get('/execution-media/{media}/file', [ExecutionMediaController::class, 'show']);
+
+            // Snagging (BRD S19: defects, priorities, owners, due dates, closure, warranty).
+            // Reads require only an active membership; mutations require
+            // Permissions::MANAGE_EXECUTION — see SnagController's docblock.
+            Route::get('/projects/{project}/snags', [SnagController::class, 'index']);
+            Route::post('/projects/{project}/snags', [SnagController::class, 'store']);
+            Route::patch('/snags/{snag}', [SnagController::class, 'update']);
+            Route::post('/snags/{snag}/close', [SnagController::class, 'close']);
+            Route::post('/snags/{snag}/reopen', [SnagController::class, 'reopen']);
+
+            // Handover (BRD S20: final approval, warranty, completion document). One per
+            // project — gated behind Permissions::MANAGE_PROJECTS (see HandoverController's
+            // docblock for why this is a project-lifecycle act, not an execution one).
+            Route::get('/projects/{project}/handover', [HandoverController::class, 'show']);
+            Route::post('/projects/{project}/handover', [HandoverController::class, 'store']);
+            Route::get('/projects/{project}/handover/pdf', [HandoverController::class, 'pdf']);
 
             // Notifications (Sprint 8, PROJECT_CONTEXT.md). No Permissions::* gate on any of
             // these three — a user only ever sees/mutates their OWN notification inbox (checked
@@ -209,6 +324,21 @@ Route::prefix('v1')->group(function () {
             Route::get('/reports/summary', [ReportController::class, 'summary']);
             Route::get('/reports/projects', [ReportController::class, 'projects']);
             Route::get('/reports/projects/export', [ReportController::class, 'projectsExport']);
+
+            // Platform Readiness Review finding #05 "Audit log viewer" — gated behind
+            // Permissions::MANAGE_ORGANIZATION inside the controller (see its docblock).
+            Route::get('/audit-logs', [AuditLogController::class, 'index']);
+        });
+
+        // BRD v3 §5/§20 "Platform Owner / Super Admin" — a sibling to the `tenant` group above,
+        // NOT nested inside it: these routes are deliberately cross-tenant, gated by
+        // `platform.owner` (EnsurePlatformOwner) instead of a Permissions::* check. See that
+        // middleware's docblock for why running outside `tenant` is what makes every query here
+        // correctly unscoped.
+        Route::middleware('platform.owner')->prefix('platform')->group(function () {
+            Route::get('/analytics/summary', [PlatformAnalyticsController::class, 'summary']);
+            Route::get('/organizations', [PlatformAnalyticsController::class, 'organizations']);
+            Route::get('/organizations/{organization}', [PlatformAnalyticsController::class, 'organization']);
         });
     });
 
@@ -231,5 +361,19 @@ Route::prefix('v1')->group(function () {
         Route::get('/public/change-orders/{token}', [PublicChangeOrderController::class, 'show']);
         Route::post('/public/change-orders/{token}/approve', [PublicChangeOrderController::class, 'approve']);
         Route::post('/public/change-orders/{token}/reject', [PublicChangeOrderController::class, 'reject']);
+
+        // BRD v3 §17 "Client Portal" — a real, multi-page, read-only dashboard, same
+        // token-authenticated-instead posture as the two public surfaces above. See
+        // PublicClientPortalController's docblock for the client-safe leak-prevention
+        // boundary every one of these routes enforces.
+        Route::get('/public/client-portal/{token}', [PublicClientPortalController::class, 'overview']);
+        Route::get('/public/client-portal/{token}/proposals', [PublicClientPortalController::class, 'proposals']);
+        Route::get('/public/client-portal/{token}/proposals/{proposalVersion}', [PublicClientPortalController::class, 'proposal']);
+        Route::get('/public/client-portal/{token}/proposals/{proposalVersion}/pdf', [PublicClientPortalController::class, 'proposalPdf']);
+        Route::get('/public/client-portal/{token}/contract', [PublicClientPortalController::class, 'contract']);
+        Route::get('/public/client-portal/{token}/payments', [PublicClientPortalController::class, 'payments']);
+        Route::get('/public/client-portal/{token}/change-orders', [PublicClientPortalController::class, 'changeOrders']);
+        Route::get('/public/client-portal/{token}/media', [PublicClientPortalController::class, 'media']);
+        Route::get('/public/client-portal/{token}/media/{media}/file', [PublicClientPortalController::class, 'mediaFile']);
     });
 });

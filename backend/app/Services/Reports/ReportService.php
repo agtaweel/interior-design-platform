@@ -7,15 +7,20 @@ use App\Models\Contract;
 use App\Models\Payment;
 use App\Models\Project;
 use App\Services\Boq\BoqMoney;
+use App\Services\Costs\ProjectCostCalculator;
 
 /**
  * GET /reports/summary and GET/CSV /reports/projects (PROJECT_CONTEXT.md Sprint 8 "Reports").
  * Both gated behind Permissions::VIEW_FINANCIALS at the controller — this class assumes it's
  * only ever called once that check has passed.
  *
- * Works entirely from data already in the system per the Sprint 8 scope boundary: BOQ-estimated
- * direct cost (`projects.direct_cost_total`/`.grand_total`, Sprint 3's pricing cache columns),
- * contract value, and recorded payments — never real `expenses` (not built this MVP).
+ * Works from BOQ-estimated direct cost (`projects.direct_cost_total`/`.grand_total`, Sprint 3's
+ * pricing cache columns), contract value, recorded payments, AND — since Procurement/Expenses
+ * now exist (BRD §8/§9) — real Purchase Order and Expense data via ProjectCostCalculator for
+ * `actual_cost`/`gross_profit`/`committed_cost`/`quoted_cost`. `estimated_margin` stays a
+ * separate, purely BOQ-derived figure (grand_total - direct_cost_total) — it is what it always
+ * was (a pricing-time estimate), never confused with the real `gross_profit` figure now
+ * available alongside it.
  *
  * Tenant scoping needs no explicit organization_id filter anywhere in this class: Project and
  * Payment both use BelongsToOrganization directly (their query builders are already constrained
@@ -29,10 +34,13 @@ use App\Services\Boq\BoqMoney;
  */
 final class ReportService
 {
+    public function __construct(private readonly ProjectCostCalculator $costCalculator) {}
+
     /**
      * @return array{
      *     total_revenue: string, total_receivables: string, estimated_margin: string,
-     *     total_change_order_value: string, project_count: int, active_project_count: int
+     *     total_change_order_value: string, total_actual_cost: string, total_gross_profit: string,
+     *     project_count: int, active_project_count: int
      * }
      */
     public function summary(): array
@@ -44,9 +52,17 @@ final class ReportService
         $totalReceivables = BoqMoney::zero();
         $estimatedMargin = BoqMoney::zero();
         $totalChangeOrderValue = BoqMoney::zero();
+        $totalActualCost = BoqMoney::zero();
+        $totalGrossProfit = BoqMoney::zero();
 
         foreach ($projects as $project) {
             $contract = $this->latestContract($project);
+            $costs = $this->costCalculator->calculate($project, $contract);
+            $totalActualCost = bcadd($totalActualCost, $costs['actual_cost'], BoqMoney::SCALE);
+
+            if ($costs['gross_profit'] !== null) {
+                $totalGrossProfit = bcadd($totalGrossProfit, $costs['gross_profit'], BoqMoney::SCALE);
+            }
 
             if ($contract) {
                 // Sum of (contract_value - collected) across every project with a contract, per
@@ -81,6 +97,11 @@ final class ReportService
             // instruction, since this is derived from BOQ pricing, not real expenses.
             'estimated_margin' => $estimatedMargin,
             'total_change_order_value' => $totalChangeOrderValue,
+            // Real actual cost / gross profit (BRD §8), via ProjectCostCalculator — summed
+            // only across projects that HAVE a contract for gross_profit (no recognized
+            // revenue basis otherwise, same convention as that calculator's per-project null).
+            'total_actual_cost' => $totalActualCost,
+            'total_gross_profit' => $totalGrossProfit,
             'project_count' => $projects->count(),
             'active_project_count' => $projects->where('status', 'active')->count(),
         ];
@@ -93,7 +114,9 @@ final class ReportService
      * @return list<array{
      *     id: int, name: string, code: string, status: string, contract_value: string,
      *     collected: string, outstanding: string, estimated_margin: string,
-     *     change_order_value: string, budget_variance: string
+     *     change_order_value: string, budget_variance: string, quoted_cost: string,
+     *     committed_cost: string, actual_cost: string, gross_profit: string|null,
+     *     margin_percent: string|null
      * }>
      */
     public function projectRows(): array
@@ -109,7 +132,9 @@ final class ReportService
      * @return array{
      *     id: int, name: string, code: string, status: string, contract_value: string,
      *     collected: string, outstanding: string, estimated_margin: string,
-     *     change_order_value: string, budget_variance: string
+     *     change_order_value: string, budget_variance: string, quoted_cost: string,
+     *     committed_cost: string, actual_cost: string, gross_profit: string|null,
+     *     margin_percent: string|null
      * }
      */
     private function rowFor(Project $project): array
@@ -117,6 +142,7 @@ final class ReportService
         $contract = $this->latestContract($project, ['proposalVersion']);
         $contractValue = $contract ? (string) $contract->contract_value : BoqMoney::zero();
         $collected = $this->collectedFor($project);
+        $costs = $this->costCalculator->calculate($project, $contract);
 
         // Same clamp-at-zero convention as ProjectFinancialsCalculator::resolveOutstanding() —
         // this IS the per-project receivables view, so it should read identically to
@@ -154,6 +180,11 @@ final class ReportService
             'estimated_margin' => $estimatedMargin,
             'change_order_value' => $changeOrderValue,
             'budget_variance' => $budgetVariance,
+            'quoted_cost' => $costs['quoted_cost'],
+            'committed_cost' => $costs['committed_cost'],
+            'actual_cost' => $costs['actual_cost'],
+            'gross_profit' => $costs['gross_profit'],
+            'margin_percent' => $costs['margin_percent'],
         ];
     }
 

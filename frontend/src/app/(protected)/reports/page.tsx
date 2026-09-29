@@ -25,7 +25,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/Badge";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
-import { formatEGP } from "@/lib/format/currency";
+import { useMoneyFormatter } from "@/lib/format/useMoneyFormatter";
 
 type SortColumn =
   | "name"
@@ -61,6 +61,7 @@ function toNumber(value: number | string): number {
 
 export default function ReportsPage() {
   const { t, locale } = useLocale();
+  const { formatMoney } = useMoneyFormatter();
   const [summary, setSummary] = useState<ReportSummary | null>(null);
   const [rows, setRows] = useState<ReportProjectRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -157,19 +158,19 @@ export default function ReportsPage() {
       {exportError ? <ErrorBanner message={exportError} /> : null}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <KpiCard label={t("reports.kpi.totalRevenue")} value={formatEGP(summary?.total_revenue, locale)} />
+        <KpiCard label={t("reports.kpi.totalRevenue")} value={formatMoney(summary?.total_revenue)} />
         <KpiCard
           label={t("reports.kpi.totalReceivables")}
-          value={formatEGP(summary?.total_receivables, locale)}
+          value={formatMoney(summary?.total_receivables)}
         />
         <KpiCard
           label={t("reports.kpi.estimatedMargin")}
-          value={formatEGP(summary?.estimated_margin, locale)}
+          value={formatMoney(summary?.estimated_margin)}
           hint={t("reports.kpi.estimatedMarginHint")}
         />
         <KpiCard
           label={t("reports.kpi.changeOrderValue")}
-          value={formatEGP(summary?.total_change_order_value, locale)}
+          value={formatMoney(summary?.total_change_order_value)}
         />
         <KpiCard
           label={t("reports.kpi.projects")}
@@ -215,12 +216,12 @@ export default function ReportsPage() {
                       <td className="whitespace-nowrap px-4 py-2">
                         <StatusBadge status={row.status} />
                       </td>
-                      <td className="whitespace-nowrap px-4 py-2">{formatEGP(row.contract_value, locale)}</td>
-                      <td className="whitespace-nowrap px-4 py-2">{formatEGP(row.collected, locale)}</td>
-                      <td className="whitespace-nowrap px-4 py-2">{formatEGP(row.outstanding, locale)}</td>
-                      <td className="whitespace-nowrap px-4 py-2">{formatEGP(row.estimated_margin, locale)}</td>
-                      <td className="whitespace-nowrap px-4 py-2">{formatEGP(row.change_order_value, locale)}</td>
-                      <td className="whitespace-nowrap px-4 py-2">{formatEGP(row.budget_variance, locale)}</td>
+                      <td className="whitespace-nowrap px-4 py-2">{formatMoney(row.contract_value)}</td>
+                      <td className="whitespace-nowrap px-4 py-2">{formatMoney(row.collected)}</td>
+                      <td className="whitespace-nowrap px-4 py-2">{formatMoney(row.outstanding)}</td>
+                      <td className="whitespace-nowrap px-4 py-2">{formatMoney(row.estimated_margin)}</td>
+                      <td className="whitespace-nowrap px-4 py-2">{formatMoney(row.change_order_value)}</td>
+                      <td className="whitespace-nowrap px-4 py-2">{formatMoney(row.budget_variance)}</td>
                     </tr>
                   ))}
                 </tbody>

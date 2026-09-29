@@ -227,10 +227,10 @@ export default function ClientProposalPortalPage() {
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Selected Items
           </h2>
-          <ProposalItemsTable items={data.items} />
+          <ProposalItemsTable items={data.items} currency={data.organization?.currency} />
         </section>
 
-        <ProposalGrandTotal grandTotal={data.pricing.grand_total} />
+        <ProposalGrandTotal grandTotal={data.pricing.grand_total} currency={data.organization?.currency} />
 
         <div>
           <a

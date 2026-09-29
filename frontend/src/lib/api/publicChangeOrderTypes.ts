@@ -6,11 +6,11 @@
  * convention the rest of this codebase uses (see `lib/api/resources/changeOrders.ts` vs
  * `lib/api/resources/proposals.ts` on the internal side).
  *
- * Verified live against the real backend response (see agent notes): unlike
- * `PublicProposalData`, there is NO `organization`/`project`/`client`/`property` header info in
- * this payload at all — a change order references its project only internally, and the public
- * view is deliberately more minimal than the proposal one. Don't add those fields back in from
- * habit; they simply aren't there.
+ * Unlike `PublicProposalData`, there is no `project`/`client`/`property` header info in this
+ * payload — a change order references its project only internally, and the public view is
+ * deliberately more minimal than the proposal one. The one exception is `organization.currency`
+ * (Platform Readiness Review finding #06), added specifically so this page's money formatting
+ * isn't stuck hardcoded to "EGP" — see PublicChangeOrderResource's docblock.
  *
  * `price_delta` and each item's `old_unit_price`/`new_unit_price`/`line_delta` ARE included and
  * meant to be shown to the client — unlike BOQ internal cost/margin fields, a price delta is
@@ -45,6 +45,7 @@ export interface PublicChangeOrderData {
   items: PublicChangeOrderItem[];
   sent_at: string | null;
   approved_at: string | null;
+  organization: { currency: string } | null;
 }
 
 /** POST /public/change-orders/{token}/approve success response (200, NOT `{data}`-wrapped —

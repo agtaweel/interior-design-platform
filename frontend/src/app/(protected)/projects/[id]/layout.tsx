@@ -1,13 +1,14 @@
 "use client";
 
 /**
- * In-project tab nav per docs/PROJECT_CONTEXT.md:
+ * In-project tab nav per docs/PROJECT_CONTEXT.md + BRD's UX/Screens table (§13):
  *   Overview / BOQ & Pricing / Proposal / Contract / Payments / Change Orders / Execution /
- *   Documents / Activity
- * Overview (S06), BOQ & Pricing (S07/S08), Proposal (S09/S10, Sprint 4), Contract (S12,
- * Sprint 5), Payments (S13, Sprint 6) and Change Orders (S14, Sprint 7) exist so far — the rest
- * render disabled (no href, not clickable), same treatment AppShell gives Suppliers/Reports/
- * Settings in the top-level nav.
+ *   Expenses / Snagging / Handover / Documents / Activity
+ * Execution (BRD S16/S17: tasks + site reports), Expenses (BRD S18 "Expenses/Suppliers: actual
+ * cost capture" — purchase orders + expenses live together here, matching that screen's own
+ * bundled title) and Snagging/Handover (BRD S19/S20) are now live. Only Activity (an audit-log
+ * viewer) remains disabled — no BRD screen defines its UI beyond the NFR-level "audit trail"
+ * requirement, so it's out of this pass's scope.
  */
 
 import Link from "next/link";
@@ -24,9 +25,24 @@ interface TabItem {
     | "payments"
     | "changeOrders"
     | "execution"
+    | "expenses"
+    | "snagging"
+    | "handover"
     | "documents"
     | "activity";
-  href: "" | "boq" | "proposal" | "contract" | "payments" | "change-orders" | null;
+  href:
+    | ""
+    | "boq"
+    | "proposal"
+    | "contract"
+    | "payments"
+    | "change-orders"
+    | "execution"
+    | "expenses"
+    | "snagging"
+    | "handover"
+    | "documents"
+    | null;
 }
 
 const TAB_ITEMS: TabItem[] = [
@@ -36,8 +52,11 @@ const TAB_ITEMS: TabItem[] = [
   { key: "contract", href: "contract" },
   { key: "payments", href: "payments" },
   { key: "changeOrders", href: "change-orders" },
-  { key: "execution", href: null },
-  { key: "documents", href: null },
+  { key: "execution", href: "execution" },
+  { key: "expenses", href: "expenses" },
+  { key: "snagging", href: "snagging" },
+  { key: "handover", href: "handover" },
+  { key: "documents", href: "documents" },
   { key: "activity", href: null },
 ];
 

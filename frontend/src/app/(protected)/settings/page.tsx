@@ -29,13 +29,17 @@ import {
   updateOrganizationMember,
   updateOrganizationProfile,
 } from "@/lib/api/resources/organization";
+import { listAuditLogs } from "@/lib/api/resources/auditLogs";
 import type {
+  AuditLogEntry,
   OrganizationMember,
   OrganizationProfile,
   OrganizationRoleSummary,
 } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { formatDateTime } from "@/lib/format/date";
+import type { TranslationKey } from "@/lib/i18n/dictionaries";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
@@ -57,6 +61,7 @@ export default function SettingsPage() {
         <>
           <OrganizationProfileSection organizationId={currentOrganizationId} />
           <MembersSection organizationId={currentOrganizationId} />
+          <AuditLogSection />
         </>
       ) : (
         <LoadingScreen label={t("common.loading")} />
@@ -454,6 +459,123 @@ function MembersSection({ organizationId }: { organizationId: string }) {
               </tbody>
             </table>
           </div>
+        )}
+      </CardBody>
+    </Card>
+  );
+}
+
+const AUDIT_ACTION_LABEL_KEY: Record<string, TranslationKey> = {
+  created: "settings.auditLog.action.created",
+  updated: "settings.auditLog.action.updated",
+  deleted: "settings.auditLog.action.deleted",
+};
+
+/** "ProposalVersion" -> "Proposal Version" — splits a PascalCase entity_type class basename
+ *  into readable words without needing a translation key per audited model. */
+function humanizeEntityType(entityType: string): string {
+  return entityType.replace(/([a-z])([A-Z])/g, "$1 $2");
+}
+
+function AuditLogSection() {
+  const { t, locale } = useLocale();
+  const [entries, setEntries] = useState<AuditLogEntry[]>([]);
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  function load(targetPage: number) {
+    setLoading(true);
+    setLoadError(null);
+    listAuditLogs({ page: targetPage })
+      .then((result) => {
+        setEntries(result.data);
+        setPage(result.meta.current_page);
+        setLastPage(result.meta.last_page);
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 403) {
+          setForbidden(true);
+        } else {
+          setLoadError(err instanceof ApiError ? err.message : t("settings.auditLog.loadFailed"));
+        }
+      })
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Same "hide on 403 rather than a client-side permissions flag" posture as
+  // OrganizationProfileSection — see this file's docblock.
+  if (forbidden) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{t("settings.auditLog.title")}</h2>
+      </CardHeader>
+      <CardBody className="flex flex-col gap-4">
+        {loadError ? (
+          <ErrorBanner message={loadError} onRetry={() => load(page)} retryLabel={t("common.retry")} />
+        ) : null}
+        {loading ? (
+          <LoadingScreen label={t("common.loading")} />
+        ) : entries.length === 0 ? (
+          <EmptyState message={t("settings.auditLog.empty")} />
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm rtl:text-right">
+                <thead className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                  <tr>
+                    <th className="whitespace-nowrap px-4 py-2 font-medium">{t("settings.auditLog.columns.time")}</th>
+                    <th className="whitespace-nowrap px-4 py-2 font-medium">{t("settings.auditLog.columns.actor")}</th>
+                    <th className="whitespace-nowrap px-4 py-2 font-medium">{t("settings.auditLog.columns.action")}</th>
+                    <th className="whitespace-nowrap px-4 py-2 font-medium">{t("settings.auditLog.columns.item")}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                  {entries.map((entry) => (
+                    <tr key={entry.id}>
+                      <td className="whitespace-nowrap px-4 py-2 text-zinc-500 dark:text-zinc-400">
+                        {formatDateTime(entry.created_at, locale)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2 text-zinc-900 dark:text-zinc-50">
+                        {entry.actor?.name ?? t("settings.auditLog.actor.system")}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2">
+                        <Badge tone={entry.action === "deleted" ? "red" : entry.action === "created" ? "green" : "blue"}>
+                          {AUDIT_ACTION_LABEL_KEY[entry.action] ? t(AUDIT_ACTION_LABEL_KEY[entry.action]) : entry.action}
+                        </Badge>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2 text-zinc-500 dark:text-zinc-400">
+                        {humanizeEntityType(entry.entity_type)} #{entry.entity_id}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between">
+              <Button variant="secondary" disabled={page <= 1} onClick={() => load(page - 1)}>
+                {t("settings.auditLog.pagination.previous")}
+              </Button>
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                {t("settings.auditLog.pagination.pageLabel")} {page} / {lastPage}
+              </span>
+              <Button variant="secondary" disabled={page >= lastPage} onClick={() => load(page + 1)}>
+                {t("settings.auditLog.pagination.next")}
+              </Button>
+            </div>
+          </>
         )}
       </CardBody>
     </Card>

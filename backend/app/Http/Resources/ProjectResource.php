@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Contract;
+use App\Services\Costs\ProjectCostCalculator;
 use App\Services\Payments\ProjectFinancialsCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -29,6 +31,8 @@ class ProjectResource extends JsonResource
     public function toArray(Request $request): array
     {
         $financials = app(ProjectFinancialsCalculator::class)->calculate($this->resource);
+        $contract = Contract::query()->where('project_id', $this->id)->latest('signed_at')->first();
+        $costs = app(ProjectCostCalculator::class)->calculate($this->resource, $contract);
 
         return [
             'id' => $this->id,
@@ -62,14 +66,26 @@ class ProjectResource extends JsonResource
                 // ProjectFinancialsCalculator::resolveOutstanding()'s docblock for why "no
                 // contract" reads as 0 rather than the priced `value`.
                 'outstanding' => $financials['outstanding'],
-                // actual_cost: sum of recorded expenses / actual BOQ execution cost.
-                // Populated starting Sprint 2/3 (BOQ & Pricing) and refined in Sprint 7
-                // (Change Orders).
-                'actual_cost' => 0,
-                // gross_profit: value - actual_cost. Null (not zero) until there is a value
-                // to subtract from, so the frontend can distinguish "no data yet" from
-                // "zero profit". Populated once Sprints 4-6 land.
-                'gross_profit' => null,
+                // quoted_cost/committed_cost/actual_cost/gross_profit/margin_percent: real
+                // Procurement (PurchaseOrder/PurchaseOrderItem) + Expenses data via
+                // ProjectCostCalculator (BRD §8) — see that class's docblock for exact
+                // definitions. gross_profit/margin_percent stay null until a contract exists
+                // (no recognized revenue basis yet), matching `outstanding`'s identical
+                // no-contract-yet convention above.
+                'quoted_cost' => $costs['quoted_cost'],
+                'committed_cost' => $costs['committed_cost'],
+                'actual_cost' => $costs['actual_cost'],
+                'gross_profit' => $costs['gross_profit'],
+                'margin_percent' => $costs['margin_percent'],
+            ],
+            // BRD v3 §12 "Reconciliation & Closeout" — see ProjectCloseoutService. Deliberately
+            // its own top-level block, not nested under `financials` above: this is the books'
+            // CLOSURE state, not a money figure.
+            'closeout' => [
+                'financial_status' => $this->financial_status,
+                'financial_closed_at' => $this->financial_closed_at,
+                'force_closed' => $this->force_closed,
+                'force_close_reason' => $this->force_close_reason,
             ],
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,

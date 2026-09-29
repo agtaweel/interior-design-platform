@@ -21,16 +21,27 @@ function toNumber(amount: number | string | null | undefined): number {
 }
 
 /**
- * Formats a monetary amount as EGP, e.g. `formatEGP(12500)` -> "EGP 12,500.00" (en) or the
+ * Formats a monetary amount, e.g. `formatEGP(12500)` -> "EGP 12,500.00" (en) or the
  * Arabic-numeral/RTL equivalent for `ar`.
+ *
+ * Platform Readiness Review finding #06: `currency` used to be hardcoded to "EGP" here
+ * regardless of which organization the amount actually belonged to. It's now a parameter —
+ * "EGP" remains the default so every existing call site that doesn't pass one keeps working
+ * unchanged, but callers that have the organization's real currency on hand (via
+ * `useAuth().currentOrganizationCurrency`, or a public payload's own `organization.currency`)
+ * should pass it through. The function is still named formatEGP rather than a currency-neutral
+ * name to avoid a mechanical rename across every existing import in the app for what is, in
+ * effect, an additive parameter — worth revisiting in a dedicated pass if this app becomes
+ * currency-neutral in more than name.
  */
 export function formatEGP(
   amount: number | string | null | undefined,
   locale: Locale = "en",
+  currency: string = "EGP",
 ): string {
   return new Intl.NumberFormat(INTL_LOCALE[locale], {
     style: "currency",
-    currency: "EGP",
+    currency,
     currencyDisplay: "code",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -41,7 +52,8 @@ export function formatEGP(
 export function formatEGPOrDash(
   amount: number | string | null | undefined,
   locale: Locale = "en",
+  currency: string = "EGP",
 ): string {
   if (amount === null || amount === undefined) return "—";
-  return formatEGP(amount, locale);
+  return formatEGP(amount, locale, currency);
 }

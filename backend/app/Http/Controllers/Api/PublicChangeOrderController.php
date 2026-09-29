@@ -12,6 +12,7 @@ use App\Models\IdempotencyKey;
 use App\Models\OtpChallenge;
 use App\Models\SignedLink;
 use App\Services\ChangeOrders\ChangeOrderSendService;
+use App\Services\Notifications\ClientPortalEventMailer;
 use App\Services\Notifications\NotificationService;
 use App\Services\Proposals\OtpChallengeService;
 use App\Services\Proposals\OtpVerificationException;
@@ -46,6 +47,7 @@ class PublicChangeOrderController extends Controller
         private readonly SignedLinkService $signedLinkService,
         private readonly OtpChallengeService $otpService,
         private readonly NotificationService $notificationService,
+        private readonly ClientPortalEventMailer $clientMailer,
     ) {}
 
     private const PURPOSE = ChangeOrderSendService::PURPOSE;
@@ -59,7 +61,7 @@ class PublicChangeOrderController extends Controller
         }
 
         return response()->json([
-            'data' => new PublicChangeOrderResource($changeOrder->loadMissing('items')),
+            'data' => new PublicChangeOrderResource($changeOrder->loadMissing(['items', 'project.organization'])),
         ]);
     }
 
@@ -153,6 +155,7 @@ class PublicChangeOrderController extends Controller
             ];
         });
 
+        $this->clientMailer->changeOrderDecided($changeOrder, 'approved');
         $this->signedLinkService->markUsed($token);
 
         // Only a genuinely NEW successful request stores an idempotency record — a replay never
@@ -214,6 +217,8 @@ class PublicChangeOrderController extends Controller
                 'summary' => sprintf('Change Order %s for %s was rejected by the client.', $changeOrder->number, $changeOrder->project->name),
             ]);
         });
+
+        $this->clientMailer->changeOrderDecided($changeOrder, 'rejected');
 
         return response()->json([
             'data' => [

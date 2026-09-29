@@ -1,4 +1,4 @@
-import { apiGet, apiGetResource, apiPatchResource, apiPostResource } from "@/lib/api/client";
+import { apiGet, apiGetResource, apiPatchResource, apiPost, apiPostResource } from "@/lib/api/client";
 import type { Paginated, Project, ProjectFormInput, ProjectStatus } from "@/lib/api/types";
 
 /** GET /projects is a paginated list endpoint — the envelope itself is {data, links, meta}. */
@@ -20,4 +20,18 @@ export function createProject(input: ProjectFormInput) {
 
 export function updateProject(id: string | number, input: Partial<ProjectFormInput>) {
   return apiPatchResource<Project>(`/projects/${id}`, input);
+}
+
+/**
+ * BRD v3 §17 "Client Portal" — issues the long-lived, multi-use signed link a client can
+ * bookmark. See ClientPortalLinkController on the backend; the returned token must be combined
+ * client-side with `/p/client-portal/{token}` (the backend has no concept of the frontend's own
+ * base URL to build a full link with).
+ */
+export function issueClientPortalLink(projectId: string | number) {
+  return apiPostResource<{ token: string }>(`/projects/${projectId}/client-portal-link`, {});
+}
+
+export function revokeClientPortalLink(projectId: string | number, token: string) {
+  return apiPost<void>(`/projects/${projectId}/client-portal-link/revoke`, { token });
 }

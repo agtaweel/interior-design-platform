@@ -50,7 +50,8 @@ import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
-import { formatEGP, formatEGPOrDash, type Locale } from "@/lib/format/currency";
+import { type Locale } from "@/lib/format/currency";
+import { useMoneyFormatter } from "@/lib/format/useMoneyFormatter";
 import { formatDate, formatDateTime } from "@/lib/format/date";
 
 type T = (key: TranslationKey) => string;
@@ -203,17 +204,19 @@ function SummaryCard({
   t: T;
   locale: Locale;
 }) {
+  const { formatMoney, formatMoneyOrDash } = useMoneyFormatter();
+
   return (
     <Card>
       <CardBody className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-        <Field label={t("payments.summary.contractValue")} value={formatEGP(contract.contract_value, locale)} />
+        <Field label={t("payments.summary.contractValue")} value={formatMoney(contract.contract_value)} />
         <Field
           label={t("payments.summary.collected")}
-          value={formatEGPOrDash(financials?.collected ?? null, locale)}
+          value={formatMoneyOrDash(financials?.collected ?? null)}
         />
         <Field
           label={t("payments.summary.outstanding")}
-          value={formatEGPOrDash(financials?.outstanding ?? null, locale)}
+          value={formatMoneyOrDash(financials?.outstanding ?? null)}
         />
         <Field label={t("payments.summary.status")} value={contractStatusLabel(contract.status, t)} />
       </CardBody>
@@ -242,6 +245,7 @@ function ReceivablesSection({
   t,
   locale,
 }: ReceivablesSectionProps) {
+  const { formatMoney } = useMoneyFormatter();
   const [filter, setFilter] = useState<FilterKey>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showAddSchedule, setShowAddSchedule] = useState(false);
@@ -327,7 +331,7 @@ function ReceivablesSection({
                           {formatDate(schedule.due_date, locale)}
                         </td>
                         <td className="px-3 py-2 text-right align-top text-zinc-900 dark:text-zinc-100">
-                          {formatEGP(schedule.amount, locale)}
+                          {formatMoney(schedule.amount)}
                         </td>
                         <td className="px-3 py-2 align-top">
                           <Badge tone={status.tone}>{status.label}</Badge>
@@ -572,6 +576,7 @@ function ScheduleDetail({
   t,
   locale,
 }: ScheduleDetailProps) {
+  const { formatMoney } = useMoneyFormatter();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -621,10 +626,10 @@ function ScheduleDetail({
       {!schedule.is_paid ? (
         <div className="flex flex-wrap items-center gap-4 text-sm">
           <span className="text-zinc-600 dark:text-zinc-300">
-            {t("payments.detail.paidSoFar")}: <strong className="text-zinc-900 dark:text-zinc-100">{formatEGP(paidSoFar, locale)}</strong>
+            {t("payments.detail.paidSoFar")}: <strong className="text-zinc-900 dark:text-zinc-100">{formatMoney(paidSoFar)}</strong>
           </span>
           <span className="text-zinc-600 dark:text-zinc-300">
-            {t("payments.detail.remaining")}: <strong className="text-amber-600 dark:text-amber-400">{formatEGP(remaining, locale)}</strong>
+            {t("payments.detail.remaining")}: <strong className="text-amber-600 dark:text-amber-400">{formatMoney(remaining)}</strong>
           </span>
         </div>
       ) : (
@@ -675,6 +680,7 @@ function ScheduleDetail({
 }
 
 function PaymentRow({ payment, t, locale }: { payment: Payment; t: T; locale: Locale }) {
+  const { formatMoney } = useMoneyFormatter();
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -696,7 +702,7 @@ function PaymentRow({ payment, t, locale }: { payment: Payment; t: T; locale: Lo
         {formatDateTime(payment.paid_at, locale)}
       </td>
       <td className="whitespace-nowrap px-2 py-2 text-right align-top font-medium text-zinc-900 dark:text-zinc-100">
-        {formatEGP(payment.amount, locale)}
+        {formatMoney(payment.amount)}
       </td>
       <td className="px-2 py-2 align-top text-zinc-600 dark:text-zinc-300">
         {t(`payments.method.${payment.payment_method}` as TranslationKey) || payment.payment_method}

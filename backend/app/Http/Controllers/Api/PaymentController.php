@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ReversePaymentRequest;
 use App\Http\Requests\StorePaymentRequest;
 use App\Http\Resources\PaymentResource;
+use App\Models\FinancialTransaction;
 use App\Models\IdempotencyKey;
 use App\Models\Payment;
 use App\Models\PaymentSchedule;
 use App\Models\Project;
+use App\Services\Finance\FinancialLedgerService;
 use App\Services\Notifications\NotificationService;
 use App\Services\Payments\PaymentRecordingService;
 use App\Support\Authorization\Permissions;
@@ -45,6 +48,7 @@ class PaymentController extends Controller
     public function __construct(
         private readonly PaymentRecordingService $recordingService,
         private readonly NotificationService $notificationService,
+        private readonly FinancialLedgerService $ledger,
     ) {}
 
     /**
@@ -169,6 +173,42 @@ class PaymentController extends Controller
     }
 
     /**
+     * POST /payments/{payment}/reverse (BRD v3 §4). Reverses the payment's posted
+     * client_payment ledger row (see FinancialLedgerService::reverse() for the flip-status +
+     * mirror-row mechanics) — the Payment row itself and its receipt are left untouched, this
+     * only affects the ledger's view of what's been paid, so `outstanding` goes back up by this
+     * amount. 404 if the payment doesn't exist/belongs to another tenant (same org-scoped
+     * Payment::find() as every other method here); 409 if it has no posted client_payment
+     * transaction to reverse (already reversed, or — a data-integrity edge case — never posted
+     * in the first place).
+     */
+    public function reverse(ReversePaymentRequest $request, string $payment): JsonResponse
+    {
+        $paymentModel = Payment::query()->find($payment);
+
+        if (! $paymentModel) {
+            return $this->notFound();
+        }
+
+        $transaction = FinancialTransaction::query()
+            ->where('source_entity_type', Payment::class)
+            ->where('source_entity_id', $paymentModel->id)
+            ->where('type', FinancialTransaction::TYPE_CLIENT_PAYMENT)
+            ->where('status', FinancialTransaction::STATUS_POSTED)
+            ->first();
+
+        if (! $transaction) {
+            return $this->error(409, 'payment_not_reversible', 'This payment has no posted ledger entry to reverse.');
+        }
+
+        $this->ledger->reverse($transaction, $request->user()->id, $request->validated('reason'));
+
+        return response()->json([
+            'data' => (new PaymentResource($paymentModel->fresh()))->toArray($request),
+        ]);
+    }
+
+    /**
      * Fetches a PaymentSchedule by id (un-scoped, since the model has no organization_id of
      * its own at all — three-hop indirect, see class docblock) and confirms it belongs to the
      * current tenant by re-resolving its contract's project through the
@@ -200,5 +240,16 @@ class PaymentController extends Controller
                 'details' => (object) [],
             ],
         ], 404);
+    }
+
+    private function error(int $status, string $code, string $message): JsonResponse
+    {
+        return response()->json([
+            'error' => [
+                'code' => $code,
+                'message' => $message,
+                'details' => (object) [],
+            ],
+        ], $status);
     }
 }

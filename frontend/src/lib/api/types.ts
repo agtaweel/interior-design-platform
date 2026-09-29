@@ -18,6 +18,8 @@ export interface UserPayload {
   email: string;
   phone: string | null;
   status: string;
+  /** BRD v3 §5/§20 "Platform Owner" — routes this user to /platform's cross-tenant dashboard. */
+  is_platform_owner: boolean;
 }
 
 /** Minimal user payload embedded in Project/ProjectMember resources. */
@@ -31,6 +33,8 @@ export interface OrganizationMembershipSummary {
   organization: {
     id: number | string;
     name: string;
+    /** Platform Readiness Review finding #06 — the org's actual currency, e.g. "EGP"/"USD". */
+    currency: string;
   };
   role: {
     id: number | string;
@@ -149,10 +153,17 @@ export interface ProjectFinancials {
   collected: number;
   /** value - collected. 0 until Sprint 6. */
   outstanding: number;
-  /** Sum of recorded expenses / actual BOQ execution cost. 0 until Sprint 2/3/7. */
-  actual_cost: number;
-  /** value - actual_cost. null (not 0) until there is a value to subtract from. */
-  gross_profit: number | null;
+  /** Sum of every non-cancelled PO line's quoted total (BRD §8/§9 — ProjectCostCalculator). */
+  quoted_cost: number | string;
+  /** Same, restricted to POs actually sent to a supplier (not still draft). */
+  committed_cost: number | string;
+  /** Supplier purchases actually received + recorded Expenses. Real data since Procurement/
+   *  Expenses were built (BRD) — previously a hardcoded 0 placeholder. */
+  actual_cost: number | string;
+  /** contract_value - actual_cost. null (not 0) until a contract exists — no revenue basis yet. */
+  gross_profit: number | string | null;
+  /** gross_profit / contract_value * 100. null when gross_profit is null or contract_value is 0. */
+  margin_percent: number | string | null;
 }
 
 export interface ProjectMember {
@@ -788,6 +799,25 @@ export interface Paginated<T> {
 }
 
 // ---------------------------------------------------------------------------
+// Audit Log (AuditLogController — Platform Readiness Review finding #05 "Audit log viewer").
+// Mirrors AuditLogResource exactly. `before`/`after` are the raw changed-field snapshots
+// App\Models\Concerns\Auditable records — already scrubbed of password/hidden fields
+// server-side, shown verbatim here since this is a MANAGE_ORGANIZATION-gated admin surface.
+// ---------------------------------------------------------------------------
+
+export interface AuditLogEntry {
+  id: number | string;
+  actor: { id: number | string; name: string } | null;
+  entity_type: string;
+  entity_id: number | string;
+  action: string;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+  ip_address: string | null;
+  created_at: ISODateString;
+}
+
+// ---------------------------------------------------------------------------
 // Reports (ReportController — PROJECT_CONTEXT.md Sprint 8 "Reports" / S21). Both endpoints
 // require Permissions::VIEW_FINANCIALS. `estimated_margin` is derived from BOQ pricing
 // (grand_total - direct_cost_total), never real expenses — label it "estimated" everywhere in
@@ -891,4 +921,290 @@ export interface OrganizationMember {
   user: UserSummary;
   role: OrganizationRoleSummary | null;
   status: string;
+}
+
+// ---------------------------------------------------------------------------
+// Project attachments / Documents tab (ProjectMediaController, backed by Spatie Media
+// Library). Three fixed collections — must match backend Project::MEDIA_COLLECTIONS exactly.
+// No raw disk path is ever exposed; the file itself is only reachable via the dedicated
+// GET /media/{id}/file route (see resources/media.ts), same discipline as Payment's
+// has_receipt/downloadPaymentReceipt().
+// ---------------------------------------------------------------------------
+
+export type ProjectMediaCollection = "designs" | "process" | "final_pictures";
+
+export interface ProjectMedia {
+  id: number | string;
+  collection: ProjectMediaCollection;
+  file_name: string;
+  mime_type: string;
+  size: number;
+  caption: string | null;
+  uploaded_by: string | null;
+  created_at: ISODateString;
+  /** Only present on GET /media (the org-wide gallery) — see GalleryMedia below. */
+  project?: { id: number | string; name: string; code: string };
+}
+
+/** GET /media — the org-wide "Media" gallery across every project, not just one project's
+ *  Documents tab. Same shape as ProjectMedia but `project` is always populated (never
+ *  `undefined`) since the gallery is precisely the view where "which project is this from"
+ *  matters. */
+export interface GalleryMedia extends ProjectMedia {
+  project: { id: number | string; name: string; code: string };
+}
+
+// ---------------------------------------------------------------------------
+// Leads / CRM (LeadController — BRD "CRM/Leads"). `status` never includes "converted" as a
+// value the frontend sets directly — that transition only ever happens through
+// POST /leads/{id}/convert (see resources/leads.ts's convertLead()), which is also the only
+// path that populates converted_client_id/converted_project_id/converted_at.
+// ---------------------------------------------------------------------------
+
+export type LeadStatus = "new" | "contacted" | "qualified" | "converted" | "lost";
+
+export interface Lead {
+  id: number | string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  source: string | null;
+  status: LeadStatus;
+  estimated_budget: number | string | null;
+  notes: string | null;
+  owner: { id: number | string; name: string } | null;
+  converted_client_id: number | string | null;
+  converted_project_id: number | string | null;
+  converted_at: ISODateString | null;
+  created_at: ISODateString;
+  updated_at: ISODateString;
+}
+
+export interface LeadFormInput {
+  name: string;
+  phone?: string;
+  email?: string;
+  source?: string;
+  estimated_budget?: number | string;
+  notes?: string;
+}
+
+/** POST /leads/{id}/convert response — always has `client`; `project` is null unless
+ *  `create_project: true` was sent. */
+export interface LeadConversionResult {
+  lead: Lead;
+  client: Client;
+  project: ProjectSummary | null;
+}
+
+// ---------------------------------------------------------------------------
+// Procurement & Supplier Intelligence (SupplierController/PurchaseOrderController — BRD
+// "Procurement"). PO lifecycle: draft -> sent -> partially_received -> received -> cancelled.
+// ---------------------------------------------------------------------------
+
+export interface Supplier {
+  id: number | string;
+  name: string;
+  category: string | null;
+  contact_name: string | null;
+  phone: string | null;
+  email: string | null;
+  payment_terms: string | null;
+  notes: string | null;
+  created_at: ISODateString;
+  updated_at: ISODateString;
+}
+
+export interface SupplierFormInput {
+  name: string;
+  category?: string;
+  contact_name?: string;
+  phone?: string;
+  email?: string;
+  payment_terms?: string;
+  notes?: string;
+}
+
+export interface SupplierPriceHistoryEntry {
+  id: number | string;
+  item_description: string;
+  unit: string;
+  unit_price: number | string;
+  source: "quoted" | "actual";
+  recorded_at: ISODateString;
+}
+
+export type PurchaseOrderStatus = "draft" | "sent" | "partially_received" | "received" | "cancelled";
+
+export interface PurchaseOrderItem {
+  id: number | string;
+  description: string;
+  unit: string;
+  quantity: number | string;
+  quoted_unit_price: number | string;
+  quoted_total: number | string;
+  received_quantity: number | string;
+  actual_unit_price: number | string | null;
+  actual_total: number | string | null;
+}
+
+export interface PurchaseOrder {
+  id: number | string;
+  project_id: number | string;
+  supplier: Supplier;
+  po_number: string;
+  status: PurchaseOrderStatus;
+  notes: string | null;
+  sent_at: ISODateString | null;
+  items: PurchaseOrderItem[];
+  created_at: ISODateString;
+  updated_at: ISODateString;
+}
+
+export interface PurchaseOrderItemInput {
+  description: string;
+  unit: string;
+  quantity: number | string;
+  quoted_unit_price: number | string;
+}
+
+export interface PurchaseOrderFormInput {
+  supplier_id: number | string;
+  po_number?: string;
+  notes?: string;
+  items: PurchaseOrderItemInput[];
+}
+
+export interface ReceivePurchaseOrderLine {
+  id: number | string;
+  received_quantity: number | string;
+  actual_unit_price: number | string;
+}
+
+// ---------------------------------------------------------------------------
+// Expenses (ExpenseController — BRD "Expenses: project expenses, receipts, supplier linkage").
+// ---------------------------------------------------------------------------
+
+export interface Expense {
+  id: number | string;
+  project_id: number | string;
+  supplier: { id: number | string; name: string } | null;
+  category: string;
+  description: string;
+  amount: number | string;
+  expense_date: string;
+  has_receipt: boolean;
+  notes: string | null;
+  created_at: ISODateString;
+}
+
+export interface ExpenseFormInput {
+  supplier_id?: number | string;
+  category: string;
+  description: string;
+  amount: number | string;
+  expense_date: string;
+  notes?: string;
+  receipt?: File | null;
+}
+
+// ---------------------------------------------------------------------------
+// Execution: Tasks + Site Reports (TaskController/SiteReportController — BRD S16/S17).
+// ---------------------------------------------------------------------------
+
+export type TaskStatus = "todo" | "in_progress" | "done";
+
+export interface ExecutionPhoto {
+  id: number | string;
+  file_name: string;
+  mime_type: string;
+}
+
+export interface ProjectTask {
+  id: number | string;
+  project_id: number | string;
+  title: string;
+  description: string | null;
+  assignee: { id: number | string; name: string } | null;
+  status: TaskStatus;
+  due_date: string | null;
+  sort_order: number;
+  photos: ExecutionPhoto[];
+  created_at: ISODateString;
+}
+
+export interface TaskFormInput {
+  title: string;
+  description?: string;
+  assignee_user_id?: number | string;
+  status?: TaskStatus;
+  due_date?: string;
+  photos?: File[];
+}
+
+export interface SiteReport {
+  id: number | string;
+  project_id: number | string;
+  reported_by: { id: number | string; name: string };
+  report_date: string;
+  work_done: string;
+  issues: string | null;
+  decisions: string | null;
+  photos: ExecutionPhoto[];
+  created_at: ISODateString;
+}
+
+export interface SiteReportFormInput {
+  report_date: string;
+  work_done: string;
+  issues?: string;
+  decisions?: string;
+  photos?: File[];
+}
+
+// ---------------------------------------------------------------------------
+// Snagging + Handover (SnagController/HandoverController — BRD S19/S20).
+// ---------------------------------------------------------------------------
+
+export type SnagPriority = "low" | "medium" | "high" | "critical";
+export type SnagStatus = "open" | "closed";
+
+export interface Snag {
+  id: number | string;
+  project_id: number | string;
+  description: string;
+  priority: SnagPriority;
+  owner: { id: number | string; name: string } | null;
+  due_date: string | null;
+  status: SnagStatus;
+  is_mandatory: boolean;
+  resolution_notes: string | null;
+  closed_at: ISODateString | null;
+  created_at: ISODateString;
+}
+
+export interface SnagFormInput {
+  description: string;
+  priority?: SnagPriority;
+  owner_user_id?: number | string;
+  due_date?: string;
+  is_mandatory?: boolean;
+}
+
+export interface Handover {
+  id: number | string;
+  project_id: number | string;
+  approved_by: { id: number | string; name: string };
+  handover_date: string;
+  warranty_period_months: number | null;
+  warranty_notes: string | null;
+  notes: string | null;
+  created_at: ISODateString;
+}
+
+export interface HandoverFormInput {
+  handover_date: string;
+  warranty_period_months?: number;
+  warranty_notes?: string;
+  notes?: string;
 }

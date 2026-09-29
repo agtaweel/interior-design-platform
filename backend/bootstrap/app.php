@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\TenantMismatchException;
+use App\Http\Middleware\EnsurePlatformOwner;
 use App\Http\Middleware\ResolveTenantContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -26,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'tenant' => ResolveTenantContext::class,
+            'platform.owner' => EnsurePlatformOwner::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

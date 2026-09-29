@@ -41,7 +41,8 @@ import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
-import { formatEGP, type Locale } from "@/lib/format/currency";
+import { type Locale } from "@/lib/format/currency";
+import { useMoneyFormatter } from "@/lib/format/useMoneyFormatter";
 import { formatDateTime } from "@/lib/format/date";
 
 type T = (key: TranslationKey) => string;
@@ -264,6 +265,8 @@ function VersionHistoryList({
   t: T;
   locale: Locale;
 }) {
+  const { formatMoney } = useMoneyFormatter();
+
   return (
     <Card className="h-fit">
       <CardHeader>
@@ -290,7 +293,7 @@ function VersionHistoryList({
                 <Badge tone={STATUS_TONE[v.status]}>{t(`proposal.status.${v.status}`)}</Badge>
               </div>
               <span className={`text-xs ${active ? "text-white/80 dark:text-zinc-900/70" : "text-zinc-400"}`}>
-                {t("proposal.list.grandTotal")}: {formatEGP(v.grand_total, locale)}
+                {t("proposal.list.grandTotal")}: {formatMoney(v.grand_total)}
               </span>
               <span className={`text-xs ${active ? "text-white/70 dark:text-zinc-900/60" : "text-zinc-400"}`}>
                 {v.sent_at ? formatDateTime(v.sent_at, locale) : t("proposal.detail.notSentYet")}
@@ -328,6 +331,7 @@ function ProposalVersionPanel({
   t,
   locale,
 }: ProposalVersionPanelProps) {
+  const { formatMoney } = useMoneyFormatter();
   const isDraft = detail.status === "draft";
 
   const savedContent = normalizeContent(detail.content_json);
@@ -407,7 +411,7 @@ function ProposalVersionPanel({
             label={t("proposal.detail.approvedAt")}
             value={detail.approved_at ? formatDateTime(detail.approved_at, locale) : t("proposal.detail.notApprovedYet")}
           />
-          <Field label={t("proposal.preview.totals.grandTotal")} value={formatEGP(detail.grand_total, locale)} />
+          <Field label={t("proposal.preview.totals.grandTotal")} value={formatMoney(detail.grand_total)} />
         </CardBody>
       </Card>
 
@@ -530,6 +534,8 @@ function CopyField({ label, value, t }: { label: string; value: string; t: T }) 
 /** Client-shaped preview: BOQ line items + totals only — no cost/margin fields, matching what
  *  the public portal (S11) will eventually show. See file docblock. */
 function ProposalPreview({ detail, t, locale }: { detail: ProposalVersion; t: T; locale: Locale }) {
+  const { formatMoney } = useMoneyFormatter();
+
   return (
     <Card>
       <CardHeader>
@@ -557,10 +563,10 @@ function ProposalPreview({ detail, t, locale }: { detail: ProposalVersion; t: T;
                   <td className="px-3 py-2 text-right align-top text-zinc-600 dark:text-zinc-300">{item.quantity}</td>
                   <td className="px-3 py-2 align-top text-zinc-600 dark:text-zinc-300">{item.unit}</td>
                   <td className="px-3 py-2 text-right align-top text-zinc-600 dark:text-zinc-300">
-                    {formatEGP(item.unit_price, locale)}
+                    {formatMoney(item.unit_price)}
                   </td>
                   <td className="px-3 py-2 text-right align-top font-medium text-zinc-900 dark:text-zinc-100">
-                    {formatEGP(item.line_total, locale)}
+                    {formatMoney(item.line_total)}
                   </td>
                 </tr>
               ))}
@@ -571,26 +577,26 @@ function ProposalPreview({ detail, t, locale }: { detail: ProposalVersion; t: T;
       <CardBody className="flex flex-col gap-1 border-t border-zinc-200 text-sm dark:border-zinc-800">
         <div className="flex items-baseline justify-between">
           <span className="text-zinc-600 dark:text-zinc-300">{t("proposal.preview.totals.subtotal")}</span>
-          <span>{formatEGP(detail.subtotal, locale)}</span>
+          <span>{formatMoney(detail.subtotal)}</span>
         </div>
         <div className="flex items-baseline justify-between">
           <span className="text-zinc-600 dark:text-zinc-300">{t("proposal.preview.totals.markupTotal")}</span>
-          <span>{formatEGP(detail.markup_total, locale)}</span>
+          <span>{formatMoney(detail.markup_total)}</span>
         </div>
         <div className="flex items-baseline justify-between">
           <span className="text-zinc-600 dark:text-zinc-300">{t("proposal.preview.totals.feesTotal")}</span>
-          <span>{formatEGP(detail.fees_total, locale)}</span>
+          <span>{formatMoney(detail.fees_total)}</span>
         </div>
         <div className="flex items-baseline justify-between">
           <span className="text-zinc-600 dark:text-zinc-300">{t("proposal.preview.totals.discountTotal")}</span>
-          <span>− {formatEGP(detail.discount_total, locale)}</span>
+          <span>− {formatMoney(detail.discount_total)}</span>
         </div>
         <div className="mt-1 flex items-baseline justify-between border-t border-zinc-200 pt-2 dark:border-zinc-800">
           <span className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
             {t("proposal.preview.totals.grandTotal")}
           </span>
           <span className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-            {formatEGP(detail.grand_total, locale)}
+            {formatMoney(detail.grand_total)}
           </span>
         </div>
       </CardBody>

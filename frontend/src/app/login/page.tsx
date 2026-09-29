@@ -13,6 +13,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ApiError } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
@@ -91,9 +92,23 @@ export default function LoginPage() {
           <Button type="submit" disabled={submitting} className="mt-2 w-full">
             {submitting ? t("login.submitting") : t("login.submit")}
           </Button>
+
+          <Link
+            href="/forgot-password"
+            className="text-center text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          >
+            {t("login.forgotPassword")}
+          </Link>
         </form>
 
-        <p className="mt-6 text-xs text-zinc-400">{t("login.invitationNote")}</p>
+        <p className="mt-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
+          {t("login.signupPrompt")}{" "}
+          <Link href="/signup" className="font-medium text-zinc-900 hover:underline dark:text-zinc-100">
+            {t("login.signupLink")}
+          </Link>
+        </p>
+
+        <p className="mt-4 text-xs text-zinc-400">{t("login.invitationNote")}</p>
       </div>
     </div>
   );

@@ -2,10 +2,12 @@
 
 namespace App\Services\Proposals;
 
+use App\Mail\OtpCodeMail;
 use App\Models\ProposalVersion;
 use App\Models\SignedLink;
 use App\Support\PublicLinks\SignedLinkService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * POST /proposals/{id}/send (PROJECT_CONTEXT.md Sprint 4). Only ever called by
@@ -42,7 +44,7 @@ class ProposalSendService
      */
     public function send(ProposalVersion $version): array
     {
-        return DB::transaction(function () use ($version) {
+        $result = DB::transaction(function () use ($version) {
             $sentAt = now();
 
             // Set status/sent_at on the in-memory model BEFORE building the payload (not
@@ -71,12 +73,53 @@ class ProposalSendService
 
             $otp = $this->otpService->issue($link);
 
+            $publicUrl = sprintf('%s/p/proposals/%s', config('app.frontend_url'), $token);
+
             return [
                 'version' => $version->fresh(['items']),
                 'token' => $token,
                 'otp_code' => $otp['code'],
-                'public_url' => sprintf('%s/p/proposals/%s', config('app.frontend_url'), $token),
+                'public_url' => $publicUrl,
             ];
         });
+
+        // Fired after the transaction commits, not inside it — same "a notification is not
+        // itself a commercial mutation that needs to share the parent action's atomicity" reasoning
+        // ContractController::fromProposal() already established for its own post-commit
+        // notification call.
+        $this->deliverOtpByEmail($result['version'], $result['otp_code'], $result['public_url']);
+
+        return $result;
+    }
+
+    /**
+     * Platform Readiness Review finding #03: automates what staff previously had to do by hand
+     * (copy the OTP + link out of this method's return value and relay both to the client over
+     * WhatsApp/phone). Best-effort and additive — a missing client email, or the mail transport
+     * being unavailable, must never fail send() itself; staff can always fall back to the manual
+     * relay this always supported (the return value above is unchanged).
+     */
+    private function deliverOtpByEmail(ProposalVersion $version, string $code, string $publicUrl): void
+    {
+        $version->loadMissing(['project.client', 'project.organization']);
+        $client = $version->project->client;
+
+        if (! $client || ! $client->email) {
+            return;
+        }
+
+        try {
+            Mail::to($client->email)->send(new OtpCodeMail(
+                recipientName: $client->name,
+                code: $code,
+                documentLabel: 'proposal',
+                projectName: $version->project->name,
+                organizationName: $version->project->organization->name,
+                publicUrl: $publicUrl,
+                expiryHours: OtpChallengeService::EXPIRY_HOURS,
+            ));
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 }

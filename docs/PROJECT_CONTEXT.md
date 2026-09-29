@@ -139,19 +139,29 @@ Documents.
 
 ## Local dev environment (already running)
 
-- `docker-compose.yml` at repo root defines three services: `postgres` (5440→5432, db
-  `interior_design_platform`, user `admin`/`password`), `redis` (6390→6379), and `app` (the
+- `docker-compose.yml` at repo root defines four services: `postgres` (5440→5432, db
+  `interior_design_platform`, user `admin`/`password`), `redis` (6390→6379), `app` (the
   Laravel backend, built from `backend/Dockerfile`, port 8000, auto-runs
-  `composer install && php artisan migrate --force && php artisan serve`).
+  `composer install && php artisan migrate --force && php artisan serve`), and `frontend` (the
+  Next.js app, built from `frontend/Dockerfile`, port 3000, auto-runs `npm install && npm run
+  dev`).
 - The `app` container mounts `./backend` live, so editing files on the host is immediately
-  reflected — no rebuild needed unless `Dockerfile` itself or system deps change.
+  reflected — no rebuild needed unless `Dockerfile` itself or system deps change. Likewise
+  `frontend` mounts `./frontend` live (with `node_modules` kept in a separate named volume,
+  `idp-frontend-node-modules`, so the container's own install doesn't fight the host's).
 - Inside the Docker network, `backend/.env` points `DB_HOST=postgres` `DB_PORT=5432` and
   `REDIS_HOST=redis` `REDIS_PORT=6379` (container-to-container, not the host-mapped ports).
 - To run artisan commands (migrations, tests, tinker): `docker compose exec app php artisan ...`
   or `docker compose exec app php artisan test`.
 - From the host (e.g. `psql` for manual inspection), use `127.0.0.1:5440`.
-- Frontend (`frontend/`) is a plain Next.js app, not yet dockerized — run with `npm run dev`
-  inside `frontend/` (port 3000 by default).
+- Frontend (`frontend/`) runs as the `frontend` service in `docker-compose.yml`
+  (`docker compose up -d frontend`), reachable at `http://localhost:3000`. Its
+  `NEXT_PUBLIC_API_BASE_URL` is set to `http://localhost:8000/api/v1` — the host-mapped backend
+  port, not an internal Docker service name — because `NEXT_PUBLIC_*` vars are consumed by
+  browser-side code (the API client stores its token in `localStorage`), so they must resolve to
+  a URL the user's actual browser can reach, not just other containers on the Docker network.
+  Can still be run outside Docker with plain `npm run dev` inside `frontend/` if preferred; just
+  stop the container first to avoid a port 3000 conflict.
 - **Known gotcha, confirmed real (not a misdiagnosis) on 2026-09-22**: editor-style atomic-save
   writes to `backend/` files (the kind Write/Edit tools make — write-to-temp-then-rename) do NOT
   reliably propagate into the `idp-app` container's view of the bind mount, even though the host

@@ -20,6 +20,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * ChangeOrderSendService's docblock for why), so the live model + its `items` relation (must be
  * eager-loaded by the controller) is the single source of truth for both the internal and
  * public views.
+ *
+ * `organization.currency` (Platform Readiness Review finding #06): the frontend money formatter
+ * used to hardcode "EGP" on this page since it had no currency of its own to read — see
+ * PublicChangeOrderController::show(), which now eager-loads `project.organization` so this
+ * resource can surface it, mirroring PublicProposalResource's own organization block.
  */
 class PublicChangeOrderResource extends JsonResource
 {
@@ -41,6 +46,9 @@ class PublicChangeOrderResource extends JsonResource
             ])->values()->all(),
             'sent_at' => $this->sent_at,
             'approved_at' => $this->approved_at,
+            'organization' => $this->relationLoaded('project') && $this->project->relationLoaded('organization')
+                ? ['currency' => $this->project->organization->currency]
+                : null,
         ];
     }
 }

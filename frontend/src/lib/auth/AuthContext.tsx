@@ -20,7 +20,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { fetchMe, login as loginRequest, logout as logoutRequest } from "@/lib/api/resources/auth";
+import {
+  fetchMe,
+  login as loginRequest,
+  logout as logoutRequest,
+  register as registerRequest,
+} from "@/lib/api/resources/auth";
 import {
   clearAuthStorage,
   getStoredOrganizationId,
@@ -36,7 +41,22 @@ interface AuthContextValue {
   user: UserPayload | null;
   organizations: OrganizationMembershipSummary[];
   currentOrganizationId: string | null;
+  /**
+   * Platform Readiness Review finding #06. Derived from `organizations`, never fetched
+   * separately — falls back to "EGP" only when no organization is known yet (e.g. mid-load),
+   * matching the money formatter's own pre-existing default so nothing regresses for a user
+   * with no organizations at all.
+   */
+  currentOrganizationCurrency: string;
   login: (email: string, password: string) => Promise<void>;
+  /** Platform Readiness Review finding #01 — self-serve organization signup. */
+  register: (input: {
+    organization_name: string;
+    name: string;
+    email: string;
+    password: string;
+    password_confirmation: string;
+  }) => Promise<void>;
   logout: () => Promise<void>;
   setCurrentOrganizationId: (organizationId: string) => void;
 }
@@ -105,6 +125,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applyMe],
   );
 
+  const register = useCallback(
+    async (input: {
+      organization_name: string;
+      name: string;
+      email: string;
+      password: string;
+      password_confirmation: string;
+    }) => {
+      const { token, user: newUser } = await registerRequest(input);
+      setStoredToken(token);
+      setUser(newUser);
+
+      const me = await fetchMe();
+      applyMe(me);
+      setStatus("authenticated");
+    },
+    [applyMe],
+  );
+
   const logout = useCallback(async () => {
     try {
       await logoutRequest();
@@ -123,17 +162,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentOrganizationIdState(organizationId);
   }, []);
 
+  const currentOrganizationCurrency = useMemo(() => {
+    const membership = organizations.find(
+      (m) => String(m.organization.id) === currentOrganizationId,
+    );
+    return membership?.organization.currency ?? "EGP";
+  }, [organizations, currentOrganizationId]);
+
   const value = useMemo(
     () => ({
       status,
       user,
       organizations,
       currentOrganizationId,
+      currentOrganizationCurrency,
       login,
+      register,
       logout,
       setCurrentOrganizationId,
     }),
-    [status, user, organizations, currentOrganizationId, login, logout, setCurrentOrganizationId],
+    [
+      status,
+      user,
+      organizations,
+      currentOrganizationId,
+      currentOrganizationCurrency,
+      login,
+      register,
+      logout,
+      setCurrentOrganizationId,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

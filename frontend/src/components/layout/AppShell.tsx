@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * Desktop top-level nav per docs/PROJECT_CONTEXT.md:
- *   Dashboard / Leads / Clients / Projects / Suppliers / Reports / Settings
- * Suppliers remains a later-sprint screen — rendered disabled (no href, not clickable) rather
- * than linking to an empty page, per the frontend-engineer task brief. Reports/Settings are
- * enabled as of Sprint 8 (PROJECT_CONTEXT.md "Reports"/"Settings" sections) — Suppliers is still
- * out of scope (Phase 2 / `tasks`,`site_reports`,`snags`,... per the Sprint 8 scope boundary).
+ * Desktop top-level nav per docs/PROJECT_CONTEXT.md + BRD extensions:
+ *   Dashboard / Leads / Clients / Projects / Media / Suppliers / Reports / Settings
+ * Suppliers is now live (BRD "Procurement & Supplier Intelligence" — the org-wide supplier
+ * directory; purchase orders themselves live inside each project's Expenses tab, per BRD S18
+ * "Expenses/Suppliers"). "Media" is an org-wide gallery across every project's Documents-tab
+ * attachments (not a PROJECT_CONTEXT.md-listed screen — added alongside the Documents tab
+ * feature), placed after Projects since it's a cross-project view in the same spirit as Reports.
  */
 
 import Link from "next/link";
@@ -18,7 +19,7 @@ import type { Locale } from "@/lib/i18n/dictionaries";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 
 interface NavItem {
-  key: "dashboard" | "leads" | "clients" | "projects" | "suppliers" | "reports" | "settings";
+  key: "dashboard" | "leads" | "clients" | "projects" | "media" | "suppliers" | "reports" | "settings";
   href: string | null;
 }
 
@@ -27,7 +28,8 @@ const NAV_ITEMS: NavItem[] = [
   { key: "leads", href: "/leads" },
   { key: "clients", href: "/clients" },
   { key: "projects", href: "/projects" },
-  { key: "suppliers", href: null },
+  { key: "media", href: "/media" },
+  { key: "suppliers", href: "/suppliers" },
   { key: "reports", href: "/reports" },
   { key: "settings", href: "/settings" },
 ];
@@ -46,6 +48,18 @@ export function AppShell({ children }: { children: ReactNode }) {
               {t("app.name")}
             </span>
             <nav className="flex items-center gap-1">
+              {user?.is_platform_owner ? (
+                <Link
+                  href="/platform"
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    pathname.startsWith("/platform")
+                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                      : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  }`}
+                >
+                  {t("nav.platform")}
+                </Link>
+              ) : null}
               {NAV_ITEMS.map((item) => {
                 const isActive = item.href && pathname.startsWith(item.href);
                 if (!item.href) {

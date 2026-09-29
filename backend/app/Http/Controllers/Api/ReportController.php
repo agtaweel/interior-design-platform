@@ -32,6 +32,7 @@ class ReportController extends Controller
     private const CSV_HEADER = [
         'name', 'code', 'status', 'contract_value', 'collected', 'outstanding',
         'estimated_margin', 'change_order_value', 'budget_variance',
+        'quoted_cost', 'committed_cost', 'actual_cost', 'gross_profit', 'margin_percent',
     ];
 
     public function __construct(private readonly ReportService $service) {}
@@ -75,6 +76,11 @@ class ReportController extends Controller
                     $row['estimated_margin'],
                     $row['change_order_value'],
                     $row['budget_variance'],
+                    $row['quoted_cost'],
+                    $row['committed_cost'],
+                    $row['actual_cost'],
+                    $row['gross_profit'],
+                    $row['margin_percent'],
                 ]);
             }
 

@@ -11,15 +11,48 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
 #[Fillable([
     'organization_id', 'client_id', 'property_id', 'code', 'name', 'status',
     'start_date', 'target_end_date', 'responsible_user_id',
 ])]
-class Project extends Model
+class Project extends Model implements HasMedia
 {
     /** @use HasFactory<ProjectFactory> */
-    use HasFactory, BelongsToOrganization, Auditable;
+    use HasFactory, BelongsToOrganization, Auditable, InteractsWithMedia;
+
+    /**
+     * Attachments (Documents tab, PROJECT_CONTEXT.md "Documents" placeholder): three fixed
+     * collections a project can attach files to. `singleFile()` is deliberately NOT used on any
+     * of these — a project accumulates many designs/progress photos/final shots over its
+     * lifetime, unlike e.g. a payment's one receipt. Stored on the `local` (private) disk, same
+     * posture as payment receipts (PaymentController::receipt()) — served only through an
+     * authenticated, tenant-checked download route, never a public/guessable URL, since design
+     * files can be commercially sensitive.
+     */
+    public const MEDIA_COLLECTIONS = ['designs', 'process', 'final_pictures'];
+
+    /**
+     * BRD v3 §12 "Reconciliation & Closeout" state machine — see the closeout migration's
+     * docblock for why this is a separate dimension from `status`. Transitions are owned
+     * entirely by App\Services\Closeout\ProjectCloseoutService, never set directly here.
+     */
+    public const FINANCIAL_STATUS_ACTIVE = 'active';
+
+    public const FINANCIAL_STATUS_FINANCIAL_PENDING = 'financial_pending';
+
+    public const FINANCIAL_STATUS_READY_FOR_CLOSE = 'ready_for_close';
+
+    public const FINANCIAL_STATUS_CLOSED = 'closed';
+
+    public function registerMediaCollections(): void
+    {
+        foreach (self::MEDIA_COLLECTIONS as $collection) {
+            $this->addMediaCollection($collection);
+        }
+    }
 
     protected function casts(): array
     {
@@ -39,6 +72,13 @@ class Project extends Model
             'discount_total' => 'decimal:2',
             'grand_total' => 'decimal:2',
             'priced_at' => 'datetime',
+            // BRD v3 §12 closeout columns (see the migration's docblock) — deliberately NOT
+            // added to #[Fillable] above: only ever written by ProjectCloseoutService via
+            // forceFill(), never through the general PATCH /projects/{id} endpoint, same
+            // "system-controlled state, not client input" reasoning as the pricing cache
+            // columns above.
+            'financial_closed_at' => 'datetime',
+            'force_closed' => 'boolean',
         ];
     }
 

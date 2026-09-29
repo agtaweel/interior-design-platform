@@ -3,16 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Contract;
 use App\Models\Project;
+use App\Services\Costs\ProjectCostCalculator;
 use App\Services\Payments\ProjectFinancialsCalculator;
 use App\Support\Authorization\Permissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * GET /projects/{project}/financials (PROJECT_CONTEXT.md Sprint 6). {project} follows the same
- * manual-lookup convention as ProjectController itself — Project uses BelongsToOrganization
- * directly, so Project::find() is already tenant-scoped.
+ * GET /projects/{project}/financials (PROJECT_CONTEXT.md Sprint 6, extended per BRD §8). {project}
+ * follows the same manual-lookup convention as ProjectController itself — Project uses
+ * BelongsToOrganization directly, so Project::find() is already tenant-scoped.
  *
  * Gated behind Permissions::VIEW_FINANCIALS (not just active membership) per this sprint's
  * explicit instruction — this is exactly the profit-adjacent dashboard data the locked product
@@ -21,12 +23,17 @@ use Illuminate\Support\Facades\Gate;
  *
  * `collected`/`outstanding` are computed via ProjectFinancialsCalculator, the SAME class
  * ProjectResource.financials uses internally — see that class's docblock for the
- * no-contract-yet outstanding=0 judgment call. `actual_cost`/`gross_profit` stay at their
- * documented Sprint 6 scope-boundary placeholders (0 / null) — no expense tracking exists yet.
+ * no-contract-yet outstanding=0 judgment call. `actual_cost`/`committed_cost`/`quoted_cost`/
+ * `gross_profit`/`margin_percent` now come from ProjectCostCalculator (BRD §8/§9), which reads
+ * real Procurement (PurchaseOrder/PurchaseOrderItem) and Expenses data — these were previously
+ * hardcoded Sprint 6-era placeholders (0 / null) before those modules existed.
  */
 class ProjectFinancialsController extends Controller
 {
-    public function __construct(private readonly ProjectFinancialsCalculator $calculator) {}
+    public function __construct(
+        private readonly ProjectFinancialsCalculator $calculator,
+        private readonly ProjectCostCalculator $costCalculator,
+    ) {}
 
     public function show(string $project): JsonResponse
     {
@@ -39,6 +46,8 @@ class ProjectFinancialsController extends Controller
         }
 
         $totals = $this->calculator->calculate($projectModel);
+        $contract = Contract::query()->where('project_id', $projectModel->id)->latest('signed_at')->first();
+        $costs = $this->costCalculator->calculate($projectModel, $contract);
 
         return response()->json([
             'data' => [
@@ -48,8 +57,11 @@ class ProjectFinancialsController extends Controller
                 'value' => $projectModel->grand_total ?? 0,
                 'collected' => $totals['collected'],
                 'outstanding' => $totals['outstanding'],
-                'actual_cost' => 0,
-                'gross_profit' => null,
+                'quoted_cost' => $costs['quoted_cost'],
+                'committed_cost' => $costs['committed_cost'],
+                'actual_cost' => $costs['actual_cost'],
+                'gross_profit' => $costs['gross_profit'],
+                'margin_percent' => $costs['margin_percent'],
             ],
         ]);
     }

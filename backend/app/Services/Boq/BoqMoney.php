@@ -41,4 +41,21 @@ final class BoqMoney
 
         return $total;
     }
+
+    /**
+     * Shared "genuinely zero reads as the bare int 0, anything else stays a full-precision
+     * decimal string" convention — originally established by
+     * ProjectFinancialsCalculator::zeroAsInt() for collected/outstanding, pulled up here so
+     * ProjectCostCalculator's quoted_cost/committed_cost/actual_cost can follow the identical
+     * API contract (several tests pin `0` (strict, not `"0.00"`) for a project with no
+     * recorded activity yet — see ProjectFinancialsTest/ClientPropertyProjectApiTest).
+     */
+    public static function zeroAsInt(?string $amount): string|int|null
+    {
+        if ($amount === null) {
+            return null;
+        }
+
+        return bccomp($amount, self::zero(), self::SCALE) === 0 ? 0 : $amount;
+    }
 }

@@ -3,8 +3,10 @@
 namespace App\Services\Contracts;
 
 use App\Models\Contract;
+use App\Models\FinancialTransaction;
 use App\Models\Project;
 use App\Models\ProposalVersion;
+use App\Services\Finance\FinancialLedgerService;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -25,6 +27,8 @@ class ContractService
      * the global 500 handler) rather than looping forever.
      */
     private const MAX_CONTRACT_NO_ATTEMPTS = 5;
+
+    public function __construct(private readonly FinancialLedgerService $ledger) {}
 
     /**
      * contract_value is an EXACT copy of proposal_version.grand_total — never recalculated,
@@ -51,7 +55,7 @@ class ContractService
                 // ignored until end of transaction block" behavior. That's what makes the
                 // contract_no retry loop below safe to run inside a transaction at all.
                 return DB::transaction(function () use ($project, $proposalVersion, $termsJson) {
-                    return Contract::create([
+                    $contract = Contract::create([
                         'project_id' => $project->id,
                         'proposal_version_id' => $proposalVersion->id,
                         'contract_no' => $this->generateContractNo(),
@@ -60,6 +64,21 @@ class ContractService
                         'signed_at' => now(),
                         'terms_json' => $termsJson,
                     ]);
+
+                    // BRD v3 §4 "every contract posts a contract_charge" — the ledger's
+                    // obligation figure derives solely from posted transactions, never from
+                    // contract_value directly, so this is not optional bookkeeping.
+                    $this->ledger->postFor($contract, [
+                        'organization_id' => $project->organization_id,
+                        'project_id' => $project->id,
+                        'scope' => FinancialTransaction::SCOPE_CLIENT,
+                        'type' => FinancialTransaction::TYPE_CONTRACT_CHARGE,
+                        'amount' => (string) $contract->contract_value,
+                        'transaction_date' => now()->toDateString(),
+                        'created_by' => auth()->id(),
+                    ]);
+
+                    return $contract;
                 });
             } catch (QueryException $e) {
                 if ($this->isContractNoConflict($e) && $attempts < self::MAX_CONTRACT_NO_ATTEMPTS) {

@@ -11,6 +11,7 @@ use App\Models\IdempotencyKey;
 use App\Models\OtpChallenge;
 use App\Models\ProposalVersion;
 use App\Models\SignedLink;
+use App\Services\Notifications\ClientPortalEventMailer;
 use App\Services\Notifications\NotificationService;
 use App\Services\Proposals\OtpChallengeService;
 use App\Services\Proposals\OtpVerificationException;
@@ -46,6 +47,7 @@ class PublicProposalController extends Controller
         private readonly OtpChallengeService $otpService,
         private readonly ProposalPresenter $presenter,
         private readonly NotificationService $notificationService,
+        private readonly ClientPortalEventMailer $clientMailer,
     ) {}
 
     private const PURPOSE = 'proposal_approval';
@@ -204,6 +206,7 @@ class PublicProposalController extends Controller
             ];
         });
 
+        $this->clientMailer->proposalDecided($version, 'approved');
         $this->signedLinkService->markUsed($token);
 
         // Only a genuinely NEW successful request stores an idempotency record — a replay
@@ -275,6 +278,8 @@ class PublicProposalController extends Controller
                 'summary' => sprintf('Client requested changes to Proposal v%d for %s.', $version->version_no, $version->project->name),
             ]);
         });
+
+        $this->clientMailer->proposalDecided($version, 'changes_requested');
 
         return response()->json([
             'data' => [

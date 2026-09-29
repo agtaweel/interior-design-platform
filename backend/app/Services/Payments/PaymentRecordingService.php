@@ -2,9 +2,11 @@
 
 namespace App\Services\Payments;
 
+use App\Models\FinancialTransaction;
 use App\Models\Payment;
 use App\Models\PaymentSchedule;
 use App\Services\Boq\BoqMoney;
+use App\Services\Finance\FinancialLedgerService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
@@ -23,6 +25,8 @@ use Illuminate\Support\Facades\DB;
  */
 final class PaymentRecordingService
 {
+    public function __construct(private readonly FinancialLedgerService $ledger) {}
+
     /**
      * @param  array{amount: string, payment_method: string, paid_at: string, reference?: ?string, notes?: ?string}  $data
      */
@@ -54,6 +58,16 @@ final class PaymentRecordingService
             }
 
             $this->refreshScheduleStatus($schedule);
+
+            $this->ledger->postFor($payment, [
+                'organization_id' => $project->organization_id,
+                'project_id' => $project->id,
+                'scope' => FinancialTransaction::SCOPE_CLIENT,
+                'type' => FinancialTransaction::TYPE_CLIENT_PAYMENT,
+                'amount' => (string) $payment->amount,
+                'transaction_date' => $payment->paid_at->toDateString(),
+                'created_by' => auth()->id(),
+            ]);
 
             return $payment->fresh();
         });

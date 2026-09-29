@@ -58,5 +58,20 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('public-links', function (Request $request) {
             return Limit::perMinute(30)->by($request->ip());
         });
+
+        // Platform Readiness Review finding #04 (password reset). Same per-IP+email keying
+        // reasoning as 'auth-login' — a public, unauthenticated endpoint that triggers an email
+        // send needs its own brute-force/spam ceiling.
+        RateLimiter::for('password-reset', function (Request $request) {
+            return Limit::perMinute(5)->by($request->ip().'|'.strtolower((string) $request->input('email')));
+        });
+
+        // Platform Readiness Review finding #01 (self-serve signup). Per-IP only (not
+        // per-email like the two limiters above) — unlike login/password-reset, an email here
+        // usually belongs to no existing account yet, so keying by email alone wouldn't stop an
+        // attacker cycling through many addresses from one IP to spin up spam organizations.
+        RateLimiter::for('auth-register', function (Request $request) {
+            return Limit::perMinute(5)->by($request->ip());
+        });
     }
 }

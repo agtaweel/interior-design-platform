@@ -208,7 +208,7 @@ export default function ClientChangeOrderPortalPage() {
         <ChangeOrderReason reason={data.reason} />
 
         <div className="space-y-3">
-          <ChangeOrderPriceImpact priceDelta={data.price_delta} />
+          <ChangeOrderPriceImpact priceDelta={data.price_delta} currency={data.organization?.currency} />
           <ChangeOrderTimelineImpact timelineDeltaDays={data.timeline_delta_days} />
         </div>
 
@@ -216,7 +216,7 @@ export default function ClientChangeOrderPortalPage() {
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Items
           </h2>
-          <ChangeOrderItemsTable items={data.items} />
+          <ChangeOrderItemsTable items={data.items} currency={data.organization?.currency} />
         </section>
 
         {!isResolved ? (

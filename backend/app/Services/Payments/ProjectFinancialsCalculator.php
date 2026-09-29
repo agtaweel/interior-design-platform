@@ -14,10 +14,20 @@ use App\Services\Boq\BoqMoney;
  * be reused rather than duplicated in the resource, so this is the one place either of those
  * two consumers computes these two numbers.
  *
- * `actual_cost`/`gross_profit` are deliberately NOT computed here — per PROJECT_CONTEXT.md's
- * Sprint 6 scope boundary, they stay at their placeholder values (0 / null) until a future
- * sprint adds real expense tracking; this class only owns the two numbers that ARE real this
- * sprint.
+ * BRD v3 judgment call (deliberately NOT rewired to FinancialLedgerService, unlike every
+ * mutation path — see PaymentRecordingService/ContractService): this class stays computing
+ * directly off Payment/Contract, the same as pre-v3. Reasoning: FinancialLedgerService is only
+ * ever populated by the five specific service methods that call ->postFor(...), plus the
+ * one-off `ledger:backfill` command for pre-v3 historical rows. Any Contract/Payment created
+ * any other way (most directly, this app's own extensive factory-based test suite, which
+ * legitimately builds these rows straight via `Contract::factory()->create()` without an
+ * intervening HTTP call) would silently read back as zero here if this class depended on the
+ * ledger instead — a correct row in `payments`/`contracts` producing a wrong `0` in this
+ * internal MVP financials tab is a worse outcome than the two "views" of the same money
+ * temporarily existing side by side. The ledger IS the source of truth for every NEW v3 surface
+ * (client portal, reconciliation/closeout, Platform Owner analytics — see
+ * FinancialLedgerService::summary()), all of which are net-new endpoints with no legacy
+ * factory-fixture dependency to break; this pre-existing internal tab is left alone.
  */
 final class ProjectFinancialsCalculator
 {

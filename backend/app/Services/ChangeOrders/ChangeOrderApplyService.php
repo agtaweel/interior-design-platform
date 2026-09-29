@@ -7,7 +7,9 @@ use App\Models\BoqItem;
 use App\Models\ChangeOrder;
 use App\Models\ChangeOrderItem;
 use App\Models\Contract;
+use App\Models\FinancialTransaction;
 use App\Models\Project;
+use App\Services\Finance\FinancialLedgerService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -57,6 +59,8 @@ class ChangeOrderApplyService
      * constraint at creation time.
      */
     private const CHANGE_ORDER_CATEGORY_NAME = 'Change Orders';
+
+    public function __construct(private readonly FinancialLedgerService $ledger) {}
 
     /**
      * @throws ChangeOrderApplyException if the project has no contract to apply against
@@ -187,6 +191,19 @@ class ChangeOrderApplyService
         }
 
         $contract->forceFill($attrs)->save();
+
+        // BRD v3 §4: change_order_charge carries its own natural sign (see FinancialTransaction
+        // migration docblock) — an 'add'-heavy change order posts positive, a 'remove'-heavy one
+        // posts negative, exactly mirroring price_delta's own existing sign convention.
+        $this->ledger->postFor($changeOrder, [
+            'organization_id' => $contract->project->organization_id,
+            'project_id' => $contract->project_id,
+            'scope' => FinancialTransaction::SCOPE_CLIENT,
+            'type' => FinancialTransaction::TYPE_CHANGE_ORDER_CHARGE,
+            'amount' => (string) $changeOrder->price_delta,
+            'transaction_date' => now()->toDateString(),
+            'created_by' => auth()->id(),
+        ]);
     }
 
     private function resolveChangeOrderCategory(Project $project): BoqCategory

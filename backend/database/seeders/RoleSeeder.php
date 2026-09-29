@@ -25,6 +25,11 @@ class RoleSeeder extends Seeder
             Permissions::MANAGE_LEADS => true,
             Permissions::VIEW_FINANCIALS => true,
             Permissions::MANAGE_BOQ => true,
+            Permissions::MANAGE_PROCUREMENT => true,
+            Permissions::MANAGE_EXECUTION => true,
+            // BRD v3 §12: force-close is restricted to Owner/Admin specifically — see that
+            // constant's docblock.
+            Permissions::MANAGE_FINANCIAL_CLOSEOUT => true,
         ]);
 
         $this->upsert('Designer', [
@@ -39,6 +44,13 @@ class RoleSeeder extends Seeder
             // financial rollups (VIEW_FINANCIALS is a separate, later-sprint concern for
             // margin visibility, not for editing cost inputs).
             Permissions::MANAGE_BOQ => true,
+            // Procurement is a distinct persona in the BRD (a bookkeeper/procurement clerk
+            // role) — a Designer/Engineer does not automatically manage suppliers/POs.
+            Permissions::MANAGE_PROCUREMENT => false,
+            // Designers/Engineers run execution day-to-day per the BRD persona table
+            // ("Designer/Engineer: ...changes, execution").
+            Permissions::MANAGE_EXECUTION => true,
+            Permissions::MANAGE_FINANCIAL_CLOSEOUT => false,
         ]);
 
         $this->upsert('Site Staff', array_fill_keys(Permissions::ALL, false));

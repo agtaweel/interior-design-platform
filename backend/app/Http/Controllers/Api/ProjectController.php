@@ -8,6 +8,7 @@ use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Http\Resources\ProjectResource;
 use App\Models\Project;
+use App\Models\Snag;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -94,7 +95,21 @@ class ProjectController extends Controller
             return $this->notFound();
         }
 
-        $model->update($request->validated());
+        $data = $request->validated();
+
+        // BRD's explicit rule: "Project cannot be marked complete with unresolved mandatory
+        // snags" — same check HandoverController::store() applies, since a handover is the
+        // other path to a project reaching 'completed'. See Snag::hasOpenMandatorySnags()'s
+        // docblock for why this lives on the model rather than being duplicated here.
+        if (($data['status'] ?? null) === 'completed' && Snag::hasOpenMandatorySnags($model->id)) {
+            return $this->error(
+                409,
+                'unresolved_mandatory_snags',
+                'This project has unresolved mandatory snags and cannot be marked completed yet.',
+            );
+        }
+
+        $model->update($data);
 
         return response()->json([
             'data' => new ProjectResource($model->fresh(self::RELATIONS)),

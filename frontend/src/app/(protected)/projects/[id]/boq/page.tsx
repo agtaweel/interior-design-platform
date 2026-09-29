@@ -56,7 +56,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
-import { formatEGP } from "@/lib/format/currency";
+import { useMoneyFormatter } from "@/lib/format/useMoneyFormatter";
 
 const INPUT_CLASSES =
   "rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950";
@@ -149,6 +149,7 @@ export default function BoqBuilderPage() {
   const params = useParams<{ id: string }>();
   const projectId = params.id;
   const { t, locale } = useLocale();
+  const { formatMoney } = useMoneyFormatter();
 
   const [project, setProject] = useState<Project | null>(null);
   const [categoryTree, setCategoryTree] = useState<BoqCategoryNode[]>([]);
@@ -685,7 +686,7 @@ export default function BoqBuilderPage() {
             <CardBody className="flex flex-col gap-0.5 p-2">
               <TreeButton
                 label={t("boq.categories.all")}
-                value={formatEGP(grandTotal.client_total, locale)}
+                value={formatMoney(grandTotal.client_total)}
                 active={selectedCategoryId === null}
                 depth={0}
                 onClick={() => setSelectedCategoryId(null)}
@@ -697,9 +698,8 @@ export default function BoqBuilderPage() {
                   <TreeButton
                     key={c.id}
                     label={c.name}
-                    value={formatEGP(
+                    value={formatMoney(
                       computeSubtotal(items.filter((i) => String(i.category_id) === c.id)).client_total,
-                      locale,
                     )}
                     active={selectedCategoryId === c.id}
                     depth={c.depth}
@@ -752,7 +752,7 @@ export default function BoqBuilderPage() {
             <CardBody className="flex flex-col gap-0.5 p-2">
               <TreeButton
                 label={t("boq.rooms.all")}
-                value={formatEGP(grandTotal.client_total, locale)}
+                value={formatMoney(grandTotal.client_total)}
                 active={selectedRoomId === null}
                 depth={0}
                 onClick={() => setSelectedRoomId(null)}
@@ -764,9 +764,8 @@ export default function BoqBuilderPage() {
                   <TreeButton
                     key={room.id}
                     label={room.name}
-                    value={formatEGP(
+                    value={formatMoney(
                       computeSubtotal(items.filter((i) => String(i.room_id ?? "") === String(room.id))).client_total,
-                      locale,
                     )}
                     active={selectedRoomId === String(room.id)}
                     depth={0}
@@ -1010,10 +1009,10 @@ export default function BoqBuilderPage() {
                           onKeyDown={handleCellKeyDown}
                         />
                         <td className="px-2 py-1 text-right align-top font-medium text-zinc-700 dark:text-zinc-300">
-                          {formatEGP(totals.direct_cost, locale)}
+                          {formatMoney(totals.direct_cost)}
                         </td>
                         <td className="px-2 py-1 text-right align-top font-medium text-zinc-900 dark:text-zinc-100">
-                          {formatEGP(totals.client_total, locale)}
+                          {formatMoney(totals.client_total)}
                         </td>
                         <td className="px-1 py-1 align-top">
                           <select
@@ -1073,7 +1072,7 @@ export default function BoqBuilderPage() {
                     {c.name}
                   </span>
                   <span className="shrink-0 text-right text-xs text-zinc-400">
-                    {formatEGP(subtotal.direct_cost, locale)}
+                    {formatMoney(subtotal.direct_cost)}
                   </span>
                 </div>
               );
@@ -1083,11 +1082,11 @@ export default function BoqBuilderPage() {
                 <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">{t("boq.rooms.subtotal")}</p>
                 <div className="mt-1 flex items-baseline justify-between">
                   <span className="text-zinc-600 dark:text-zinc-300">{t("boq.directCost")}</span>
-                  <span>{formatEGP(roomSubtotal.direct_cost, locale)}</span>
+                  <span>{formatMoney(roomSubtotal.direct_cost)}</span>
                 </div>
                 <div className="flex items-baseline justify-between">
                   <span className="text-zinc-600 dark:text-zinc-300">{t("boq.clientTotal")}</span>
-                  <span>{formatEGP(roomSubtotal.client_total, locale)}</span>
+                  <span>{formatMoney(roomSubtotal.client_total)}</span>
                 </div>
               </div>
             ) : null}
@@ -1097,13 +1096,13 @@ export default function BoqBuilderPage() {
             <div className="mt-1 flex items-baseline justify-between">
               <span className="text-sm text-zinc-600 dark:text-zinc-300">{t("boq.directCost")}</span>
               <span className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                {formatEGP(grandTotal.direct_cost, locale)}
+                {formatMoney(grandTotal.direct_cost)}
               </span>
             </div>
             <div className="mt-1 flex items-baseline justify-between">
               <span className="text-sm text-zinc-600 dark:text-zinc-300">{t("boq.clientTotal")}</span>
               <span className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                {formatEGP(grandTotal.client_total, locale)}
+                {formatMoney(grandTotal.client_total)}
               </span>
             </div>
           </CardBody>

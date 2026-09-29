@@ -29,6 +29,11 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            // BRD v3 §5/§20 "Platform Owner" — deliberately NOT in #[Fillable] above, same
+            // "system-controlled, never client input" reasoning as every other privilege-bearing
+            // flag in this codebase; only ever set via the `platform:grant-owner`/`platform:
+            // revoke-owner` artisan commands.
+            'is_platform_owner' => 'boolean',
         ];
     }
 
