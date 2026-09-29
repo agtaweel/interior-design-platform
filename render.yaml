@@ -1,7 +1,10 @@
 # Render Blueprint for a free-tier demo deploy of the interior-design-platform monorepo.
-# Deploy: push this repo to GitHub, then in Render click New -> Blueprint and point it at the
-# repo. Render will create both web services from this file; the database is NOT provisioned by
-# Render (see below).
+#
+# NOT actually applied via Render's Blueprint feature (New -> Blueprint) — that flow turned out
+# to require a card on file too, same as Render's managed Postgres does (see below). Kept here as
+# the single source of truth for what env vars each service needs; DEPLOY.md walks through
+# creating both services individually instead (New -> Web Service, which does not ask for a
+# card), transcribing the same values from this file by hand.
 #
 # Why no `databases:` block: Render now requires a card on file to provision ANY Postgres
 # instance, including their free plan — confirmed while setting this up, even though the two web
