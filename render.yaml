@@ -1,6 +1,19 @@
 # Render Blueprint for a free-tier demo deploy of the interior-design-platform monorepo.
 # Deploy: push this repo to GitHub, then in Render click New -> Blueprint and point it at the
-# repo. Render will create the Postgres database and both web services from this file.
+# repo. Render will create both web services from this file; the database is NOT provisioned by
+# Render (see below).
+#
+# Why no `databases:` block: Render now requires a card on file to provision ANY Postgres
+# instance, including their free plan — confirmed while setting this up, even though the two web
+# services below don't ask for one. Rather than fight that, the database lives on Neon
+# (https://neon.tech), which has a genuinely card-free free Postgres tier. Before applying this
+# Blueprint:
+#   1. Sign up at neon.tech (no card), create a project — any region.
+#   2. From its dashboard, grab the connection details (host, database name, username, password
+#      — Neon shows these individually, or as one connection string you can pick apart).
+#   3. When Render applies this Blueprint, it will prompt you to fill in the five `sync: false`
+#      DB_* values below (that's what `sync: false` means: "ask me, don't guess") — paste in
+#      what you got from Neon.
 #
 # Service URLs are hardcoded as https://idp-backend.onrender.com and
 # https://idp-frontend.onrender.com because Render assigns a service's public URL from its
@@ -15,19 +28,12 @@
 #  - Free web services have no persistent disk: any file uploaded through Media/Documents (or
 #    change-order/proposal attachments) is lost on the next restart or redeploy. Fine for a demo
 #    walkthrough, not for data you need to keep.
-#  - Render's free Postgres plan has historically come with an expiry window (it's changed
-#    over time) — check the current terms when you create it; if it applies, you'll need to
-#    either upgrade that one database to a paid plan or recreate it periodically.
+#  - Neon's free project can idle/"hibernate" after inactivity too, same story as the web
+#    services — the first query after a while wakes it back up with a short delay.
 #  - MAIL_MAILER is left as `log` (same as local dev) — password-reset/OTP/notification emails
 #    write to the backend service's log output instead of actually sending. Fine to view via
 #    Render's log tab for a demo; swap in a real MAIL_* config if you need emails to actually
 #    arrive.
-
-databases:
-  - name: idp-postgres
-    plan: free
-    databaseName: interior_design_platform
-    user: idp
 
 services:
   - type: web
@@ -57,26 +63,25 @@ services:
         value: stderr
       - key: DB_CONNECTION
         value: pgsql
+      # Neon requires SSL — see the top-of-file note for why this isn't a Render-managed
+      # database. `prefer` (Laravel's own default) would probably also work, but `require` is
+      # explicit about the actual requirement instead of leaving it to a negotiated fallback.
+      - key: DB_SSLMODE
+        value: require
+      # The five DB_* values below are `sync: false` — Render will prompt for these when you
+      # apply the Blueprint rather than filling them from a `fromDatabase` reference, since there
+      # is no Render-managed database in this setup. Paste in the host/database/username/password
+      # from your Neon project (DB_PORT is 5432 for every Neon project).
       - key: DB_HOST
-        fromDatabase:
-          name: idp-postgres
-          property: host
+        sync: false
       - key: DB_PORT
-        fromDatabase:
-          name: idp-postgres
-          property: port
+        value: "5432"
       - key: DB_DATABASE
-        fromDatabase:
-          name: idp-postgres
-          property: database
+        sync: false
       - key: DB_USERNAME
-        fromDatabase:
-          name: idp-postgres
-          property: user
+        sync: false
       - key: DB_PASSWORD
-        fromDatabase:
-          name: idp-postgres
-          property: password
+        sync: false
       # Redis isn't provisioned at all for this deploy — session/cache/queue already default to
       # `database` in this app's own .env (see backend/.env), so nothing here actually needs
       # Redis to function; it's only in docker-compose.yml for local parity with a future queue
