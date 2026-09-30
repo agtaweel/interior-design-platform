@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { Locale } from "@/lib/i18n/dictionaries";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { FitoutLogo } from "@/components/brand/FitoutLogo";
 
 interface NavItem {
   key: "dashboard" | "leads" | "clients" | "projects" | "media" | "suppliers" | "reports" | "settings";
@@ -104,9 +105,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex min-w-0 items-center gap-6">
-            <span className="shrink-0 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-              {t("app.name")}
-            </span>
+            <FitoutLogo className="shrink-0" />
             <nav className="hidden items-center gap-1 lg:flex">
               {allNavItems.map((item) => (
                 <NavLink

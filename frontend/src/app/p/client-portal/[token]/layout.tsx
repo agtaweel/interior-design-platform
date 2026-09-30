@@ -15,6 +15,7 @@ import Link from "next/link";
 import { usePathname, useParams } from "next/navigation";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { Locale, TranslationKey } from "@/lib/i18n/dictionaries";
+import { FitoutLogo } from "@/components/brand/FitoutLogo";
 
 const TABS: Array<{ href: (token: string) => string; labelKey: TranslationKey; match: RegExp }> = [
   { href: (t) => `/p/client-portal/${t}`, labelKey: "clientPortal.tabs.overview", match: /^\/p\/client-portal\/[^/]+\/?$/ },
@@ -34,8 +35,9 @@ export default function ClientPortalLayout({ children }: { children: React.React
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-zinc-950">
       <nav className="sticky top-0 z-10 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mx-auto flex max-w-2xl items-center justify-between gap-2 px-2 py-2">
-          <div className="flex gap-1 overflow-x-auto">
+        <div className="mx-auto flex max-w-2xl items-center gap-3 px-2 py-2">
+          <FitoutLogo variant="icon" className="h-6 w-6 shrink-0" />
+          <div className="flex flex-1 gap-1 overflow-x-auto">
             {TABS.map((tab) => {
               const active = tab.match.test(pathname);
               return (
