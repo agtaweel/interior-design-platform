@@ -16,13 +16,15 @@ WORKDIR /var/www
 
 COPY . .
 
-# COMPOSER_MEMORY_LIMIT=-1: free-tier build runners (Northflank, Koyeb, etc.) often cap build
-# container memory well below a dev laptop's — composer's dependency solver can hit PHP's default
-# memory_limit under that constraint even though the exact same command succeeds locally, which
-# surfaces as a bare "exit code: 1" with no obviously-composer-related message in the platform's
-# truncated build summary. Unlimited memory for this one build step is safe (it's not the
-# container's runtime limit, just this RUN layer).
-RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --optimize-autoloader --no-interaction --no-progress \
+# COMPOSER_MEMORY_LIMIT=-1: raises PHP's own ini ceiling so composer never self-limits before
+# hitting the container's REAL memory cap — free-tier build runners (Northflank confirmed at
+# 256MB) cap that well below a dev laptop's. This can't manufacture memory that doesn't exist; it
+# only decides whether an actual shortage surfaces as a catchable PHP error or a raw kernel
+# OOM-kill. The flag that actually REDUCES peak memory is dropping --optimize-autoloader:
+# building the full classmap is the single most memory-hungry step of `composer install` for an
+# app this size (Laravel + dompdf + spatie/media-library), and 256MB is tight enough that it's
+# worth trading a negligible runtime autoload-speed cost for the build headroom.
+RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --no-interaction --no-progress \
     && chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8000
