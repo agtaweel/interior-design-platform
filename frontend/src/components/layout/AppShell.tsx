@@ -18,6 +18,7 @@ import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { Locale } from "@/lib/i18n/dictionaries";
 import { NotificationBell } from "@/components/layout/NotificationBell";
 import { FitoutLogo } from "@/components/brand/FitoutLogo";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 interface NavItem {
   key: "dashboard" | "leads" | "clients" | "projects" | "media" | "suppliers" | "reports" | "settings";
@@ -120,6 +121,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="hidden items-center gap-3 lg:flex">
+            <ThemeToggle />
             <NotificationBell />
             {localeSwitcher}
             {user ? (
@@ -136,6 +138,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2 lg:hidden">
+            <ThemeToggle />
             <NotificationBell />
             <button
               type="button"

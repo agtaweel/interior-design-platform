@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Every `dark:` utility in this app (there's no dark-mode config otherwise) now resolves off a
+ * `.dark` class on <html> instead of the `prefers-color-scheme` media query, so the manual
+ * light/dark switch (ThemeProvider) can override the system preference. The class itself is set
+ * by a blocking inline script in layout.tsx *before* first paint — see that file — so this
+ * doesn't reintroduce a flash of the wrong theme on load. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -12,11 +19,9 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 body {

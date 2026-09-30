@@ -16,6 +16,7 @@ import { usePathname, useParams } from "next/navigation";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { Locale, TranslationKey } from "@/lib/i18n/dictionaries";
 import { FitoutLogo } from "@/components/brand/FitoutLogo";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 const TABS: Array<{ href: (token: string) => string; labelKey: TranslationKey; match: RegExp }> = [
   { href: (t) => `/p/client-portal/${t}`, labelKey: "clientPortal.tabs.overview", match: /^\/p\/client-portal\/[^/]+\/?$/ },
@@ -55,6 +56,7 @@ export default function ClientPortalLayout({ children }: { children: React.React
               );
             })}
           </div>
+          <ThemeToggle className="shrink-0" />
           <select
             aria-label={t("nav.language")}
             value={locale}
