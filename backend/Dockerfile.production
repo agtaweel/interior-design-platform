@@ -1,0 +1,34 @@
+# Production image for a Docker-based PaaS free tier (Render, Koyeb, etc.) — separate from the
+# root Dockerfile, which stays dev-only (bind-mounted source, `artisan serve` on a fixed port)
+# for docker-compose. This one COPIES the source in, installs without dev dependencies, and
+# binds to whatever $PORT the platform assigns at runtime (falling back to 8000 for platforms
+# like Koyeb that expect you to declare a fixed port instead of reading one dynamically).
+FROM php:8.4-cli
+
+RUN apt-get update && apt-get install -y \
+        libpq-dev libzip-dev libpng-dev libonig-dev git unzip \
+    && docker-php-ext-install pdo_pgsql pgsql bcmath zip gd exif \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www
+
+COPY . .
+
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress \
+    && chmod -R 775 storage bootstrap/cache
+
+EXPOSE 8000
+
+# Deliberately no config:cache/route:cache — env vars come entirely from the platform's
+# dashboard at container start, and caching them at build time (before those vars exist) would
+# bake in wrong values. Migrations + RoleSeeder run on every boot rather than as a separate
+# "pre-deploy command" step some platforms offer, keeping this a single self-contained image
+# that works the same way everywhere — both are idempotent (migrate skips already-run
+# migrations; RoleSeeder uses updateOrCreate), so re-running them on every restart/redeploy is
+# safe. RoleSeeder specifically matters here: a fresh database has no "Owner" role row yet, and
+# self-serve signup (POST /auth/register) 404s without one (OrganizationSignupService looks it
+# up with firstOrFail()) — confirmed by testing this image against a brand-new database before
+# wiring this line in.
+CMD ["sh", "-c", "php artisan migrate --force && php artisan db:seed --class=RoleSeeder --force && php artisan serve --host 0.0.0.0 --port ${PORT:-8000}"]

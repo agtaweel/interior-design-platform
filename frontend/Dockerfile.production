@@ -1,0 +1,22 @@
+# Production image for a Docker-based PaaS free tier (Render, Koyeb, etc.) — separate from the
+# root Dockerfile, which stays dev-only (`next dev` against a bind-mounted source tree). This one
+# builds a real production bundle. NEXT_PUBLIC_* vars are inlined into the client bundle at BUILD
+# time, not read at runtime, so NEXT_PUBLIC_API_BASE_URL must be passed as a build ARG — most
+# platforms (Render, Koyeb included) automatically expose a Docker service's configured
+# environment variables as build args, which is what makes this work without extra plumbing.
+FROM node:22-alpine
+
+WORKDIR /app
+
+ARG NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+EXPOSE 3000
+
+CMD ["sh", "-c", "npx --no-install next start -p ${PORT:-3000}"]

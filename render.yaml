@@ -43,7 +43,7 @@ services:
     name: idp-backend
     runtime: docker
     plan: free
-    dockerfilePath: ./backend/Dockerfile.render
+    dockerfilePath: ./backend/Dockerfile.production
     dockerContext: ./backend
     envVars:
       - key: APP_NAME
@@ -102,10 +102,10 @@ services:
     name: idp-frontend
     runtime: docker
     plan: free
-    dockerfilePath: ./frontend/Dockerfile.render
+    dockerfilePath: ./frontend/Dockerfile.production
     dockerContext: ./frontend
     envVars:
-      # Inlined into the client JS bundle at `npm run build` time (see Dockerfile.render) — this
+      # Inlined into the client JS bundle at `npm run build` time (see Dockerfile.production) — this
       # must already be correct when Render builds the image, not just at container start.
       - key: NEXT_PUBLIC_API_BASE_URL
         value: https://idp-backend.onrender.com/api/v1
