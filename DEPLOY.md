@@ -1,217 +1,185 @@
 # Deploying the demo (free tier)
 
-Two platforms are documented here — **Koyeb** (try this first; no card required as of writing)
-and **Render** (fallback; works, but both its Blueprint feature and its managed Postgres demand a
-card, so it needs the individual-per-service workaround below). Either way you'll need
-`backend/Dockerfile.production` and `frontend/Dockerfile.production` (production images, separate
-from the dev-only root `Dockerfile`s used by `docker-compose.yml`) and a free Postgres database on
-[neon.tech](https://neon.tech) (also card-free). All of this has been built and smoke-tested
-locally end-to-end (signup → login → dashboard, across two separate containers talking over HTTP,
-matching how they'll run on either platform).
+Three platforms are documented here, in the order to try them:
 
-## Deploying on Koyeb
+1. **Northflank** — current pick.
+2. **Koyeb** — alternate, if Northflank doesn't pan out.
+3. **Render** — fallback that's confirmed to work, but only via the individual-per-service
+   workaround below (Render's Blueprint feature *and* its managed Postgres both demand a card).
 
-1. **Push this repo to GitHub** if you haven't already:
+All three build from the same two files — `backend/Dockerfile.production` and
+`frontend/Dockerfile.production` — which have been built and smoke-tested locally end-to-end
+(signup → login → dashboard, across two separate containers talking over HTTP). The database is
+[neon.tech](https://neon.tech) regardless of which platform hosts the app, since it's the one
+Postgres provider in this whole search that's stayed card-free.
+
+If whichever platform you're on asks for a card before you've created anything, stop and tell me
+— don't hand one over. We'll cross it off the list and move to the next.
+
+## Shared prerequisites (do this once, no matter which platform you pick)
+
+1. **Push this repo to GitHub**, if you haven't already:
    ```
-   gh repo create interior-design-platform --private --source=. --remote=origin
    git add -A
    git commit -m "Prepare for deploy"
-   git push -u origin master
+   git push
    ```
-   (or create the repo in the GitHub UI first, then `git remote add origin <url>` and push.)
+   (If there's no remote yet: create the repo in the GitHub UI, then
+   `git remote add origin <url>` before pushing.)
 
-2. **Create the database on [neon.tech](https://neon.tech)** (sign up, create a project, any
-   region). From its dashboard grab the connection string — it looks like
-   `postgresql://<user>:<password>@<host>/<database>?sslmode=require...`. You'll split that into
+2. **Create a database on [neon.tech](https://neon.tech)** — sign up, create a project (any
+   region), and open its dashboard for the connection string. It looks like
+   `postgresql://<user>:<password>@<host>/<database>?sslmode=require...` — you'll split that into
    the `DB_*` values below.
 
-3. **Sign up at [koyeb.com](https://koyeb.com)** and connect your GitHub account when prompted.
+## Environment variables reference
 
-4. **Create the backend service** — in the Koyeb control panel, create a new Web Service from
-   your GitHub repo. The exact wording of these fields may differ slightly from what you see
-   (Koyeb's UI changes over time) — look for the closest match:
-   - **Builder**: Docker (not the auto-detected Buildpack)
-   - **Dockerfile location / path**: `backend/Dockerfile.production`
-   - **Work directory / build context**: `backend` (only if Koyeb exposes this as a separate
-     field from the Dockerfile path — some UIs infer it from the Dockerfile's own location)
-   - **Ports**: expose port `8000`, protocol HTTP — this must match `EXPOSE 8000` /
-     the `${PORT:-8000}` fallback in `backend/Dockerfile.production`
-   - **Instance type**: Free / Eco (whatever Koyeb calls its free tier nano instance)
-   - **Region**: pick whichever region Koyeb offers on the free tier
-   - **Environment variables** — add these (leave `FRONTEND_URL` as the placeholder for now,
-     you'll fix it in step 7 once the frontend exists):
-     ```
-     APP_NAME=Interior Design Platform
-     APP_ENV=production
-     APP_DEBUG=false
-     APP_KEY=base64:b/oSS29NFvK42rYNGuiOEoS+ocMgm++NWmqNDIbKT+c=
-     APP_URL=http://localhost:8000
-     FRONTEND_URL=http://localhost:3000
-     LOG_CHANNEL=stderr
-     DB_CONNECTION=pgsql
-     DB_SSLMODE=require
-     DB_HOST=<from your Neon connection string>
-     DB_PORT=5432
-     DB_DATABASE=<from your Neon connection string>
-     DB_USERNAME=<from your Neon connection string>
-     DB_PASSWORD=<from your Neon connection string>
-     SESSION_DRIVER=database
-     CACHE_STORE=database
-     QUEUE_CONNECTION=database
-     MAIL_MAILER=log
-     ```
-   Deploy it, wait for the build to finish (~3-5 min — `composer install` takes most of that),
-   then **copy the service's public URL** from the Koyeb dashboard (something like
-   `https://idp-backend-<your-org>.koyeb.app` — Koyeb's URLs aren't predictable ahead of time the
-   way Render's are, so you have to read the real one off the dashboard).
+Every platform needs the same two sets of variables. `<BACKEND_URL>` and `<FRONTEND_URL>` below
+mean "the real public URL the platform assigns to that service" — none of these platforms let you
+predict that URL before the service exists, so the sequence is always: create the backend first
+with a placeholder, note its real URL, create the frontend with that real URL baked in, then go
+back and fix the backend's placeholder.
 
-5. **Go back into the backend service's env vars and fix `APP_URL`** to the real URL from step 4.
+**Backend service** — port **8000**:
+```
+APP_NAME=Interior Design Platform
+APP_ENV=production
+APP_DEBUG=false
+APP_KEY=base64:b/oSS29NFvK42rYNGuiOEoS+ocMgm++NWmqNDIbKT+c=
+APP_URL=<BACKEND_URL>
+FRONTEND_URL=<FRONTEND_URL>
+LOG_CHANNEL=stderr
+DB_CONNECTION=pgsql
+DB_SSLMODE=require
+DB_HOST=<from your Neon connection string>
+DB_PORT=5432
+DB_DATABASE=<from your Neon connection string>
+DB_USERNAME=<from your Neon connection string>
+DB_PASSWORD=<from your Neon connection string>
+SESSION_DRIVER=database
+CACHE_STORE=database
+QUEUE_CONNECTION=database
+MAIL_MAILER=log
+```
+(`APP_URL` only matters for the backend's own generated links, and `FRONTEND_URL` only affects
+links inside emails — password reset, proposal/change-order approval links — so the core app
+works fine even with a placeholder in either one until you circle back and fix it.)
 
-6. **Create the frontend service** the same way:
-   - **Dockerfile location**: `frontend/Dockerfile.production`
-   - **Work directory / build context**: `frontend`
-   - **Ports**: expose port `3000`, protocol HTTP
-   - **Environment variables**:
-     ```
-     NEXT_PUBLIC_API_BASE_URL=<backend's real URL from step 4>/api/v1
-     ```
-     This has to be right *before* the first build — it's baked into the frontend's JS bundle at
-     build time, not read at runtime. If you need to change it later, you must trigger a fresh
-     deploy (not just save the env var) for the new value to actually take effect.
-   Deploy it, wait for the build, then copy **its** public URL too.
+**Frontend service** — port **3000**:
+```
+NEXT_PUBLIC_API_BASE_URL=<BACKEND_URL>/api/v1
+```
+This one you cannot fix later without a rebuild — `NEXT_PUBLIC_*` values are inlined into the
+frontend's JS bundle at `npm run build` time, not read at runtime. Get the backend's real URL
+*before* you create the frontend service.
 
-7. **Go back to the backend service one more time** and fix `FRONTEND_URL` to the frontend's real
-   URL from step 6 (this only affects links inside emails — password reset, proposal/change-order
-   approval links — so the app itself works fine even before you do this; just do it before
-   relying on any of those emailed links).
-
-8. Open the frontend's URL and use **Create an organization** (`/signup`) to make your first demo
-   account — no manual seed step needed, the backend seeds RBAC roles automatically on every boot.
-
-If Koyeb also asks for a card at any point before you've created anything, stop and tell me —
-that would mean it's no longer the card-free option I thought it was, and we should try
-Northflank next rather than fighting it further.
+Migrations and RBAC role seeding run automatically on every backend container boot — there's no
+manual `artisan migrate`/`db:seed` step on any of these platforms.
 
 ---
 
-## Deploying on Render (fallback)
+## Platform 1: Northflank
 
-### Why `render.yaml` isn't actually used below
+1. Sign up at [northflank.com](https://northflank.com) and connect your GitHub account.
 
-`render.yaml` is kept in the repo as a reference for every env var each service needs (see it for
-the exact list), but Render's **Blueprint** feature — the thing that reads `render.yaml` — turned
-out to require a card on file too, same as their managed Postgres did. So does the Blueprint,
-confirmed while setting this up, even with no database in the blueprint anymore. Creating the two
-web services **individually** (New → Web Service, not New → Blueprint) does not ask for a card.
-That's the path below.
+2. **Create a Project** (Northflank groups services under a Project — one project for both
+   services here is fine).
 
-### What you need to do
+3. **Add a Service → deploy from Git repository**, pick this repo, and configure the backend:
+   - **Build type**: Dockerfile (not Buildpack)
+   - **Dockerfile path**: `backend/Dockerfile.production`
+   - **Build context**: `backend` (Northflank may infer this from the Dockerfile path instead of
+     asking separately — if there's only one path field, that's why)
+   - **Ports**: add port `8000`, public/HTTP
+   - **Plan**: the free compute plan
+   - **Environment variables**: paste in the backend block above (`APP_URL`/`FRONTEND_URL` as
+     placeholders for now — `http://localhost:8000` / `http://localhost:3000` work fine)
+   - Deploy, wait for the build (~3-5 min, mostly `composer install`), then copy the **real
+     public URL** Northflank assigns (their default domains look like
+     `https://<service>--<project>--<hash>.code.run` — not predictable ahead of time, read it off
+     the dashboard).
 
-1. **Push this repo to GitHub** (Render deploys from a git remote — it doesn't accept a local
-   folder). If you don't have a remote yet:
-   ```
-   gh repo create interior-design-platform --private --source=. --remote=origin
-   git add -A
-   git commit -m "Prepare for Render deploy"
-   git push -u origin master
-   ```
-   (or create the repo in the GitHub UI first, then `git remote add origin <url>` and push.)
+4. Go back into the backend service's env vars and fix `APP_URL` to that real URL.
 
-2. **Create the database on [neon.tech](https://neon.tech)**, not Render (Render's Postgres
-   needs a card; Neon's free tier doesn't). Sign up, create a project (any region), and open its
-   dashboard — you need the host, database name, username, and password from there (Neon shows
-   these individually or as one connection string you can pick apart; the port is always `5432`).
+5. **Add a second Service** the same way for the frontend:
+   - **Dockerfile path**: `frontend/Dockerfile.production`
+   - **Build context**: `frontend`
+   - **Ports**: add port `3000`, public/HTTP
+   - **Environment variables**: `NEXT_PUBLIC_API_BASE_URL=<backend's real URL>/api/v1`
+   - Deploy, then copy **its** real public URL too.
 
-3. **On [render.com](https://render.com), click New → Web Service** (not Blueprint) and connect
-   the GitHub repo. Configure it as:
-   - **Name**: `idp-backend`
-   - **Runtime**: Docker
-   - **Dockerfile Path**: `backend/Dockerfile.production`
-   - **Docker Build Context Directory**: `backend` (if Render's form doesn't show this field
-     separately, set **Root Directory** to `backend` instead and the Dockerfile Path to just
-     `Dockerfile.production`)
-   - **Instance Type**: Free
-   - **Environment Variables** — paste this block in (Render has a "paste from .env" option in
-     the Environment tab that accepts this directly), filling in the four `<from Neon>` values:
-     ```
-     APP_NAME=Interior Design Platform
-     APP_ENV=production
-     APP_DEBUG=false
-     APP_KEY=base64:b/oSS29NFvK42rYNGuiOEoS+ocMgm++NWmqNDIbKT+c=
-     APP_URL=https://idp-backend.onrender.com
-     FRONTEND_URL=https://idp-frontend.onrender.com
-     LOG_CHANNEL=stderr
-     DB_CONNECTION=pgsql
-     DB_SSLMODE=require
-     DB_HOST=<from Neon>
-     DB_PORT=5432
-     DB_DATABASE=<from Neon>
-     DB_USERNAME=<from Neon>
-     DB_PASSWORD=<from Neon>
-     SESSION_DRIVER=database
-     CACHE_STORE=database
-     QUEUE_CONNECTION=database
-     MAIL_MAILER=log
-     ```
-   Click **Create Web Service**.
-
-4. **Once it's created, check the URL Render actually assigned** (top of the service page — it's
-   usually `https://idp-backend.onrender.com`, but Render appends a random suffix instead if that
-   exact name was already taken by someone else, e.g. `https://idp-backend-ab12.onrender.com`).
-   If it's not the plain name, go back into this service's Environment tab and fix `APP_URL` to
-   match the real one.
-
-5. **New → Web Service** again for the frontend:
-   - **Name**: `idp-frontend`
-   - **Runtime**: Docker
-   - **Dockerfile Path**: `frontend/Dockerfile.production`
-   - **Docker Build Context Directory**: `frontend` (or **Root Directory**: `frontend` +
-     Dockerfile Path `Dockerfile.production`, same fallback as step 3)
-   - **Instance Type**: Free
-   - **Environment Variables**:
-     ```
-     NEXT_PUBLIC_API_BASE_URL=https://idp-backend.onrender.com/api/v1
-     ```
-     Use the backend's **real** URL from step 4 here, not the placeholder, since this value gets
-     baked into the frontend's JS bundle at build time — if you fix it after the first build,
-     you'll need to trigger a fresh deploy (not just save the env var) for it to take effect.
-   Click **Create Web Service**.
-
-6. Wait for both services to finish their first build (~3-5 min each — the frontend does a full
-   `next build`, the backend a `composer install`).
+6. Go back to the backend service one more time and fix `FRONTEND_URL` to the frontend's real URL.
 
 7. Open the frontend's URL and use **Create an organization** (`/signup`) to make your first demo
-   account — it logs you straight in, no seed data step required (the backend seeds the RBAC
-   roles automatically on boot; see below).
+   account.
 
-That's it — no manual migrate step either. Migrations + role seeding run automatically on every
-container boot (see `backend/Dockerfile.production`).
-
-### If you rename either service in render.yaml
-
-The two services' URLs are hardcoded as literal strings in `render.yaml` (`APP_URL`,
-`FRONTEND_URL`, `NEXT_PUBLIC_API_BASE_URL`) because Render can't resolve a not-yet-created
-service's URL on first apply. If you change `name: idp-backend` or `name: idp-frontend`, update
-every URL that mentions the old name to match the new one, or the two services won't be able to
-reach each other.
+Field names above are my best current understanding — Northflank's UI may label things slightly
+differently. If something doesn't match, describe what you see and I'll adjust.
 
 ---
 
-## Known free-tier tradeoffs (applies to either platform)
+## Platform 2: Koyeb (alternate)
 
-- **Cold starts, twice over.** Free web services on both Koyeb and Render spin down after a
-  period of idle (Render: ~15 min; Koyeb's free instances behave similarly) and take ~30-60s to
-  wake back up on the next request. Neon's free project can idle/hibernate too. The first request
-  after a while may be slow while everything wakes up — normal, not a bug.
+Same shape as Northflank, different dashboard:
+
+1. Sign up at [koyeb.com](https://koyeb.com), connect GitHub.
+2. **Create Web Service** from the repo:
+   - **Builder**: Docker
+   - **Dockerfile location**: `backend/Dockerfile.production`
+   - **Work directory / build context**: `backend` (if shown separately)
+   - **Ports**: `8000`, HTTP
+   - **Instance type**: Free/Eco
+   - **Environment variables**: the backend block above
+   - Deploy, copy the real `.koyeb.app` URL once it's up.
+3. Fix `APP_URL` on the backend to that real URL.
+4. **Create Web Service** again for the frontend: Dockerfile `frontend/Dockerfile.production`,
+   context `frontend`, port `3000`, env var `NEXT_PUBLIC_API_BASE_URL=<backend URL>/api/v1`.
+5. Fix the backend's `FRONTEND_URL` to the frontend's real URL once you have it.
+6. `/signup` on the frontend's URL to create your first demo account.
+
+---
+
+## Platform 3: Render (fallback)
+
+Render works, but needs one workaround: **use New → Web Service, not New → Blueprint** — the
+Blueprint feature (and Render's own managed Postgres) both require a card; creating each web
+service individually does not.
+
+1. **New → Web Service**, connect the repo, configure the backend:
+   - **Runtime**: Docker
+   - **Dockerfile Path**: `backend/Dockerfile.production`
+   - **Docker Build Context Directory**: `backend` (or set **Root Directory** to `backend` and
+     the Dockerfile Path to just `Dockerfile.production`, if that's the only path field shown)
+   - **Instance Type**: Free
+   - **Environment Variables**: the backend block above (Render's Environment tab has a "paste
+     from .env" option that accepts the whole block directly)
+   - Create it, then check the URL Render assigned (usually `https://<name>.onrender.com`, but a
+     random suffix gets appended if that exact name is already taken by someone else).
+2. Fix `APP_URL` on the backend to the real URL.
+3. **New → Web Service** again for the frontend: Dockerfile Path `frontend/Dockerfile.production`,
+   context `frontend`, env var `NEXT_PUBLIC_API_BASE_URL=<backend's real URL>/api/v1`.
+4. Fix the backend's `FRONTEND_URL` to the frontend's real URL.
+5. `/signup` on the frontend's URL.
+
+`render.yaml` in the repo root documents the same env vars in Render's Blueprint format, in case
+you ever want to revisit the Blueprint path (e.g. if you decide a card is fine after all) —
+it's not applied by any of the steps above.
+
+---
+
+## Known free-tier tradeoffs (applies to all three)
+
+- **Cold starts.** Free web services on every platform here spin down after a period of idle and
+  take tens of seconds to wake back up on the next request. Neon's free project can idle too.
+  Normal, not a bug.
 - **No persistent disk.** Anything uploaded through Media/Documents/change-order attachments is
-  lost on the next restart or redeploy on either platform's free tier. Fine for a walkthrough,
-  not for data you need to keep.
+  lost on the next restart or redeploy. Fine for a walkthrough, not for data you need to keep.
 - **Emails don't actually send.** `MAIL_MAILER=log` (matching local dev) — password reset/OTP/
   notification emails get written to the backend service's log output instead of being
-  delivered. Both platforms have a Logs tab where you can read them. Swap in real `MAIL_*` env
-  vars on the backend service if you need real delivery for the demo.
-- **APP_KEY is a fresh, disposable value** generated for this deploy and reused across both
-  platforms' instructions above. Fine for a demo; rotate it (`php artisan key:generate --show`
+  delivered. Every platform here has a Logs tab where you can read them. Swap in real `MAIL_*`
+  env vars if you need real delivery for the demo.
+- **APP_KEY is a fresh, disposable value** generated for this deploy and reused across every
+  platform's instructions above. Fine for a demo; rotate it (`php artisan key:generate --show`
   locally, then update the env var) if this deployment ends up living longer than expected.
 - **The Neon connection string is sensitive.** If it's ever been pasted somewhere outside your
   own notes, rotate the database password from Neon's dashboard once you're done experimenting.
