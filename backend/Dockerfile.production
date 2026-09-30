@@ -16,7 +16,13 @@ WORKDIR /var/www
 
 COPY . .
 
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress \
+# COMPOSER_MEMORY_LIMIT=-1: free-tier build runners (Northflank, Koyeb, etc.) often cap build
+# container memory well below a dev laptop's — composer's dependency solver can hit PHP's default
+# memory_limit under that constraint even though the exact same command succeeds locally, which
+# surfaces as a bare "exit code: 1" with no obviously-composer-related message in the platform's
+# truncated build summary. Unlimited memory for this one build step is safe (it's not the
+# container's runtime limit, just this RUN layer).
+RUN COMPOSER_MEMORY_LIMIT=-1 composer install --no-dev --optimize-autoloader --no-interaction --no-progress \
     && chmod -R 775 storage bootstrap/cache
 
 EXPOSE 8000
