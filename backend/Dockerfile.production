@@ -31,12 +31,13 @@ EXPOSE 8000
 
 # Deliberately no config:cache/route:cache — env vars come entirely from the platform's
 # dashboard at container start, and caching them at build time (before those vars exist) would
-# bake in wrong values. Migrations + RoleSeeder run on every boot rather than as a separate
-# "pre-deploy command" step some platforms offer, keeping this a single self-contained image
-# that works the same way everywhere — both are idempotent (migrate skips already-run
-# migrations; RoleSeeder uses updateOrCreate), so re-running them on every restart/redeploy is
-# safe. RoleSeeder specifically matters here: a fresh database has no "Owner" role row yet, and
-# self-serve signup (POST /auth/register) 404s without one (OrganizationSignupService looks it
-# up with firstOrFail()) — confirmed by testing this image against a brand-new database before
-# wiring this line in.
-CMD ["sh", "-c", "php artisan migrate --force && php artisan db:seed --class=RoleSeeder --force && php artisan serve --host 0.0.0.0 --port ${PORT:-8000}"]
+# bake in wrong values. Migrations + RoleSeeder + PlatformAdminSeeder run on every boot rather
+# than as a separate "pre-deploy command" step some platforms offer, keeping this a single
+# self-contained image that works the same way everywhere — all three are idempotent (migrate
+# skips already-run migrations; both seeders use updateOrCreate), so re-running them on every
+# restart/redeploy is safe. RoleSeeder specifically matters here: a fresh database has no "Owner"
+# role row yet, and self-serve signup (POST /auth/register) 404s without one
+# (OrganizationSignupService looks it up with firstOrFail()) — confirmed by testing this image
+# against a brand-new database before wiring this line in. PlatformAdminSeeder guarantees a
+# working cross-org admin login (see that class's docblock) exists on every deploy too.
+CMD ["sh", "-c", "php artisan migrate --force && php artisan db:seed --class=RoleSeeder --force && php artisan db:seed --class=PlatformAdminSeeder --force && php artisan serve --host 0.0.0.0 --port ${PORT:-8000}"]
