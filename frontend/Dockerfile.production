@@ -1,22 +1,48 @@
-# Production image for a Docker-based PaaS free tier (Render, Koyeb, etc.) — separate from the
-# root Dockerfile, which stays dev-only (`next dev` against a bind-mounted source tree). This one
-# builds a real production bundle. NEXT_PUBLIC_* vars are inlined into the client bundle at BUILD
-# time, not read at runtime, so NEXT_PUBLIC_API_BASE_URL must be passed as a build ARG — most
-# platforms (Render, Koyeb included) automatically expose a Docker service's configured
-# environment variables as build args, which is what makes this work without extra plumbing.
-FROM node:22-alpine
+# Production image for a Docker-based PaaS free tier (Render, Koyeb, Northflank, etc.) —
+# separate from the root Dockerfile, which stays dev-only (`next dev` against a bind-mounted
+# source tree). Multi-stage build using Next's "standalone" output (see next.config.ts): the
+# final image copies only the traced, minimal server + its actual dependencies rather than the
+# full node_modules tree, which matters a lot on a 256MB-class free-tier instance — a plain
+# `next start` against the full node_modules install was getting OOM-killed at runtime on
+# Northflank's free tier even though the build itself succeeded.
+#
+# NEXT_PUBLIC_* vars are inlined into the client bundle at BUILD time, not read at runtime, so
+# NEXT_PUBLIC_API_BASE_URL must be passed as a build ARG and be correct *before* the builder
+# stage's `npm run build` runs — most platforms automatically expose a Docker service's
+# configured environment variables as build args, which is what makes this work without extra
+# plumbing. If you change this value after the image is already built, you must trigger a fresh
+# build (not just restart the container) for the new value to take effect.
 
+FROM node:22-alpine AS deps
 WORKDIR /app
-
-ARG NEXT_PUBLIC_API_BASE_URL
-ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
-
 COPY package*.json ./
 RUN npm ci
 
+FROM node:22-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+ARG NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 RUN npm run build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+# Belt-and-suspenders on top of standalone output: caps V8's heap well under a 256MB container
+# limit, leaving headroom for Node's own non-heap overhead (native buffers, thread stacks) so a
+# memory spike triggers V8's own garbage collection instead of the kernel OOM-killing the whole
+# process. Tune this down further (or up, on a roomier instance) if you change instance sizes.
+ENV NODE_OPTIONS="--max-old-space-size=192"
+# The standalone server binds to $HOSTNAME (default localhost, which no platform can route
+# external traffic to inside a container) and $PORT (defaults to 3000 if unset) on its own —
+# no CLI flags needed, unlike `next start -p`.
+ENV HOSTNAME="0.0.0.0"
+
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx --no-install next start -p ${PORT:-3000}"]
+CMD ["node", "server.js"]
