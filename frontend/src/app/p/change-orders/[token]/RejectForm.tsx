@@ -13,7 +13,7 @@ import { rejectPublicChangeOrder } from "@/lib/api/resources/publicChangeOrders"
 import { PublicApiError } from "@/lib/api/publicClient";
 
 const INPUT_CLASSES =
-  "w-full rounded-md border border-zinc-300 px-3 py-2.5 text-base focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950";
+  "w-full rounded-md border border-zinc-300 px-3 py-2.5 text-base focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-950";
 
 interface RejectFormProps {
   token: string;

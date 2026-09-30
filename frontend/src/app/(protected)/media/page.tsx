@@ -43,7 +43,7 @@ type T = (key: TranslationKey) => string;
 type CollectionFilter = "all" | ProjectMediaCollection;
 
 const INPUT_CLASSES =
-  "rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950";
+  "rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-950";
 
 /** Whether this mime type can be rendered in the grid thumbnail / lightbox at all — see
  *  documents/page.tsx's identical helper for why (must match what MediaLightbox renders). */

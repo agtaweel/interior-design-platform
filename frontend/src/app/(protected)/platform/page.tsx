@@ -59,10 +59,10 @@ export default function PlatformDashboardPage() {
       <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Platform Overview</h1>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Organizations" value={String(summary.organizations_count)} />
-        <StatCard label="Projects" value={String(summary.projects_count)} />
-        <StatCard label="Users" value={String(summary.users_count)} />
-        <StatCard label="Outstanding" value={formatEGPOrDash(summary.financials.outstanding, locale)} />
+        <StatCard tone="blue" label="Organizations" value={String(summary.organizations_count)} />
+        <StatCard tone="violet" label="Projects" value={String(summary.projects_count)} />
+        <StatCard tone="green" label="Users" value={String(summary.users_count)} />
+        <StatCard tone="rose" label="Outstanding" value={formatEGPOrDash(summary.financials.outstanding, locale)} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -119,9 +119,22 @@ export default function PlatformDashboardPage() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string }) {
+// Hex, not Tailwind color utilities — see KpiCard's identical comment: a plain
+// `border-t-{color}` utility reliably loses to this div's own `dark:border-zinc-800`.
+const STAT_TONE_HEX: Record<string, string> = {
+  amber: "#f59e0b",
+  blue: "#3b82f6",
+  green: "#10b981",
+  violet: "#8b5cf6",
+  rose: "#f43f5e",
+};
+
+function StatCard({ label, value, tone }: { label: string; value: string; tone?: keyof typeof STAT_TONE_HEX }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+    <div
+      className="rounded-lg border border-t-4 border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+      style={tone ? { borderTopColor: STAT_TONE_HEX[tone] } : undefined}
+    >
       <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">{label}</p>
       <p className="mt-1 text-xl font-semibold text-zinc-900 dark:text-zinc-50">{value}</p>
     </div>

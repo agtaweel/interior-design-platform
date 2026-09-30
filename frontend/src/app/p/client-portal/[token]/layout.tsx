@@ -46,7 +46,7 @@ export default function ClientPortalLayout({ children }: { children: React.React
                   href={tab.href(token)}
                   className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap ${
                     active
-                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                      ? "bg-amber-600 text-white dark:bg-amber-500 dark:text-zinc-950"
                       : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
                   }`}
                 >

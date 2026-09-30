@@ -66,7 +66,7 @@ const STATUS_TONE: Record<ChangeOrderStatus, "neutral" | "blue" | "green" | "amb
 };
 
 const INPUT_CLASSES =
-  "w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950";
+  "w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-950";
 const TEXTAREA_CLASSES = `${INPUT_CLASSES} resize-y`;
 
 /** Flattened BOQ item for the remove/modify picker (see file docblock — the picker is sourced
@@ -474,7 +474,7 @@ function ChangeOrderList({
                 onClick={() => onSelect(String(s.id))}
                 className={`flex flex-col gap-1 rounded-md px-3 py-2 text-left transition-colors ${
                   active
-                    ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                    ? "bg-amber-600 text-white dark:bg-amber-500 dark:text-zinc-950"
                     : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
                 }`}
               >

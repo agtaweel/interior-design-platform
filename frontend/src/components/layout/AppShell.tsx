@@ -64,7 +64,7 @@ function NavLink({
       onClick={onClick}
       className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
         isActive
-          ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+          ? "bg-amber-600 text-white dark:bg-amber-500 dark:text-zinc-950"
           : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
       }`}
     >

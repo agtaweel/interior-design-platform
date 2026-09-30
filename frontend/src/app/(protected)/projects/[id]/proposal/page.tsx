@@ -64,7 +64,7 @@ const STATUS_TONE: Record<ProposalStatus, "neutral" | "blue" | "green" | "amber"
 };
 
 const TEXTAREA_CLASSES =
-  "w-full resize-y rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950";
+  "w-full resize-y rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-950";
 
 /** Form-friendly shape: every field guaranteed a plain string (never null/undefined), unlike
  *  `ProposalContent` itself which allows null/missing fields straight from the server. */
@@ -282,7 +282,7 @@ function VersionHistoryList({
               onClick={() => onSelect(String(v.id))}
               className={`flex flex-col gap-1 rounded-md px-3 py-2 text-left transition-colors ${
                 active
-                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                  ? "bg-amber-600 text-white dark:bg-amber-500 dark:text-zinc-950"
                   : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
               }`}
             >

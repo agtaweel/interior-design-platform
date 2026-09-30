@@ -23,7 +23,7 @@ import { formatDate } from "@/lib/format/date";
 
 type T = (key: TranslationKey) => string;
 const INPUT_CLASSES =
-  "rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950";
+  "rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-950";
 
 function priorityTone(priority: SnagPriority): "green" | "red" | "amber" {
   if (priority === "critical" || priority === "high") return "red";
@@ -97,7 +97,7 @@ export default function SnaggingPage() {
             onClick={() => setFilter(option)}
             className={`rounded px-3 py-1 font-medium transition-colors ${
               filter === option
-                ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                ? "bg-amber-600 text-white dark:bg-amber-500 dark:text-zinc-950"
                 : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
             }`}
           >

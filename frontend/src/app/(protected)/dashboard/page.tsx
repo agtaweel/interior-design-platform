@@ -68,12 +68,13 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
+          tone="blue"
           label={t("dashboard.kpi.activeProjects")}
           value={activeProjectsCount === null ? "—" : String(activeProjectsCount)}
         />
-        <KpiCard label={t("dashboard.kpi.pendingProposals")} value="—" hint="Sprint 4" />
-        <KpiCard label={t("dashboard.kpi.receivables")} value="—" hint="Sprint 6" />
-        <KpiCard label={t("dashboard.kpi.monthlyRevenue")} value="—" hint="Sprint 6" />
+        <KpiCard tone="amber" label={t("dashboard.kpi.pendingProposals")} value="—" hint="Sprint 4" />
+        <KpiCard tone="rose" label={t("dashboard.kpi.receivables")} value="—" hint="Sprint 6" />
+        <KpiCard tone="green" label={t("dashboard.kpi.monthlyRevenue")} value="—" hint="Sprint 6" />
       </div>
 
       <Card>

@@ -158,21 +158,25 @@ export default function ReportsPage() {
       {exportError ? <ErrorBanner message={exportError} /> : null}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <KpiCard label={t("reports.kpi.totalRevenue")} value={formatMoney(summary?.total_revenue)} />
+        <KpiCard tone="green" label={t("reports.kpi.totalRevenue")} value={formatMoney(summary?.total_revenue)} />
         <KpiCard
+          tone="rose"
           label={t("reports.kpi.totalReceivables")}
           value={formatMoney(summary?.total_receivables)}
         />
         <KpiCard
+          tone="amber"
           label={t("reports.kpi.estimatedMargin")}
           value={formatMoney(summary?.estimated_margin)}
           hint={t("reports.kpi.estimatedMarginHint")}
         />
         <KpiCard
+          tone="violet"
           label={t("reports.kpi.changeOrderValue")}
           value={formatMoney(summary?.total_change_order_value)}
         />
         <KpiCard
+          tone="blue"
           label={t("reports.kpi.projects")}
           value={`${summary?.active_project_count ?? 0} / ${summary?.project_count ?? 0}`}
         />

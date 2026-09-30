@@ -19,7 +19,7 @@ import { PublicApiError } from "@/lib/api/publicClient";
 import type { PublicChangeOrderApproveResult } from "@/lib/api/publicChangeOrderTypes";
 
 const INPUT_CLASSES =
-  "w-full rounded-md border border-zinc-300 px-3 py-2.5 text-base focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-950";
+  "w-full rounded-md border border-zinc-300 px-3 py-2.5 text-base focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-950";
 
 interface ApproveFormProps {
   token: string;

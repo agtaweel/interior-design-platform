@@ -68,7 +68,7 @@ export function ChangeOrderPriceImpact({
       ? "bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
       : n < 0
         ? "bg-green-50 text-green-900 dark:bg-green-950/40 dark:text-green-300"
-        : "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900";
+        : "bg-amber-600 text-white dark:bg-amber-500 dark:text-zinc-950";
 
   return (
     <div className={`flex items-center justify-between rounded-lg px-4 py-4 ${tone}`}>
