@@ -47,7 +47,7 @@ services:
     dockerContext: ./backend
     envVars:
       - key: APP_NAME
-        value: Interior Design Platform
+        value: Fitout
       - key: APP_ENV
         value: production
       - key: APP_DEBUG

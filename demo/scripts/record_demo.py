@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Records a Playwright walkthrough of the Interior Design Platform demo scenario
+Records a Playwright walkthrough of the Fitout demo scenario
 (Nile & Co. Interiors) as an MP4 video, and captures PNG stills at each major
 step for the companion PDF.
 """

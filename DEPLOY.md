@@ -42,7 +42,7 @@ back and fix the backend's placeholder.
 
 **Backend service** — port **8000**:
 ```
-APP_NAME=Interior Design Platform
+APP_NAME=Fitout
 APP_ENV=production
 APP_DEBUG=false
 APP_KEY=base64:b/oSS29NFvK42rYNGuiOEoS+ocMgm++NWmqNDIbKT+c=

@@ -9,7 +9,7 @@
 export type Locale = "en" | "ar";
 
 const en = {
-  "app.name": "Interior Design Platform",
+  "app.name": "Fitout",
   "nav.dashboard": "Dashboard",
   "nav.leads": "Leads",
   "nav.clients": "Clients",
@@ -25,7 +25,7 @@ const en = {
   "nav.menu": "Menu",
 
   "login.title": "Sign in",
-  "login.subtitle": "Interior Design & Finishing Management Platform",
+  "login.subtitle": "Fitout — Interior Design & Finishing Management Platform",
   "login.email": "Email",
   "login.password": "Password",
   "login.submit": "Sign in",
@@ -968,7 +968,7 @@ export type TranslationKey = keyof typeof en;
 export type Dictionary = Record<TranslationKey, string>;
 
 const ar: Dictionary = {
-  "app.name": "منصة إدارة التصميم الداخلي",
+  "app.name": "Fitout",
   "nav.dashboard": "الرئيسية",
   "nav.leads": "العملاء المحتملون",
   "nav.clients": "العملاء",
@@ -984,7 +984,7 @@ const ar: Dictionary = {
   "nav.menu": "القائمة",
 
   "login.title": "تسجيل الدخول",
-  "login.subtitle": "منصة إدارة التصميم الداخلي والتشطيبات",
+  "login.subtitle": "Fitout — منصة إدارة التصميم الداخلي والتشطيبات",
   "login.email": "البريد الإلكتروني",
   "login.password": "كلمة المرور",
   "login.submit": "تسجيل الدخول",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds the Interior Design Platform demo PDF from the recorded stills + script."""
+"""Builds the Fitout demo PDF from the recorded stills + script."""
 from pathlib import Path
 from PIL import Image
 from reportlab.lib.pagesizes import letter
@@ -206,7 +206,7 @@ doc = SimpleDocTemplate(
     str(OUT), pagesize=letter,
     leftMargin=0.8 * inch, rightMargin=0.8 * inch,
     topMargin=0.8 * inch, bottomMargin=0.8 * inch,
-    title="Interior Design Platform — Product Demo",
+    title="Fitout — Product Demo",
     author="Nile & Co. Interiors (demo)",
 )
 doc.build(story)

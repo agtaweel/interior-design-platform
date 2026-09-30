@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Interior Design Platform",
-  description: "Interior Design & Finishing Management Platform",
+  title: "Fitout",
+  description: "Fitout — Interior Design & Finishing Management Platform",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
