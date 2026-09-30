@@ -22,6 +22,7 @@ const en = {
   "nav.comingSoon": "Coming soon",
   "nav.logout": "Log out",
   "nav.language": "Language",
+  "nav.menu": "Menu",
 
   "login.title": "Sign in",
   "login.subtitle": "Interior Design & Finishing Management Platform",
@@ -980,6 +981,7 @@ const ar: Dictionary = {
   "nav.comingSoon": "قريباً",
   "nav.logout": "تسجيل الخروج",
   "nav.language": "اللغة",
+  "nav.menu": "القائمة",
 
   "login.title": "تسجيل الدخول",
   "login.subtitle": "منصة إدارة التصميم الداخلي والتشطيبات",

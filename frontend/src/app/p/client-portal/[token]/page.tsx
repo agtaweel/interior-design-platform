@@ -84,7 +84,7 @@ export default function ClientPortalOverviewPage() {
         ) : null}
       </header>
 
-      <section className="grid grid-cols-3 gap-3">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <FinancialStat label={t("clientPortal.overview.contractValue")} value={data.financials.value} currency={currency} locale={locale} />
         <FinancialStat label={t("clientPortal.overview.collected")} value={data.financials.collected} currency={currency} locale={locale} />
         <FinancialStat label={t("clientPortal.overview.outstanding")} value={data.financials.outstanding} currency={currency} locale={locale} emphasize />

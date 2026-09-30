@@ -147,7 +147,7 @@ export default function ReportsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">{t("reports.title")}</h1>
         <Button variant="secondary" onClick={handleExport} disabled={exporting}>
           {exporting ? t("reports.export.exporting") : t("reports.export.cta")}
