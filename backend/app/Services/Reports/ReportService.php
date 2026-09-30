@@ -5,9 +5,11 @@ namespace App\Services\Reports;
 use App\Models\ChangeOrder;
 use App\Models\Contract;
 use App\Models\Payment;
+use App\Models\ProposalVersion;
 use App\Models\Project;
 use App\Services\Boq\BoqMoney;
 use App\Services\Costs\ProjectCostCalculator;
+use Illuminate\Support\Carbon;
 
 /**
  * GET /reports/summary and GET/CSV /reports/projects (PROJECT_CONTEXT.md Sprint 8 "Reports").
@@ -40,6 +42,7 @@ final class ReportService
      * @return array{
      *     total_revenue: string, total_receivables: string, estimated_margin: string,
      *     total_change_order_value: string, total_actual_cost: string, total_gross_profit: string,
+     *     monthly_revenue: string, pending_proposals_count: int,
      *     project_count: int, active_project_count: int
      * }
      */
@@ -48,6 +51,20 @@ final class ReportService
         $projects = Project::query()->get();
 
         $totalRevenue = BoqMoney::sumAccessor(Payment::query()->get(), 'amount');
+
+        // Calendar-month-to-date, not a rolling 30 days — matches how "Monthly Revenue" reads on
+        // a dashboard (resets each 1st, same as e.g. a billing-cycle KPI would).
+        $monthlyRevenue = BoqMoney::sumAccessor(
+            Payment::query()->whereBetween('paid_at', [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()])->get(),
+            'amount'
+        );
+
+        // "Pending" = sent to the client and awaiting a decision — draft isn't pending yet (still
+        // being written internally), approved/changes_requested are already decided.
+        $pendingProposalsCount = ProposalVersion::query()
+            ->whereIn('project_id', $projects->pluck('id'))
+            ->where('status', 'sent')
+            ->count();
 
         $totalReceivables = BoqMoney::zero();
         $estimatedMargin = BoqMoney::zero();
@@ -102,6 +119,8 @@ final class ReportService
             // revenue basis otherwise, same convention as that calculator's per-project null).
             'total_actual_cost' => $totalActualCost,
             'total_gross_profit' => $totalGrossProfit,
+            'monthly_revenue' => $monthlyRevenue,
+            'pending_proposals_count' => $pendingProposalsCount,
             'project_count' => $projects->count(),
             'active_project_count' => $projects->where('status', 'active')->count(),
         ];

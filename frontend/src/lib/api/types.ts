@@ -829,6 +829,8 @@ export interface ReportSummary {
   total_receivables: number | string;
   estimated_margin: number | string;
   total_change_order_value: number | string;
+  monthly_revenue: number | string;
+  pending_proposals_count: number;
   project_count: number;
   active_project_count: number;
 }

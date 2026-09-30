@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   // PaaS runners) — see frontend/Dockerfile.production, which copies only this trimmed output
   // into the final image rather than `npm ci`'s full install.
   output: "standalone",
+  // Hides the floating Next.js dev-mode badge (bottom-left "N" indicator) — this is a demo/
+  // client-facing app, not a screen developers are meant to poke at while it's running.
+  devIndicators: false,
 };
 
 export default nextConfig;

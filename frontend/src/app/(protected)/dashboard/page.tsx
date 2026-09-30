@@ -4,19 +4,22 @@
  * S02 — Main Dashboard.
  *
  * Active project count comes from GET /projects?status=active (meta.total). Pending
- * proposals / receivables / monthly revenue have no backing API yet (proposals/payments are
- * Sprint 4/6 scope per docs/PROJECT_CONTEXT.md's MVP delivery order) — stubbed as "—" rather
- * than a fabricated 0, so the UI is honest about "no data source yet" vs. "confirmed zero".
- * Overdue items has no backing API yet either (depends on payment schedules / tasks, both
- * later sprints) — stubbed as an empty section.
+ * proposals / receivables / monthly revenue come from GET /reports/summary (ReportService) —
+ * that endpoint requires Permissions::VIEW_FINANCIALS, which not every role has (e.g. Designer),
+ * so it's fetched separately from the project lists and a 403 there just leaves those three
+ * cards at "—" rather than blocking the rest of the dashboard or surfacing an error banner.
+ * Overdue items has no backing API yet (depends on payment schedules / tasks aggregation) —
+ * stubbed as an empty section.
  */
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ApiError } from "@/lib/api/client";
 import { listProjects } from "@/lib/api/resources/projects";
-import type { Project } from "@/lib/api/types";
+import { getReportSummary } from "@/lib/api/resources/reports";
+import type { Project, ReportSummary } from "@/lib/api/types";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { useMoneyFormatter } from "@/lib/format/useMoneyFormatter";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
@@ -27,8 +30,10 @@ import { formatDate } from "@/lib/format/date";
 
 export default function DashboardPage() {
   const { t, locale } = useLocale();
+  const { formatMoney } = useMoneyFormatter();
   const [activeProjectsCount, setActiveProjectsCount] = useState<number | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [reportSummary, setReportSummary] = useState<ReportSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +51,15 @@ export default function DashboardPage() {
       setError(err instanceof ApiError ? err.message : t("common.unknownError"));
     } finally {
       setLoading(false);
+    }
+
+    // Separate try/catch: a 403 here (no VIEW_FINANCIALS) is expected for some roles and
+    // shouldn't block the rest of the dashboard or show an error banner — those three KPI
+    // cards just stay at "—", same as while this request is still in flight.
+    try {
+      setReportSummary(await getReportSummary());
+    } catch {
+      setReportSummary(null);
     }
   }
 
@@ -72,9 +86,21 @@ export default function DashboardPage() {
           label={t("dashboard.kpi.activeProjects")}
           value={activeProjectsCount === null ? "—" : String(activeProjectsCount)}
         />
-        <KpiCard tone="amber" label={t("dashboard.kpi.pendingProposals")} value="—" hint="Sprint 4" />
-        <KpiCard tone="rose" label={t("dashboard.kpi.receivables")} value="—" hint="Sprint 6" />
-        <KpiCard tone="green" label={t("dashboard.kpi.monthlyRevenue")} value="—" hint="Sprint 6" />
+        <KpiCard
+          tone="amber"
+          label={t("dashboard.kpi.pendingProposals")}
+          value={reportSummary ? String(reportSummary.pending_proposals_count) : "—"}
+        />
+        <KpiCard
+          tone="rose"
+          label={t("dashboard.kpi.receivables")}
+          value={reportSummary ? formatMoney(reportSummary.total_receivables) : "—"}
+        />
+        <KpiCard
+          tone="green"
+          label={t("dashboard.kpi.monthlyRevenue")}
+          value={reportSummary ? formatMoney(reportSummary.monthly_revenue) : "—"}
+        />
       </div>
 
       <Card>
