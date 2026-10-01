@@ -100,7 +100,13 @@ export function NotificationBell() {
         // best-effort; next load()/poll will reconcile
       }
     }
-    if (n.payload?.project_id) {
+    // BRD v4 "Client Marketplace" — a new_inquiry_message notification carries a
+    // conversation_id, not a project_id (an inquiry can exist before any project does), so it
+    // routes to the staff inquiry thread instead.
+    if (n.payload?.conversation_id) {
+      setOpen(false);
+      router.push(`/inquiries/${n.payload.conversation_id}`);
+    } else if (n.payload?.project_id) {
       setOpen(false);
       router.push(`/projects/${n.payload.project_id}`);
     }

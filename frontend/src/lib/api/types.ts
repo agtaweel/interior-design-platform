@@ -995,6 +995,7 @@ export type NotificationType =
   | "payment_received"
   | "change_order_approved"
   | "change_order_rejected"
+  | "new_inquiry_message"
   | string;
 
 export interface NotificationPayload {
@@ -1002,6 +1003,9 @@ export interface NotificationPayload {
   summary?: string;
   project_id?: number | string;
   project_name?: string;
+  /** BRD v4 "Client Marketplace" — only set on `new_inquiry_message` notifications, see
+   *  NotificationService::notifyOrganization()'s call site in ClientConversationController. */
+  conversation_id?: number | string;
   [key: string]: unknown;
 }
 
