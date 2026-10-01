@@ -6,22 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ApprovePublicProposalRequest;
 use App\Http\Requests\RequestChangesPublicProposalRequest;
 use App\Http\Resources\PublicProposalResource;
-use App\Models\Approval;
 use App\Models\IdempotencyKey;
 use App\Models\OtpChallenge;
 use App\Models\ProposalVersion;
 use App\Models\SignedLink;
-use App\Services\Notifications\ClientPortalEventMailer;
-use App\Services\Notifications\NotificationService;
 use App\Services\Proposals\OtpChallengeService;
 use App\Services\Proposals\OtpVerificationException;
+use App\Services\Proposals\ProposalApprovalService;
 use App\Services\Proposals\ProposalPresenter;
 use App\Support\PublicLinks\SignedLinkException;
 use App\Support\PublicLinks\SignedLinkService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 /**
@@ -46,8 +42,7 @@ class PublicProposalController extends Controller
         private readonly SignedLinkService $signedLinkService,
         private readonly OtpChallengeService $otpService,
         private readonly ProposalPresenter $presenter,
-        private readonly NotificationService $notificationService,
-        private readonly ClientPortalEventMailer $clientMailer,
+        private readonly ProposalApprovalService $approvalService,
     ) {}
 
     private const PURPOSE = 'proposal_approval';
@@ -170,43 +165,11 @@ class PublicProposalController extends Controller
         // captured for audit/traceability — documented here rather than left unexplained.
         $comment = $this->composeComment($request->validated('name'), $request->validated('comment'));
 
-        $body = DB::transaction(function () use ($version, $challenge, $comment, $request) {
-            $approvedAt = now();
-
-            $version->forceFill(['status' => 'approved', 'approved_at' => $approvedAt])->save();
-
-            $approval = Approval::create([
-                'organization_id' => $version->project->organization_id,
-                'project_id' => $version->project_id,
-                'entity_type' => ProposalVersion::ENTITY_TYPE,
-                'entity_id' => $version->id,
-                'approver_type' => 'client',
-                'user_id' => null,
-                'status' => 'approved',
-                'comment' => $comment,
-                'approved_at' => $approvedAt,
-                'ip_address' => $request->ip(),
-            ]);
-
-            $challenge->forceFill(['verified_at' => $approvedAt])->save();
-
-            $this->notificationService->notify($version->project, 'proposal_approved', [
-                'project_id' => $version->project_id,
-                'project_name' => $version->project->name,
-                'proposal_version_id' => $version->id,
-                'version_no' => $version->version_no,
-                'summary' => sprintf('Proposal v%d for %s was approved by the client.', $version->version_no, $version->project->name),
-            ]);
-
-            return [
-                'status' => 'approved',
-                'approved_at' => $approvedAt->toJSON(),
-                'approval_id' => $approval->id,
-                'contract_conversion_available' => true,
-            ];
-        });
-
-        $this->clientMailer->proposalDecided($version, 'approved');
+        $body = $this->approvalService->approve($version, $comment, $request->ip());
+        // markUsed()/verified_at stamp are specific to the token+OTP flow, not part of the
+        // shared approval transaction — ProposalApprovalService has no concept of either.
+        // Stamped from the service's own approved_at so both records agree on the moment.
+        $challenge->forceFill(['verified_at' => $body['approved_at']])->save();
         $this->signedLinkService->markUsed($token);
 
         // Only a genuinely NEW successful request stores an idempotency record — a replay
@@ -255,31 +218,7 @@ class PublicProposalController extends Controller
 
         $comment = $this->composeComment($request->validated('name'), $request->validated('comment'));
 
-        DB::transaction(function () use ($version, $comment, $request) {
-            $version->forceFill(['status' => 'changes_requested'])->save();
-
-            Approval::create([
-                'organization_id' => $version->project->organization_id,
-                'project_id' => $version->project_id,
-                'entity_type' => ProposalVersion::ENTITY_TYPE,
-                'entity_id' => $version->id,
-                'approver_type' => 'client',
-                'user_id' => null,
-                'status' => 'changes_requested',
-                'comment' => $comment,
-                'ip_address' => $request->ip(),
-            ]);
-
-            $this->notificationService->notify($version->project, 'proposal_changes_requested', [
-                'project_id' => $version->project_id,
-                'project_name' => $version->project->name,
-                'proposal_version_id' => $version->id,
-                'version_no' => $version->version_no,
-                'summary' => sprintf('Client requested changes to Proposal v%d for %s.', $version->version_no, $version->project->name),
-            ]);
-        });
-
-        $this->clientMailer->proposalDecided($version, 'changes_requested');
+        $this->approvalService->requestChanges($version, $comment, $request->ip());
 
         return response()->json([
             'data' => [

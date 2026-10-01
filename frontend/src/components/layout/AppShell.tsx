@@ -21,7 +21,16 @@ import { FitoutLogo } from "@/components/brand/FitoutLogo";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 interface NavItem {
-  key: "dashboard" | "leads" | "clients" | "projects" | "media" | "suppliers" | "reports" | "settings";
+  key:
+    | "dashboard"
+    | "leads"
+    | "clients"
+    | "projects"
+    | "media"
+    | "inquiries"
+    | "suppliers"
+    | "reports"
+    | "settings";
   href: string | null;
 }
 
@@ -31,6 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "clients", href: "/clients" },
   { key: "projects", href: "/projects" },
   { key: "media", href: "/media" },
+  { key: "inquiries", href: "/inquiries" },
   { key: "suppliers", href: "/suppliers" },
   { key: "reports", href: "/reports" },
   { key: "settings", href: "/settings" },

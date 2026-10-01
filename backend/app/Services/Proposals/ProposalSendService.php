@@ -2,6 +2,7 @@
 
 namespace App\Services\Proposals;
 
+use App\Mail\MarketplaceDealMail;
 use App\Mail\OtpCodeMail;
 use App\Models\ProposalVersion;
 use App\Models\SignedLink;
@@ -98,6 +99,10 @@ class ProposalSendService
      * WhatsApp/phone). Best-effort and additive — a missing client email, or the mail transport
      * being unavailable, must never fail send() itself; staff can always fall back to the manual
      * relay this always supported (the return value above is unchanged).
+     *
+     * BRD v4 "Client Marketplace": a marketplace-linked client (Client::client_user_id set)
+     * gets MarketplaceDealMail instead — an OTP code would be meaningless noise for a client who
+     * approves from their own logged-in dashboard, never through this anonymous link.
      */
     private function deliverOtpByEmail(ProposalVersion $version, string $code, string $publicUrl): void
     {
@@ -109,6 +114,17 @@ class ProposalSendService
         }
 
         try {
+            if ($client->client_user_id) {
+                Mail::to($client->email)->send(new MarketplaceDealMail(
+                    recipientName: $client->name,
+                    projectName: $version->project->name,
+                    organizationName: $version->project->organization->name,
+                    dashboardUrl: sprintf('%s/client/deals/%d', config('app.frontend_url'), $version->id),
+                ));
+
+                return;
+            }
+
             Mail::to($client->email)->send(new OtpCodeMail(
                 recipientName: $client->name,
                 code: $code,

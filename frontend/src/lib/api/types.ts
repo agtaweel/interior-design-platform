@@ -54,6 +54,136 @@ export interface MeResponseData {
 }
 
 // ---------------------------------------------------------------------------
+// Client Marketplace (ClientAuthController / PublicMarketplaceController)
+// ---------------------------------------------------------------------------
+
+/** A marketplace client's own account — distinct from UserPayload (org staff). */
+export interface ClientUserPayload {
+  id: number | string;
+  name: string;
+  email: string;
+  phone: string | null;
+  status: string;
+}
+
+export interface ClientLoginResponseData {
+  token: string;
+  client: ClientUserPayload;
+}
+
+export interface ClientMeResponseData {
+  client: ClientUserPayload;
+}
+
+/** GET /public/marketplace/organizations — browse-grid card shape. */
+export interface PublicOrganizationSummary {
+  id: number | string;
+  name: string;
+  logo_url: string | null;
+  description: string | null;
+  services_offered: string[];
+  service_area: string | null;
+  cover_media_id: number | string | null;
+}
+
+/** GET /public/marketplace/organizations/{id} — full profile shape. */
+export interface PublicOrganizationDetail {
+  id: number | string;
+  name: string;
+  logo_url: string | null;
+  currency: string;
+  description: string | null;
+  services_offered: string[];
+  service_area: string | null;
+  portfolio: Array<{ id: number | string; file_name: string; mime_type: string }>;
+}
+
+/** GET/PATCH /organizations/{id}/profile — staff-side settings shape. */
+export interface OrganizationProfileData {
+  description: string | null;
+  services_offered: string[];
+  service_area: string | null;
+  is_marketplace_listed: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Client Marketplace Chat (ClientConversationController / OrganizationInquiryController)
+// ---------------------------------------------------------------------------
+
+export interface ChatMessage {
+  id: number | string;
+  sender_type: "client" | "org_member";
+  body: string;
+  created_at: string;
+}
+
+/** A client's own conversation list item — GET /client/conversations. */
+export interface ClientConversationSummary {
+  id: number | string;
+  organization: { id: number | string; name: string; logo_url: string | null };
+  status: string;
+  last_message: ChatMessage | null;
+  updated_at: string;
+}
+
+/** Staff inbox list item — GET /inquiries. */
+export interface InquirySummary {
+  id: number | string;
+  client: { id: number | string; name: string; email: string };
+  status: string;
+  last_message: ChatMessage | null;
+  updated_at: string;
+}
+
+/** GET /inquiries/{conversation} — adds the full message history. */
+export interface InquiryDetail extends InquirySummary {
+  messages: ChatMessage[];
+}
+
+/** POST /inquiries/{conversation}/create-client — see ClientUserLinkingService's docblock. */
+export interface InquiryClientHandoff {
+  client: { id: number | string; name: string; email: string; phone: string | null } | null;
+  candidates: Array<{ id: number | string; name: string; email: string; phone: string | null }> | null;
+}
+
+// ---------------------------------------------------------------------------
+// Client Marketplace Dashboard (ClientProjectController / ClientDealController)
+// ---------------------------------------------------------------------------
+
+/** GET /client/projects list item. */
+export interface ClientProjectSummary {
+  id: number | string;
+  code: string;
+  name: string;
+  status: string;
+}
+
+/** GET /client/projects/{id} — same client-safe shape as PublicClientPortalController::overview(). */
+export interface ClientProjectOverview {
+  project: {
+    code: string;
+    name: string;
+    status: string;
+    start_date: string | null;
+    target_end_date: string | null;
+  };
+  organization: { currency: string };
+  financials: { value: number | string; collected: number | string; outstanding: number | string };
+  counts: { proposals: number; change_orders: number; payments: number };
+}
+
+/** GET /client/deals list item — deliberately no created_by (staff-internal field). */
+export interface ClientDealSummary {
+  id: number | string;
+  project_id: number | string;
+  version_no: number;
+  status: string;
+  sent_at: string | null;
+  approved_at: string | null;
+  grand_total: number | string;
+}
+
+// ---------------------------------------------------------------------------
 // Clients (ClientController / ClientResource)
 // ---------------------------------------------------------------------------
 

@@ -30,10 +30,19 @@ import {
   updateOrganizationProfile,
 } from "@/lib/api/resources/organization";
 import { listAuditLogs } from "@/lib/api/resources/auditLogs";
+import {
+  deleteOrganizationPortfolioMedia,
+  getOrganizationMarketplaceProfile,
+  listOrganizationPortfolioMedia,
+  updateOrganizationMarketplaceProfile,
+  uploadOrganizationPortfolioMedia,
+  type PortfolioMediaItem,
+} from "@/lib/api/resources/organizationMarketplace";
 import type {
   AuditLogEntry,
   OrganizationMember,
   OrganizationProfile,
+  OrganizationProfileData,
   OrganizationRoleSummary,
 } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -60,6 +69,7 @@ export default function SettingsPage() {
       {currentOrganizationId ? (
         <>
           <OrganizationProfileSection organizationId={currentOrganizationId} />
+          <MarketplaceProfileSection organizationId={currentOrganizationId} />
           <MembersSection organizationId={currentOrganizationId} />
           <AuditLogSection />
         </>
@@ -242,6 +252,262 @@ function OrganizationProfileSection({ organizationId }: { organizationId: string
             </div>
           </form>
         )}
+      </CardBody>
+    </Card>
+  );
+}
+
+/** BRD v4 "Client Marketplace" — staff-side listing profile + portfolio. Same 403-hides-the-
+ *  section posture as OrganizationProfileSection (see this file's docblock); the two sections
+ *  hit different sub-resources and permission checks even though both currently require
+ *  MANAGE_ORGANIZATION. Portfolio photos are only loaded once the profile itself has loaded
+ *  successfully, since an org without profile access can't have portfolio access either. */
+function MarketplaceProfileSection({ organizationId }: { organizationId: string }) {
+  const { t } = useLocale();
+  const [loading, setLoading] = useState(true);
+  const [forbidden, setForbidden] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [description, setDescription] = useState("");
+  const [servicesOffered, setServicesOffered] = useState("");
+  const [serviceArea, setServiceArea] = useState("");
+  const [isListed, setIsListed] = useState(false);
+
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const [portfolio, setPortfolio] = useState<PortfolioMediaItem[]>([]);
+  const [portfolioLoading, setPortfolioLoading] = useState(true);
+  const [portfolioError, setPortfolioError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | number | null>(null);
+
+  function applyProfile(p: OrganizationProfileData) {
+    setDescription(p.description ?? "");
+    setServicesOffered((p.services_offered ?? []).join(", "));
+    setServiceArea(p.service_area ?? "");
+    setIsListed(p.is_marketplace_listed);
+  }
+
+  function loadPortfolio() {
+    setPortfolioLoading(true);
+    setPortfolioError(null);
+    listOrganizationPortfolioMedia(organizationId)
+      .then((items) => setPortfolio(items))
+      .catch((err) => {
+        setPortfolioError(err instanceof ApiError ? err.message : t("settings.marketplace.portfolio.loadFailed"));
+      })
+      .finally(() => setPortfolioLoading(false));
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset load state for a fresh organizationId
+    setLoading(true);
+    setForbidden(false);
+    setLoadError(null);
+    getOrganizationMarketplaceProfile(organizationId)
+      .then((p) => {
+        if (cancelled) return;
+        applyProfile(p);
+        loadPortfolio();
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.status === 403) {
+          setForbidden(true);
+        } else {
+          setLoadError(err instanceof ApiError ? err.message : t("settings.marketplace.loadFailed"));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- organizationId is the only real dep
+  }, [organizationId]);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+    try {
+      const updated = await updateOrganizationMarketplaceProfile(organizationId, {
+        description: description || null,
+        services_offered: servicesOffered
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        service_area: serviceArea || null,
+        is_marketplace_listed: isListed,
+      });
+      applyProfile(updated);
+      setSaveSuccess(true);
+    } catch (err) {
+      setSaveError(err instanceof ApiError ? err.message : t("settings.marketplace.save.failed"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUpload(e: FormEvent<HTMLInputElement>) {
+    const file = e.currentTarget.files?.[0];
+    e.currentTarget.value = "";
+    if (!file) return;
+    setUploading(true);
+    setPortfolioError(null);
+    try {
+      const item = await uploadOrganizationPortfolioMedia(organizationId, file);
+      setPortfolio((prev) => [item, ...prev]);
+    } catch (err) {
+      setPortfolioError(err instanceof Error ? err.message : t("settings.marketplace.portfolio.uploadFailed"));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function handleDelete(item: PortfolioMediaItem) {
+    setDeletingId(item.id);
+    setPortfolioError(null);
+    try {
+      await deleteOrganizationPortfolioMedia(organizationId, item.id);
+      setPortfolio((prev) => prev.filter((m) => m.id !== item.id));
+    } catch (err) {
+      setPortfolioError(err instanceof Error ? err.message : t("settings.marketplace.portfolio.deleteFailed"));
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardBody>
+          <LoadingScreen label={t("common.loading")} />
+        </CardBody>
+      </Card>
+    );
+  }
+
+  if (forbidden) {
+    return null;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+          {t("settings.marketplace.title")}
+        </h2>
+        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{t("settings.marketplace.subtitle")}</p>
+      </CardHeader>
+      <CardBody className="flex flex-col gap-6">
+        {loadError ? <ErrorBanner message={loadError} /> : null}
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <Field label={t("settings.marketplace.fields.description")} htmlFor="marketplace-description">
+            <textarea
+              id="marketplace-description"
+              rows={3}
+              className={INPUT_CLASSES}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </Field>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label={t("settings.marketplace.fields.servicesOffered")} htmlFor="marketplace-services">
+              <input
+                id="marketplace-services"
+                className={INPUT_CLASSES}
+                value={servicesOffered}
+                onChange={(e) => setServicesOffered(e.target.value)}
+                placeholder={t("settings.marketplace.fields.servicesOfferedHint")}
+              />
+            </Field>
+            <Field label={t("settings.marketplace.fields.serviceArea")} htmlFor="marketplace-service-area">
+              <input
+                id="marketplace-service-area"
+                className={INPUT_CLASSES}
+                value={serviceArea}
+                onChange={(e) => setServiceArea(e.target.value)}
+              />
+            </Field>
+          </div>
+
+          <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={isListed}
+              onChange={(e) => setIsListed(e.target.checked)}
+            />
+            <span>
+              {t("settings.marketplace.fields.listed")}
+              <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+                {t("settings.marketplace.fields.listedHint")}
+              </span>
+            </span>
+          </label>
+
+          {saveError ? <ErrorBanner message={saveError} /> : null}
+          {saveSuccess ? (
+            <p className="text-sm text-green-700 dark:text-green-400">{t("settings.marketplace.save.success")}</p>
+          ) : null}
+
+          <div>
+            <Button type="submit" disabled={saving}>
+              {saving ? t("settings.marketplace.save.saving") : t("settings.marketplace.save.cta")}
+            </Button>
+          </div>
+        </form>
+
+        <div className="flex flex-col gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+              {t("settings.marketplace.portfolio.title")}
+            </h3>
+            <label>
+              <span className="inline-flex cursor-pointer items-center rounded-md bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600">
+                {uploading ? t("settings.marketplace.portfolio.uploading") : t("settings.marketplace.portfolio.upload")}
+              </span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                disabled={uploading}
+                onChange={handleUpload}
+              />
+            </label>
+          </div>
+
+          {portfolioError ? <ErrorBanner message={portfolioError} /> : null}
+
+          {portfolioLoading ? (
+            <LoadingScreen label={t("common.loading")} />
+          ) : portfolio.length === 0 ? (
+            <EmptyState message={t("settings.marketplace.portfolio.empty")} />
+          ) : (
+            <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              {portfolio.map((item) => (
+                <li key={item.id} className="flex items-center justify-between gap-3 py-2">
+                  <span className="truncate text-sm text-zinc-700 dark:text-zinc-300">{item.file_name}</span>
+                  <Button
+                    variant="secondary"
+                    disabled={deletingId === item.id}
+                    onClick={() => handleDelete(item)}
+                  >
+                    {t("settings.marketplace.portfolio.delete")}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </CardBody>
     </Card>
   );

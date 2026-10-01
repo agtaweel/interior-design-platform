@@ -6,9 +6,9 @@
  * low-cost companion given GET /projects already exists.
  */
 
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { Suspense, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
 import { listProjects, createProject } from "@/lib/api/resources/projects";
 import { listClients, getClient } from "@/lib/api/resources/clients";
@@ -35,8 +35,17 @@ const STATUS_FILTERS: Array<ProjectStatus | "all"> = [
 ];
 
 export default function ProjectsPage() {
+  return (
+    <Suspense fallback={<LoadingScreen label="Loading…" />}>
+      <ProjectsPageContent />
+    </Suspense>
+  );
+}
+
+function ProjectsPageContent() {
   const { t, locale } = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +83,19 @@ export default function ProjectsPage() {
     load(statusFilter);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
+
+  // BRD v4 "Client Marketplace" Phase C hand-off: /inquiries/{id} navigates here with
+  // ?new_client_id= after creating a Client from a marketplace inquiry — pre-open the create
+  // form with that client pre-selected rather than making staff look it up again.
+  useEffect(() => {
+    const prefillClientId = searchParams.get("new_client_id");
+    if (prefillClientId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowNewForm(true);
+      setClientId(prefillClientId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount only
+  }, []);
 
   async function loadClients() {
     setClientsLoading(true);

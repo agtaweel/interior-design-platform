@@ -3,6 +3,7 @@
 namespace App\Models\Concerns;
 
 use App\Models\AuditLog;
+use App\Models\User;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
@@ -74,7 +75,15 @@ trait Auditable
 
         AuditLog::create([
             'organization_id' => $organizationId,
-            'actor_user_id' => auth()->id(),
+            // BRD v4 "Client Marketplace": audit_logs.actor_user_id has a foreign key to
+            // `users` only — a marketplace ClientUser approving/editing an auditable model
+            // (e.g. ProposalVersion via ClientDealController) is authenticated via the same
+            // Sanctum guard but is NOT a `users` row, so auth()->id() would be a ClientUser id
+            // and violate that FK (confirmed live against Postgres; sqlite's default
+            // non-enforcement of FKs let this slip past the test suite). Only ever attribute
+            // the action to a staff User; a non-staff actor is recorded as no actor, same
+            // nullable-for-unattributable-changes posture the column already supports.
+            'actor_user_id' => auth()->user() instanceof User ? auth()->id() : null,
             'entity_type' => class_basename($model),
             'entity_id' => $model->getKey(),
             'action' => $action,

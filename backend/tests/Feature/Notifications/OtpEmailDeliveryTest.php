@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Notifications;
 
+use App\Mail\MarketplaceDealMail;
 use App\Mail\OtpCodeMail;
 use App\Models\ChangeOrder;
 use App\Models\Client;
+use App\Models\ClientUser;
 use App\Models\Organization;
 use App\Models\OrganizationMember;
 use App\Models\Project;
@@ -115,5 +117,35 @@ class OtpEmailDeliveryTest extends TestCase
             ->assertStatus(200);
 
         Mail::assertNothingSent();
+    }
+
+    public function test_sending_a_proposal_for_a_marketplace_linked_client_emails_a_dashboard_link_instead_of_otp(): void
+    {
+        Mail::fake();
+
+        $organization = Organization::factory()->create();
+        $user = $this->memberWithPermissions($organization, [Permissions::MANAGE_BOQ => true]);
+        $clientUser = ClientUser::factory()->create();
+        $client = Client::factory()->create([
+            'organization_id' => $organization->id,
+            'email' => 'client@example.com',
+            'client_user_id' => $clientUser->id,
+        ]);
+        $project = Project::factory()->create(['organization_id' => $organization->id, 'client_id' => $client->id]);
+
+        $proposalId = $this->withHeaders($this->authHeader($user))
+            ->postJson("/api/v1/projects/{$project->id}/proposals")
+            ->assertStatus(201)
+            ->json('data.id');
+
+        $this->withHeaders($this->authHeader($user))
+            ->postJson("/api/v1/proposals/{$proposalId}/send")
+            ->assertStatus(200);
+
+        Mail::assertSent(MarketplaceDealMail::class, function (MarketplaceDealMail $mail) use ($proposalId) {
+            return $mail->hasTo('client@example.com')
+                && str_contains($mail->dashboardUrl, "/client/deals/{$proposalId}");
+        });
+        Mail::assertNotSent(OtpCodeMail::class);
     }
 }

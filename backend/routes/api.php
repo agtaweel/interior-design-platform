@@ -10,8 +10,12 @@ use App\Http\Controllers\Api\BoqTemplateCategoryController;
 use App\Http\Controllers\Api\BoqTemplateController;
 use App\Http\Controllers\Api\BoqTemplateItemController;
 use App\Http\Controllers\Api\ChangeOrderController;
+use App\Http\Controllers\Api\ClientAuthController;
+use App\Http\Controllers\Api\ClientConversationController;
 use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\ClientDealController;
 use App\Http\Controllers\Api\ClientPortalLinkController;
+use App\Http\Controllers\Api\ClientProjectController;
 use App\Http\Controllers\Api\ContractController;
 use App\Http\Controllers\Api\ExecutionMediaController;
 use App\Http\Controllers\Api\ExpenseController;
@@ -19,7 +23,10 @@ use App\Http\Controllers\Api\InvoiceDocumentController;
 use App\Http\Controllers\Api\LeadController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OrganizationController;
+use App\Http\Controllers\Api\OrganizationInquiryController;
 use App\Http\Controllers\Api\OrganizationMemberController;
+use App\Http\Controllers\Api\OrganizationPortfolioMediaController;
+use App\Http\Controllers\Api\OrganizationProfileController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PaymentScheduleController;
 use App\Http\Controllers\Api\PlatformAnalyticsController;
@@ -35,6 +42,8 @@ use App\Http\Controllers\Api\PropertyController;
 use App\Http\Controllers\Api\ProposalVersionController;
 use App\Http\Controllers\Api\PublicChangeOrderController;
 use App\Http\Controllers\Api\PublicClientPortalController;
+use App\Http\Controllers\Api\PublicMarketplaceController;
+use App\Http\Controllers\Api\PublicOrganizationMediaController;
 use App\Http\Controllers\Api\PublicProposalController;
 use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\ReportController;
@@ -79,6 +88,16 @@ Route::prefix('v1')->group(function () {
     // Platform Readiness Review finding #04 — public, unauthenticated, own rate limiter.
     Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:password-reset');
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:password-reset');
+
+    // BRD v4 "Client Marketplace" — marketplace client accounts, structurally a sibling to the
+    // staff auth routes above, not a variant of them (ClientAuthController/ClientUser are
+    // entirely separate from AuthController/User — see those classes' docblocks). Same
+    // rate limiters reused as-is (both are generic "public auth endpoint" ceilings, not
+    // staff-specific).
+    Route::post('/client/auth/register', [ClientAuthController::class, 'register'])->middleware('throttle:auth-register');
+    Route::post('/client/auth/login', [ClientAuthController::class, 'login'])->middleware('throttle:auth-login');
+    Route::post('/client/auth/forgot-password', [ClientAuthController::class, 'forgotPassword'])->middleware('throttle:password-reset');
+    Route::post('/client/auth/reset-password', [ClientAuthController::class, 'resetPassword'])->middleware('throttle:password-reset');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -328,6 +347,27 @@ Route::prefix('v1')->group(function () {
             // Platform Readiness Review finding #05 "Audit log viewer" — gated behind
             // Permissions::MANAGE_ORGANIZATION inside the controller (see its docblock).
             Route::get('/audit-logs', [AuditLogController::class, 'index']);
+
+            // BRD v4 "Client Marketplace" — staff-side settings for the public listing profile
+            // and its portfolio photos. Gated behind Permissions::MANAGE_ORGANIZATION inside
+            // each FormRequest's authorize() (see UpdateOrganizationProfileRequest/
+            // StoreOrganizationPortfolioMediaRequest); destroy() uses an explicit
+            // Gate::authorize() call, matching ProjectMediaController::destroy()'s pattern for
+            // a body-less DELETE.
+            Route::get('/organizations/{organization}/profile', [OrganizationProfileController::class, 'show']);
+            Route::patch('/organizations/{organization}/profile', [OrganizationProfileController::class, 'update']);
+            Route::get('/organizations/{organization}/portfolio', [OrganizationPortfolioMediaController::class, 'index']);
+            Route::post('/organizations/{organization}/portfolio', [OrganizationPortfolioMediaController::class, 'store']);
+            Route::delete('/organizations/{organization}/portfolio/{media}', [OrganizationPortfolioMediaController::class, 'destroy']);
+
+            // BRD v4 "Client Marketplace" — staff inbox for conversations marketplace clients
+            // started with this organization. {conversation} follows the same manual-lookup
+            // convention as above; Conversation::find() is already org-scoped via
+            // BelongsToOrganization. See OrganizationInquiryController's docblock.
+            Route::get('/inquiries', [OrganizationInquiryController::class, 'index']);
+            Route::get('/inquiries/{conversation}', [OrganizationInquiryController::class, 'show']);
+            Route::post('/inquiries/{conversation}/messages', [OrganizationInquiryController::class, 'postMessage']);
+            Route::post('/inquiries/{conversation}/create-client', [OrganizationInquiryController::class, 'createClient']);
         });
 
         // BRD v3 §5/§20 "Platform Owner / Super Admin" — a sibling to the `tenant` group above,
@@ -339,6 +379,42 @@ Route::prefix('v1')->group(function () {
             Route::get('/analytics/summary', [PlatformAnalyticsController::class, 'summary']);
             Route::get('/organizations', [PlatformAnalyticsController::class, 'organizations']);
             Route::get('/organizations/{organization}', [PlatformAnalyticsController::class, 'organization']);
+        });
+
+        // BRD v4 "Client Marketplace" — a sibling to the `tenant` and `platform.owner` groups
+        // above, NOT nested inside either: a marketplace ClientUser belongs to no organization,
+        // so `client.user` (EnsureClientUser) runs INSTEAD of `tenant`, same isolation posture
+        // as `platform.owner`. See EnsureClientUser's docblock for why OrganizationScope
+        // provides zero protection here and every query below must resolve ownership manually.
+        Route::middleware('client.user')->prefix('client')->group(function () {
+            Route::post('/auth/logout', [ClientAuthController::class, 'logout']);
+            Route::get('/me', [ClientAuthController::class, 'me']);
+
+            // BRD v4 "Client Marketplace" — a marketplace client's own conversations with
+            // organizations. Ownership is enforced by filtering every query to
+            // `client_user_id = $request->user()->id` inside the controller — see
+            // ClientConversationController's docblock for why no separate ownership-resolver
+            // service is needed for this one.
+            Route::get('/conversations', [ClientConversationController::class, 'index']);
+            Route::post('/conversations', [ClientConversationController::class, 'store']);
+            Route::get('/conversations/{conversation}/messages', [ClientConversationController::class, 'messages']);
+            Route::post('/conversations/{conversation}/messages', [ClientConversationController::class, 'postMessage']);
+
+            // BRD v4 "Client Marketplace" Phase C — a marketplace client's own projects and
+            // deals. Every lookup goes through ClientOwnershipResolver (see that class's
+            // docblock) rather than a bare find(), since these routes sit outside `tenant`.
+            Route::get('/projects', [ClientProjectController::class, 'index']);
+            Route::get('/projects/{project}', [ClientProjectController::class, 'show']);
+            Route::get('/projects/{project}/contract', [ClientProjectController::class, 'contract']);
+            Route::get('/projects/{project}/payments', [ClientProjectController::class, 'payments']);
+            Route::get('/projects/{project}/change-orders', [ClientProjectController::class, 'changeOrders']);
+            Route::get('/projects/{project}/media', [ClientProjectController::class, 'media']);
+            Route::get('/projects/{project}/media/{media}/file', [ClientProjectController::class, 'mediaFile']);
+
+            Route::get('/deals', [ClientDealController::class, 'index']);
+            Route::get('/deals/{proposal}', [ClientDealController::class, 'show']);
+            Route::post('/deals/{proposal}/approve', [ClientDealController::class, 'approve']);
+            Route::post('/deals/{proposal}/request-changes', [ClientDealController::class, 'requestChanges']);
         });
     });
 
@@ -375,5 +451,15 @@ Route::prefix('v1')->group(function () {
         Route::get('/public/client-portal/{token}/change-orders', [PublicClientPortalController::class, 'changeOrders']);
         Route::get('/public/client-portal/{token}/media', [PublicClientPortalController::class, 'media']);
         Route::get('/public/client-portal/{token}/media/{media}/file', [PublicClientPortalController::class, 'mediaFile']);
+
+        // BRD v4 "Client Marketplace" — browsing is meant to be fully anonymous (no token at
+        // all, unlike every other route in this group), so these are the first public routes
+        // here that aren't keyed off a signed per-resource token — only an organization's own
+        // `is_marketplace_listed` opt-in flag gates visibility. See
+        // PublicOrganizationMediaController's docblock for the strict containment rule its
+        // {media} lookup follows.
+        Route::get('/public/marketplace/organizations', [PublicMarketplaceController::class, 'index']);
+        Route::get('/public/marketplace/organizations/{organization}', [PublicMarketplaceController::class, 'show']);
+        Route::get('/public/marketplace/organizations/{organization}/media/{media}/file', [PublicOrganizationMediaController::class, 'show']);
     });
 });
