@@ -93,13 +93,18 @@ class Organization extends Model implements HasMedia
         return $this->hasMany(AuditLog::class);
     }
 
-    public function boqTemplateCategories(): HasMany
+    public function boqCatalogCategories(): HasMany
     {
-        return $this->hasMany(BoqTemplateCategory::class);
+        return $this->hasMany(BoqCatalogCategory::class);
     }
 
-    public function boqTemplateItems(): HasMany
+    public function boqCatalogItems(): HasMany
     {
-        return $this->hasMany(BoqTemplateItem::class);
+        return $this->hasMany(BoqCatalogItem::class);
+    }
+
+    public function boqTemplates(): HasMany
+    {
+        return $this->hasMany(BoqTemplate::class);
     }
 }

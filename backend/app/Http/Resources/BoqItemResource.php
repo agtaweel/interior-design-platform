@@ -43,6 +43,17 @@ class BoqItemResource extends JsonResource
             'archived_at' => $this->archived_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+            'source_template_id' => $this->source_template_id,
+            'source_template_version_id' => $this->source_template_version_id,
+            'source_catalog_item_id' => $this->source_catalog_item_id,
+            'source_template' => $this->whenLoaded('sourceTemplate', fn () => [
+                'id' => $this->sourceTemplate->id,
+                'name' => $this->sourceTemplate->name,
+            ]),
+            'source_catalog_item' => $this->whenLoaded('sourceCatalogItem', fn () => [
+                'id' => $this->sourceCatalogItem->id,
+                'name' => $this->sourceCatalogItem->name,
+            ]),
         ];
     }
 }

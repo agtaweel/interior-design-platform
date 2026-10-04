@@ -28,17 +28,16 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent,
 import { useParams } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
 import {
-  applyBoqTemplate,
   archiveBoqItem,
   createBoqCategory,
   createBoqItem,
   createBoqRoom,
   exportBoq,
-  getBoqTemplates,
   getProjectBoq,
   importBoq,
   updateBoqItem,
 } from "@/lib/api/resources/boq";
+import { commitBoqTemplates, listBoqTemplates, previewBoqTemplates } from "@/lib/api/resources/boqTemplates";
 import { getProject } from "@/lib/api/resources/projects";
 import { PricingPanel } from "@/components/pricing/PricingPanel";
 import type {
@@ -47,7 +46,10 @@ import type {
   BoqItem,
   BoqItemFormInput,
   BoqRoom,
-  BoqTemplateCategoryNode,
+  BoqTemplate,
+  BoqTemplateCommitItem,
+  BoqTemplatePreviewCategoryNode,
+  BoqTemplatePreviewItem,
   Project,
 } from "@/lib/api/types";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -71,10 +73,17 @@ interface FlatCategory {
   depth: number;
 }
 
-interface FlatTemplateCategory {
-  id: string;
-  name: string;
-  depth: number;
+/** One merged preview row, flattened out of its category tree for simple table rendering. */
+interface FlatPreviewRow {
+  categoryId: string;
+  item: BoqTemplatePreviewItem;
+}
+
+function flattenPreviewCategories(nodes: BoqTemplatePreviewCategoryNode[]): FlatPreviewRow[] {
+  return nodes.flatMap((node) => [
+    ...node.items.map((item) => ({ categoryId: String(node.id), item })),
+    ...flattenPreviewCategories(node.children),
+  ]);
 }
 
 function flattenCategories(nodes: BoqCategoryNode[], depth = 0): FlatCategory[] {
@@ -86,13 +95,6 @@ function flattenCategories(nodes: BoqCategoryNode[], depth = 0): FlatCategory[] 
 
 function flattenItemsFromTree(nodes: BoqCategoryNode[]): BoqItem[] {
   return nodes.flatMap((node) => [...node.items, ...flattenItemsFromTree(node.children)]);
-}
-
-function flattenTemplateCategories(nodes: BoqTemplateCategoryNode[], depth = 0): FlatTemplateCategory[] {
-  return nodes.flatMap((node) => [
-    { id: String(node.id), name: node.name, depth },
-    ...flattenTemplateCategories(node.children, depth + 1),
-  ]);
 }
 
 function toNum(value: number | string | null | undefined): number {
@@ -449,44 +451,125 @@ export default function BoqBuilderPage() {
   }
 
   // ---------------------------------------------------------------------
-  // Templates
+  // Templates — BOQ Master Catalog + Standard Templates' composable apply flow.
+  //
+  // Step 1 (select): every active system + org template, grouped by type, multi-selectable.
+  // Step 2 (preview): POST .../template-preview with the selected templates' active versions —
+  // a pure read that merges overlapping catalog items across templates (see
+  // BoqTemplatePreviewService) and flags genuine quantity conflicts for review, never silently
+  // resolving them. Only REQUIRED items appear here — picking individual optional items per
+  // template is a deliberately deferred refinement, not a bug: every template already ships
+  // with a complete required-item set, so "select templates -> review merged required items ->
+  // commit" is a fully usable flow on its own.
+  // Step 3 (commit): POST .../template-commit with the (possibly edited) quantities; the whole
+  // BOQ tree is refetched afterward since committing can create new project categories, unlike
+  // every other mutation on this page which patches local state directly.
   // ---------------------------------------------------------------------
 
   const [showTemplates, setShowTemplates] = useState(false);
-  const [templateCategories, setTemplateCategories] = useState<FlatTemplateCategory[] | null>(null);
+  const [templateStep, setTemplateStep] = useState<"select" | "preview">("select");
+  const [availableTemplates, setAvailableTemplates] = useState<BoqTemplate[] | null>(null);
   const [templatesLoading, setTemplatesLoading] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(new Set());
+  const [previewRows, setPreviewRows] = useState<FlatPreviewRow[] | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewQuantities, setPreviewQuantities] = useState<Record<string, string>>({});
+  const [previewUnits, setPreviewUnits] = useState<Record<string, string>>({});
   const [applyingTemplate, setApplyingTemplate] = useState(false);
   const [templateError, setTemplateError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (showTemplates && templateCategories === null && !templatesLoading) {
+    if (showTemplates && availableTemplates === null && !templatesLoading) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setTemplatesLoading(true);
-      getBoqTemplates()
-        .then((tree) => setTemplateCategories(flattenTemplateCategories(tree.categories)))
+      listBoqTemplates()
+        .then((templates) => setAvailableTemplates(templates.filter((tpl) => tpl.is_active && tpl.active_version)))
         .catch((err) => setTemplateError(err instanceof ApiError ? err.message : t("common.unknownError")))
         .finally(() => setTemplatesLoading(false));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTemplates]);
 
-  async function handleApplyTemplate() {
-    if (!selectedTemplateId) return;
+  function toggleTemplateSelection(templateId: string) {
+    setSelectedTemplateIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(templateId)) next.delete(templateId);
+      else next.add(templateId);
+      return next;
+    });
+  }
+
+  async function handlePreviewTemplates() {
+    if (selectedTemplateIds.size === 0 || !availableTemplates) return;
+    setPreviewLoading(true);
+    setTemplateError(null);
+    try {
+      const selections = availableTemplates
+        .filter((tpl) => selectedTemplateIds.has(String(tpl.id)) && tpl.active_version)
+        .map((tpl) => ({ template_version_id: tpl.active_version!.id }));
+      const result = await previewBoqTemplates(projectId, selections);
+      const rows = flattenPreviewCategories(result.categories);
+      setPreviewRows(rows);
+      setPreviewQuantities(
+        Object.fromEntries(rows.map((row) => [String(row.item.catalog_item_id), row.item.quantity != null ? String(row.item.quantity) : ""])),
+      );
+      setPreviewUnits(
+        Object.fromEntries(rows.map((row) => [String(row.item.catalog_item_id), row.item.default_unit?.code ?? ""])),
+      );
+      setTemplateStep("preview");
+    } catch (err) {
+      setTemplateError(err instanceof ApiError ? err.message : t("common.unknownError"));
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
+  async function handleCommitTemplates() {
+    if (!previewRows) return;
     setApplyingTemplate(true);
     setTemplateError(null);
     try {
-      const result = await applyBoqTemplate(projectId, selectedTemplateId);
-      setCategoryTree(result.boq.categories);
-      setRooms(result.boq.rooms);
-      setItems(flattenItemsFromTree(result.boq.categories));
+      const items: BoqTemplateCommitItem[] = previewRows
+        .map((row) => {
+          const quantity = previewQuantities[String(row.item.catalog_item_id)];
+          const unit = previewUnits[String(row.item.catalog_item_id)];
+          if (!quantity || Number(quantity) <= 0) return null;
+          const firstContributor = row.item.contributed_by[0];
+          const resolved: BoqTemplateCommitItem = {
+            catalog_item_id: row.item.catalog_item_id,
+            category_id: row.categoryId,
+            quantity,
+            source_template_id: firstContributor?.template_id ?? null,
+            source_template_version_id: firstContributor?.template_version_id ?? null,
+            source_template_item_id: firstContributor?.template_item_id ?? null,
+          };
+          if (unit) resolved.unit = unit;
+          return resolved;
+        })
+        .filter((item): item is BoqTemplateCommitItem => item !== null);
+
+      if (items.length === 0) {
+        setTemplateError(t("boq.template.preview.empty"));
+        return;
+      }
+
+      await commitBoqTemplates(projectId, items);
+      await loadBoq();
       setShowTemplates(false);
-      setSelectedTemplateId("");
+      setTemplateStep("select");
+      setSelectedTemplateIds(new Set());
+      setPreviewRows(null);
     } catch (err) {
       setTemplateError(err instanceof ApiError ? err.message : t("common.unknownError"));
     } finally {
       setApplyingTemplate(false);
     }
+  }
+
+  function handleBackToSelect() {
+    setTemplateStep("select");
+    setPreviewRows(null);
+    setTemplateError(null);
   }
 
   // ---------------------------------------------------------------------
@@ -565,32 +648,108 @@ export default function BoqBuilderPage() {
           <CardHeader>
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{t("boq.template.title")}</h2>
           </CardHeader>
-          <CardBody className="flex flex-col gap-3">
-            {templatesLoading ? (
-              <LoadingScreen label={t("common.loading")} />
-            ) : templateCategories && templateCategories.length === 0 ? (
-              <EmptyState message={t("boq.template.empty")} />
+          <CardBody className="flex flex-col gap-4">
+            {templateStep === "select" ? (
+              <>
+                <div>
+                  <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-50">{t("boq.template.select.heading")}</h3>
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{t("boq.template.select.hint")}</p>
+                </div>
+                {templatesLoading ? (
+                  <LoadingScreen label={t("boq.template.select.loading")} />
+                ) : availableTemplates && availableTemplates.length === 0 ? (
+                  <EmptyState message={t("boq.template.empty")} />
+                ) : (
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {availableTemplates?.map((tpl) => {
+                      const checked = selectedTemplateIds.has(String(tpl.id));
+                      return (
+                        <label
+                          key={tpl.id}
+                          className={`flex cursor-pointer items-start gap-2 rounded-md border px-3 py-2 text-sm ${checked ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30" : "border-zinc-200 dark:border-zinc-800"}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleTemplateSelection(String(tpl.id))}
+                            className="mt-0.5"
+                          />
+                          <span>
+                            <span className="block font-medium text-zinc-900 dark:text-zinc-50">{tpl.name}</span>
+                            <span className="block text-xs text-zinc-500 dark:text-zinc-400">
+                              {tpl.template_type}
+                              {tpl.finishing_level ? ` · ${tpl.finishing_level}` : ""}
+                            </span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                <div>
+                  <Button onClick={handlePreviewTemplates} disabled={selectedTemplateIds.size === 0 || previewLoading}>
+                    {previewLoading ? t("boq.template.preview.loading") : t("boq.template.select.next")}
+                  </Button>
+                </div>
+              </>
             ) : (
-              <div className="flex flex-wrap items-center gap-3">
-                <select
-                  value={selectedTemplateId}
-                  onChange={(e) => setSelectedTemplateId(e.target.value)}
-                  className={INPUT_CLASSES}
-                >
-                  <option value="" disabled>
-                    {t("boq.template.selectPlaceholder")}
-                  </option>
-                  {templateCategories?.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {"— ".repeat(c.depth)}
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <Button onClick={handleApplyTemplate} disabled={!selectedTemplateId || applyingTemplate}>
-                  {applyingTemplate ? t("boq.template.applying") : t("boq.template.apply")}
-                </Button>
-              </div>
+              <>
+                <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-50">{t("boq.template.preview.heading")}</h3>
+                {previewRows && previewRows.length === 0 ? (
+                  <EmptyState message={t("boq.template.preview.empty")} />
+                ) : (
+                  <div className="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {previewRows?.map((row) => {
+                      const key = String(row.item.catalog_item_id);
+                      return (
+                        <div key={key} className="flex flex-wrap items-center gap-3 py-2">
+                          <div className="min-w-[200px] flex-1">
+                            <p className="text-sm text-zinc-900 dark:text-zinc-50">{row.item.name}</p>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                              {row.item.is_required ? t("boq.template.preview.required") : null}
+                              {row.item.needs_review ? (
+                                <span className="ms-2 font-medium text-amber-600 dark:text-amber-400">
+                                  {t("boq.template.preview.needsReview")}
+                                </span>
+                              ) : null}
+                            </p>
+                            {row.item.contributed_by.length > 1 ? (
+                              <p className="text-xs text-zinc-400">
+                                {t("boq.template.preview.from")}:{" "}
+                                {row.item.contributed_by.map((c) => `${c.template_name} (${c.default_quantity ?? "—"})`).join(", ")}
+                              </p>
+                            ) : null}
+                          </div>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder={t("boq.template.preview.quantity")}
+                            value={previewQuantities[key] ?? ""}
+                            onChange={(e) => setPreviewQuantities((prev) => ({ ...prev, [key]: e.target.value }))}
+                            className={`${INPUT_CLASSES} w-24`}
+                          />
+                          <input
+                            type="text"
+                            placeholder={t("boq.template.preview.unit")}
+                            value={previewUnits[key] ?? ""}
+                            onChange={(e) => setPreviewUnits((prev) => ({ ...prev, [key]: e.target.value }))}
+                            className={`${INPUT_CLASSES} w-24`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" onClick={handleBackToSelect} disabled={applyingTemplate}>
+                    {t("boq.template.preview.back")}
+                  </Button>
+                  <Button onClick={handleCommitTemplates} disabled={applyingTemplate}>
+                    {applyingTemplate ? t("boq.template.applying") : t("boq.template.apply")}
+                  </Button>
+                </div>
+              </>
             )}
             {templateError ? <ErrorBanner message={templateError} /> : null}
           </CardBody>

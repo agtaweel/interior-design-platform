@@ -15,6 +15,7 @@ import { ApiError } from "@/lib/api/client";
 import { getPlatformOrganizations, getPlatformSummary } from "@/lib/api/resources/platform";
 import type { PlatformOrganizationSummary, PlatformSummary } from "@/lib/api/platformTypes";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { formatEGPOrDash } from "@/lib/format/currency";
@@ -64,6 +65,20 @@ export default function PlatformDashboardPage() {
         <StatCard tone="green" label="Users" value={String(summary.users_count)} />
         <StatCard tone="rose" label="Outstanding" value={formatEGPOrDash(summary.financials.outstanding, locale)} />
       </div>
+
+      <Card>
+        <CardBody className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">BOQ Templates</h2>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Manage the global system templates every organization can apply to a project.
+            </p>
+          </div>
+          <Link href="/platform/boq-templates">
+            <Button variant="secondary">BOQ Templates</Button>
+          </Link>
+        </CardBody>
+      </Card>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-1">

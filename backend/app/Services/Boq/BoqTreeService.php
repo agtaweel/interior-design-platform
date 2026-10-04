@@ -3,25 +3,24 @@
 namespace App\Services\Boq;
 
 use App\Http\Resources\BoqItemResource;
-use App\Http\Resources\BoqTemplateItemResource;
 use App\Models\BoqCategory;
 use App\Models\BoqItem;
-use App\Models\BoqTemplateCategory;
-use App\Models\BoqTemplateItem;
 use App\Models\Project;
 use App\Models\Room;
 use Illuminate\Support\Collection;
 
 /**
- * Builds the nested category tree (+ room list + grand total) for GET /projects/{id}/boq, and
- * the equivalent nested tree for GET /boq-templates/categories.
+ * Builds the nested category tree (+ room list + grand total) for GET /projects/{id}/boq.
  *
- * Both trees are built by loading every row for the project/organization FLAT (one query per
- * table) and assembling parent/child relationships in memory, rather than eager-loading
- * `children.children.children...`. `boq_categories.parent_id` (and
- * `boq_template_categories.parent_id`) is self-referential to an unbounded depth, so a fixed
- * eager-load chain would silently truncate deeper trees; this approach handles any depth with
- * exactly a constant number of queries.
+ * The tree is built by loading every row for the project FLAT (one query per table) and
+ * assembling parent/child relationships in memory, rather than eager-loading
+ * `children.children.children...`. `boq_categories.parent_id` is self-referential to an
+ * unbounded depth, so a fixed eager-load chain would silently truncate deeper trees; this
+ * approach handles any depth with exactly a constant number of queries. The equivalent tree for
+ * the Master Catalog lives in App\Services\Boq\BoqCatalogTreeService (same pattern, separate
+ * class since it also handles the global/organization catalog merge — see that class's
+ * docblock); the old org-scoped "template tree" this class used to also build
+ * (buildTemplateTree()) was removed along with BoqTemplateCategory.
  *
  * Subtotal scope decision (PROJECT_CONTEXT.md Sprint 2 "Calculations" says only "category and
  * room subtotals roll up from items", without specifying whether a parent category's subtotal
@@ -102,49 +101,6 @@ class BoqTreeService
                 // $category->id is always a real int (never null), so it round-trips through
                 // the same groupBy key space without needing the ROOT_KEY normalization.
                 'children' => $this->buildCategoryNodes($category->id, $categoriesByParent, $itemsByCategory),
-            ];
-        })->values()->all();
-    }
-
-    /**
-     * @return array{organization_id: int, categories: array}
-     */
-    public function buildTemplateTree(int $organizationId): array
-    {
-        $categories = BoqTemplateCategory::query()
-            ->where('organization_id', $organizationId)
-            ->orderBy('sort_order')
-            ->get();
-
-        $items = BoqTemplateItem::query()
-            ->where('organization_id', $organizationId)
-            ->orderBy('sort_order')
-            ->get();
-
-        $itemsByCategory = $items->groupBy('category_id');
-        $categoriesByParent = $categories->groupBy(fn (BoqTemplateCategory $c) => $c->parent_id ?? self::ROOT_KEY);
-
-        return [
-            'organization_id' => $organizationId,
-            'categories' => $this->buildTemplateCategoryNodes(self::ROOT_KEY, $categoriesByParent, $itemsByCategory),
-        ];
-    }
-
-    private function buildTemplateCategoryNodes(int|string $parentKey, Collection $categoriesByParent, Collection $itemsByCategory): array
-    {
-        $children = $categoriesByParent->get($parentKey, collect());
-
-        return $children->map(function (BoqTemplateCategory $category) use ($categoriesByParent, $itemsByCategory) {
-            $categoryItems = $itemsByCategory->get($category->id, collect());
-
-            return [
-                'id' => $category->id,
-                'organization_id' => $category->organization_id,
-                'parent_id' => $category->parent_id,
-                'name' => $category->name,
-                'sort_order' => $category->sort_order,
-                'items' => BoqTemplateItemResource::collection($categoryItems->values())->resolve(),
-                'children' => $this->buildTemplateCategoryNodes($category->id, $categoriesByParent, $itemsByCategory),
             ];
         })->values()->all();
     }

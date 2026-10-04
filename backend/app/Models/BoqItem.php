@@ -31,6 +31,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'project_id', 'category_id', 'room_id', 'name', 'description', 'quantity', 'unit',
     'material_unit_cost', 'labor_unit_cost', 'other_unit_cost', 'client_unit_price',
     'supplier_id', 'notes', 'sort_order', 'archived_at',
+    'source_template_id', 'source_template_version_id', 'source_template_item_id', 'source_catalog_item_id',
 ])]
 class BoqItem extends Model
 {
@@ -62,6 +63,22 @@ class BoqItem extends Model
     public function room(): BelongsTo
     {
         return $this->belongsTo(Room::class);
+    }
+
+    /** BOQ Master Catalog + Standard Templates — set only when this item came from an applied template. */
+    public function sourceTemplate(): BelongsTo
+    {
+        return $this->belongsTo(BoqTemplate::class, 'source_template_id');
+    }
+
+    public function sourceTemplateVersion(): BelongsTo
+    {
+        return $this->belongsTo(BoqTemplateVersion::class, 'source_template_version_id');
+    }
+
+    public function sourceCatalogItem(): BelongsTo
+    {
+        return $this->belongsTo(BoqCatalogItem::class, 'source_catalog_item_id');
     }
 
     /**

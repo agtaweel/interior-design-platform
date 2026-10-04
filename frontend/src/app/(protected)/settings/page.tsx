@@ -21,6 +21,7 @@
  */
 
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import Link from "next/link";
 import { ApiError } from "@/lib/api/client";
 import {
   getOrganizationProfile,
@@ -69,6 +70,7 @@ export default function SettingsPage() {
       {currentOrganizationId ? (
         <>
           <OrganizationProfileSection organizationId={currentOrganizationId} />
+          <BoqTemplatesLinkSection />
           <MarketplaceProfileSection organizationId={currentOrganizationId} />
           <MembersSection organizationId={currentOrganizationId} />
           <AuditLogSection />
@@ -77,6 +79,24 @@ export default function SettingsPage() {
         <LoadingScreen label={t("common.loading")} />
       )}
     </div>
+  );
+}
+
+/** Links out to the dedicated BOQ Templates admin screen (own route — see its own file's docblock for why). */
+function BoqTemplatesLinkSection() {
+  const { t } = useLocale();
+  return (
+    <Card>
+      <CardBody className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{t("boqAdmin.title")}</h2>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{t("boqAdmin.subtitleOrg")}</p>
+        </div>
+        <Link href="/settings/boq-templates">
+          <Button variant="secondary">{t("boqAdmin.title")}</Button>
+        </Link>
+      </CardBody>
+    </Card>
   );
 }
 

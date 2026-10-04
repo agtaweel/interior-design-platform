@@ -9,10 +9,9 @@
  *    apiFetch's JSON-body assumption either.
  */
 
-import { apiFetch, apiGet, apiGetResource, apiPatchResource, apiPostResource, API_BASE_URL } from "@/lib/api/client";
+import { apiFetch, apiGetResource, apiPatchResource, apiPostResource, API_BASE_URL } from "@/lib/api/client";
 import { getStoredOrganizationId, getStoredToken } from "@/lib/auth/token-storage";
 import type {
-  ApplyBoqTemplateResult,
   BoqCategory,
   BoqCategoryFormInput,
   BoqImportResult,
@@ -20,7 +19,6 @@ import type {
   BoqItemFormInput,
   BoqRoom,
   BoqRoomFormInput,
-  BoqTemplateTree,
   BoqTree,
 } from "@/lib/api/types";
 
@@ -56,16 +54,6 @@ export function updateBoqItem(itemId: string | number, input: Partial<BoqItemFor
 export function archiveBoqItem(itemId: string | number) {
   return apiFetch<{ data: BoqItem }>(`/boq/items/${itemId}`, { method: "DELETE" }).then(
     (res) => res.data,
-  );
-}
-
-export function getBoqTemplates() {
-  return apiGet<{ data: BoqTemplateTree }>("/boq-templates/categories").then((res) => res.data);
-}
-
-export function applyBoqTemplate(projectId: string | number, templateCategoryId: string | number) {
-  return apiPostResource<ApplyBoqTemplateResult>(
-    `/projects/${projectId}/boq/apply-template/${templateCategoryId}`,
   );
 }
 

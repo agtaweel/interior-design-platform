@@ -4,8 +4,6 @@ namespace Tests\Feature\Boq;
 
 use App\Models\BoqCategory;
 use App\Models\BoqItem;
-use App\Models\BoqTemplateCategory;
-use App\Models\BoqTemplateItem;
 use App\Models\Client;
 use App\Models\Organization;
 use App\Models\OrganizationMember;
@@ -159,59 +157,9 @@ class BoqTenantIsolationTest extends TestCase
         $this->assertNull($itemB->fresh()->archived_at);
     }
 
-    // --- Organization-level templates ---
-
-    public function test_cannot_list_or_create_another_organizations_boq_templates(): void
-    {
-        $orgA = Organization::factory()->create();
-        $orgB = Organization::factory()->create();
-        $userA = $this->fullAccessUser($orgA);
-        $this->fullAccessUser($orgB);
-        $templateCategoryB = BoqTemplateCategory::factory()->create(['organization_id' => $orgB->id, 'name' => 'Org B Template']);
-        BoqTemplateItem::factory()->create(['organization_id' => $orgB->id, 'category_id' => $templateCategoryB->id]);
-
-        $headersA = $this->authHeader($userA);
-
-        // Index is scoped to the current tenant context, so org A never sees org B's templates.
-        $list = $this->withHeaders($headersA)->getJson('/api/v1/boq-templates/categories');
-        $list->assertStatus(200)->assertJsonMissing(['name' => 'Org B Template']);
-
-        // Cannot add a template item to org B's category by guessing its id.
-        $this->withHeaders($headersA)
-            ->postJson("/api/v1/boq-templates/categories/{$templateCategoryB->id}/items", [
-                'name' => 'Intruder Template Item',
-                'unit' => 'pcs',
-            ])
-            ->assertStatus(404);
-        $this->assertDatabaseMissing('boq_template_items', ['name' => 'Intruder Template Item']);
-    }
-
-    public function test_cannot_apply_another_organizations_template_to_a_project(): void
-    {
-        $orgA = Organization::factory()->create();
-        $orgB = Organization::factory()->create();
-        $userA = $this->fullAccessUser($orgA);
-        $projectA = $this->projectIn($orgA);
-        $templateCategoryB = BoqTemplateCategory::factory()->create(['organization_id' => $orgB->id]);
-        BoqTemplateItem::factory()->create(['organization_id' => $orgB->id, 'category_id' => $templateCategoryB->id]);
-
-        $this->withHeaders($this->authHeader($userA))
-            ->postJson("/api/v1/projects/{$projectA->id}/boq/apply-template/{$templateCategoryB->id}")
-            ->assertStatus(404);
-
-        $this->assertDatabaseMissing('boq_categories', ['project_id' => $projectA->id]);
-    }
-
-    public function test_cannot_apply_a_template_to_another_organizations_project(): void
-    {
-        $orgA = Organization::factory()->create();
-        $orgB = Organization::factory()->create();
-        $userA = $this->fullAccessUser($orgA);
-        $projectB = $this->projectIn($orgB);
-        $templateCategoryA = BoqTemplateCategory::factory()->create(['organization_id' => $orgA->id]);
-
-        $this->withHeaders($this->authHeader($userA))
-            ->postJson("/api/v1/projects/{$projectB->id}/boq/apply-template/{$templateCategoryA->id}")
-            ->assertStatus(404);
-    }
+    // --- Organization-level templates: see tests/Feature/Boq/BoqCatalogTreeTest.php,
+    // BoqTemplateVersioningTest.php, BoqTemplatePreviewMergeTest.php for the equivalent
+    // coverage against the new Master Catalog + Templates system (BoqTemplateCategory/
+    // BoqTemplateItem's old flat shape and the apply-template/{templateCategory} route this
+    // used to exercise no longer exist).
 }

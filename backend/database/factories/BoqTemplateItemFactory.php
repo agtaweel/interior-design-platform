@@ -2,8 +2,9 @@
 
 namespace Database\Factories;
 
-use App\Models\BoqTemplateCategory;
+use App\Models\BoqCatalogItem;
 use App\Models\BoqTemplateItem;
+use App\Models\BoqTemplateVersion;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -11,27 +12,24 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class BoqTemplateItemFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            // Resolve organization_id from the (possibly newly created) template category so
-            // the two never disagree, same rationale as PropertyFactory/ProjectFactory.
-            'category_id' => BoqTemplateCategory::factory(),
-            'organization_id' => function (array $attributes) {
-                return BoqTemplateCategory::find($attributes['category_id'])?->organization_id;
+            'template_version_id' => BoqTemplateVersion::factory(),
+            'catalog_item_id' => BoqCatalogItem::factory(),
+            // Resolve category_id from the (possibly newly created) catalog item so the two
+            // never disagree, same rationale as BoqCatalogItemFactory resolving organization_id
+            // from its category.
+            'category_id' => function (array $attributes) {
+                return BoqCatalogItem::find($attributes['catalog_item_id'])?->category_id;
             },
-            'name' => fake()->randomElement([
-                'Porcelain Tile 60x60', 'Emulsion Paint - Two Coats', 'Wall Socket Installation',
-                'PVC Pipe Fitting', 'Built-in Wardrobe', 'Gypsum Board Ceiling',
-                'Kitchen Cabinet Unit', 'Aluminum Window', 'Split AC Unit', 'Sofa Set',
-            ]),
-            'description' => fake()->optional()->sentence(),
-            'unit' => fake()->randomElement(['m2', 'm', 'pcs', 'unit', 'lm']),
+            'default_unit_id' => null,
+            'default_quantity' => fake()->randomFloat(2, 1, 50),
+            'quantity_formula' => null,
+            'quantity_source' => BoqTemplateItem::SOURCE_FIXED_DEFAULT,
+            'is_required' => true,
+            'is_optional' => false,
+            'is_enabled_by_default' => true,
             'material_unit_cost' => fake()->randomFloat(2, 50, 2000),
             'labor_unit_cost' => fake()->randomFloat(2, 20, 800),
             'other_unit_cost' => fake()->randomFloat(2, 0, 200),
@@ -39,5 +37,14 @@ class BoqTemplateItemFactory extends Factory
             'notes' => null,
             'sort_order' => 0,
         ];
+    }
+
+    public function optional(): static
+    {
+        return $this->state(fn () => [
+            'is_required' => false,
+            'is_optional' => true,
+            'quantity_source' => BoqTemplateItem::SOURCE_OPTIONAL,
+        ]);
     }
 }

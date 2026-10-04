@@ -2,13 +2,13 @@
 
 use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BoqCatalogController;
 use App\Http\Controllers\Api\BoqCategoryController;
 use App\Http\Controllers\Api\BoqController;
 use App\Http\Controllers\Api\BoqImportController;
 use App\Http\Controllers\Api\BoqItemController;
-use App\Http\Controllers\Api\BoqTemplateCategoryController;
-use App\Http\Controllers\Api\BoqTemplateController;
-use App\Http\Controllers\Api\BoqTemplateItemController;
+use App\Http\Controllers\Api\BoqTemplateAdminController;
+use App\Http\Controllers\Api\BoqTemplateApplyController;
 use App\Http\Controllers\Api\ChangeOrderController;
 use App\Http\Controllers\Api\ClientAuthController;
 use App\Http\Controllers\Api\ClientConversationController;
@@ -170,7 +170,13 @@ Route::prefix('v1')->group(function () {
             Route::post('/projects/{project}/boq/import', [BoqImportController::class, 'import']);
             Route::post('/projects/{project}/boq/categories', [BoqCategoryController::class, 'store']);
             Route::post('/projects/{project}/boq/items', [BoqItemController::class, 'store']);
-            Route::post('/projects/{project}/boq/apply-template/{templateCategory}', [BoqTemplateController::class, 'apply']);
+            // BOQ Master Catalog + Standard Templates' apply-to-project flow — replaces the old
+            // single-shot apply-template/{templateCategory} route. preview() is a pure read (no
+            // writes), gated the same as every other MANAGE_BOQ action rather than membership-only,
+            // since it echoes back template cost data; commit() persists the engineer-reviewed
+            // result. See BoqTemplateApplyController's docblock.
+            Route::post('/projects/{project}/boq/template-preview', [BoqTemplateApplyController::class, 'preview']);
+            Route::post('/projects/{project}/boq/template-commit', [BoqTemplateApplyController::class, 'commit']);
             Route::patch('/boq/items/{item}', [BoqItemController::class, 'update']);
             Route::delete('/boq/items/{item}', [BoqItemController::class, 'destroy']);
 
@@ -190,12 +196,42 @@ Route::prefix('v1')->group(function () {
             Route::post('/projects/{project}/pricing/recalculate', [PricingController::class, 'recalculate']);
             Route::get('/projects/{project}/pricing/breakdown', [PricingController::class, 'breakdown']);
 
-            // Organization-level BOQ templates (mirrors the project-scoped BOQ tables — see
-            // BoqTemplateCategory/BoqTemplateItem docblocks). Not a PRD-mandated screen this
-            // sprint, just the API surface "apply template to project" needs to be usable.
-            Route::get('/boq-templates/categories', [BoqTemplateCategoryController::class, 'index']);
-            Route::post('/boq-templates/categories', [BoqTemplateCategoryController::class, 'store']);
-            Route::post('/boq-templates/categories/{category}/items', [BoqTemplateItemController::class, 'store']);
+            // BOQ Master Catalog + Standard Templates — the new hierarchical, bilingual catalog
+            // that templates will be built from (see BoqCatalogController's docblock for the
+            // dual tenant/platform mount; this is the tenant half, merging the caller's own
+            // organization's custom catalog with the global/system catalog). Reads need only
+            // active membership; writes need Permissions::MANAGE_BOQ (checked inside each
+            // FormRequest; deactivateItem uses an explicit Gate::authorize() for the same
+            // body-less-DELETE reason as BoqItemController::destroy()).
+            Route::get('/boq-catalog/categories', [BoqCatalogController::class, 'index']);
+            Route::get('/boq-catalog/search', [BoqCatalogController::class, 'search']);
+            Route::post('/boq-catalog/categories', [BoqCatalogController::class, 'storeCategory']);
+            Route::patch('/boq-catalog/categories/{category}', [BoqCatalogController::class, 'updateCategory']);
+            Route::post('/boq-catalog/categories/{category}/items', [BoqCatalogController::class, 'storeItem']);
+            Route::patch('/boq-catalog/items/{item}', [BoqCatalogController::class, 'updateItem']);
+            Route::delete('/boq-catalog/items/{item}', [BoqCatalogController::class, 'deactivateItem']);
+
+            // BOQ Master Catalog + Standard Templates — template header/version/item admin
+            // management (BoqTemplateAdminController's docblock covers the dual tenant/platform
+            // mount; this is the tenant half, merging the caller's org's own templates with
+            // every global/system template). A version's items are only mutable while that
+            // version is still a draft — enforced inside the controller, not just here.
+            Route::get('/boq-templates', [BoqTemplateAdminController::class, 'index']);
+            Route::get('/boq-templates/{template}', [BoqTemplateAdminController::class, 'show']);
+            Route::post('/boq-templates', [BoqTemplateAdminController::class, 'store']);
+            Route::patch('/boq-templates/{template}', [BoqTemplateAdminController::class, 'update']);
+            Route::delete('/boq-templates/{template}', [BoqTemplateAdminController::class, 'destroy']);
+            Route::post('/boq-templates/{template}/duplicate', [BoqTemplateAdminController::class, 'duplicate']);
+            Route::post('/boq-templates/{template}/activate', [BoqTemplateAdminController::class, 'activate']);
+            Route::post('/boq-templates/{template}/deactivate', [BoqTemplateAdminController::class, 'deactivate']);
+            Route::get('/boq-templates/{template}/usage', [BoqTemplateAdminController::class, 'usage']);
+            Route::get('/boq-templates/{template}/versions', [BoqTemplateAdminController::class, 'versions']);
+            Route::post('/boq-templates/{template}/versions', [BoqTemplateAdminController::class, 'storeVersion']);
+            Route::get('/boq-templates/{template}/versions/{version}', [BoqTemplateAdminController::class, 'showVersion']);
+            Route::post('/boq-templates/{template}/versions/{version}/publish', [BoqTemplateAdminController::class, 'publish']);
+            Route::post('/boq-templates/{template}/versions/{version}/items', [BoqTemplateAdminController::class, 'storeItem']);
+            Route::patch('/boq-templates/items/{templateItem}', [BoqTemplateAdminController::class, 'updateItem']);
+            Route::delete('/boq-templates/items/{templateItem}', [BoqTemplateAdminController::class, 'destroyItem']);
 
             // Proposals (Sprint 4, PROJECT_CONTEXT.md). {project}/{proposal} follow the same
             // manual-lookup convention as every other project-nested/cross-cutting controller
@@ -379,6 +415,39 @@ Route::prefix('v1')->group(function () {
             Route::get('/analytics/summary', [PlatformAnalyticsController::class, 'summary']);
             Route::get('/organizations', [PlatformAnalyticsController::class, 'organizations']);
             Route::get('/organizations/{organization}', [PlatformAnalyticsController::class, 'organization']);
+
+            // BOQ Master Catalog + Standard Templates — the platform-owner half of
+            // BoqCatalogController's dual mount, managing the global/system catalog
+            // (organization_id = null) that every organization's templates and custom catalog
+            // sit alongside. Same controller/methods as the tenant mount above — see that
+            // class's docblock for how it tells the two apart.
+            Route::get('/boq-catalog/categories', [BoqCatalogController::class, 'index']);
+            Route::get('/boq-catalog/search', [BoqCatalogController::class, 'search']);
+            Route::post('/boq-catalog/categories', [BoqCatalogController::class, 'storeCategory']);
+            Route::patch('/boq-catalog/categories/{category}', [BoqCatalogController::class, 'updateCategory']);
+            Route::post('/boq-catalog/categories/{category}/items', [BoqCatalogController::class, 'storeItem']);
+            Route::patch('/boq-catalog/items/{item}', [BoqCatalogController::class, 'updateItem']);
+            Route::delete('/boq-catalog/items/{item}', [BoqCatalogController::class, 'deactivateItem']);
+
+            // BOQ Master Catalog + Standard Templates — the platform-owner half of
+            // BoqTemplateAdminController's dual mount, managing global/system templates
+            // (organization_id = null). Same controller/methods as the tenant mount above.
+            Route::get('/boq-templates', [BoqTemplateAdminController::class, 'index']);
+            Route::get('/boq-templates/{template}', [BoqTemplateAdminController::class, 'show']);
+            Route::post('/boq-templates', [BoqTemplateAdminController::class, 'store']);
+            Route::patch('/boq-templates/{template}', [BoqTemplateAdminController::class, 'update']);
+            Route::delete('/boq-templates/{template}', [BoqTemplateAdminController::class, 'destroy']);
+            Route::post('/boq-templates/{template}/duplicate', [BoqTemplateAdminController::class, 'duplicate']);
+            Route::post('/boq-templates/{template}/activate', [BoqTemplateAdminController::class, 'activate']);
+            Route::post('/boq-templates/{template}/deactivate', [BoqTemplateAdminController::class, 'deactivate']);
+            Route::get('/boq-templates/{template}/usage', [BoqTemplateAdminController::class, 'usage']);
+            Route::get('/boq-templates/{template}/versions', [BoqTemplateAdminController::class, 'versions']);
+            Route::post('/boq-templates/{template}/versions', [BoqTemplateAdminController::class, 'storeVersion']);
+            Route::get('/boq-templates/{template}/versions/{version}', [BoqTemplateAdminController::class, 'showVersion']);
+            Route::post('/boq-templates/{template}/versions/{version}/publish', [BoqTemplateAdminController::class, 'publish']);
+            Route::post('/boq-templates/{template}/versions/{version}/items', [BoqTemplateAdminController::class, 'storeItem']);
+            Route::patch('/boq-templates/items/{templateItem}', [BoqTemplateAdminController::class, 'updateItem']);
+            Route::delete('/boq-templates/items/{templateItem}', [BoqTemplateAdminController::class, 'destroyItem']);
         });
 
         // BRD v4 "Client Marketplace" — a sibling to the `tenant` and `platform.owner` groups

@@ -369,6 +369,11 @@ export interface BoqItem {
   archived_at: ISODateString | null;
   created_at: ISODateString;
   updated_at: ISODateString;
+  source_template_id: number | string | null;
+  source_template_version_id: number | string | null;
+  source_catalog_item_id: number | string | null;
+  source_template?: { id: number | string; name: string } | null;
+  source_catalog_item?: { id: number | string; name: string } | null;
 }
 
 export interface BoqItemFormInput {
@@ -446,42 +451,232 @@ export interface BoqCategory {
   updated_at: ISODateString;
 }
 
-/** Nested template category node as returned inside GET /boq-templates/categories. */
-export interface BoqTemplateCategoryNode {
+// ---------------------------------------------------------------------------
+// BOQ Master Catalog + Standard Templates. Mirrors the backend's three-layer model:
+// Master Catalog (BoqCatalogCategory/BoqCatalogItem, "what an item is") -> Templates
+// (BoqTemplate/BoqTemplateVersion/BoqTemplateItem, "what normally goes together") -> Project
+// BOQ (BoqItem, source-tracked via source_template_id etc. above). A nullable organization_id
+// (surfaced here as `is_system`) means global/system data visible to every organization,
+// matching OrganizationScope's "organization_id = current OR NULL" convention everywhere else
+// in this app. Cost fields are non-binding starting suggestions only — the Project BOQ item the
+// engineer commits (and can edit) remains the sole financial source of truth.
+// ---------------------------------------------------------------------------
+
+export interface BoqUnit {
   id: number | string;
-  organization_id: number | string;
-  parent_id: number | string | null;
-  name: string;
-  sort_order: number;
-  items: BoqTemplateItem[];
-  children: BoqTemplateCategoryNode[];
+  code: string;
+  name_en: string;
+  name_ar: string;
 }
 
+export interface BoqCatalogItemSummary {
+  id: number | string;
+  category_id: number | string;
+  organization_id: number | string | null;
+  is_system: boolean;
+  name: string;
+  name_en: string | null;
+  name_ar: string | null;
+  description: string | null;
+  description_en: string | null;
+  description_ar: string | null;
+  default_material_unit_cost: number | string | null;
+  default_labor_unit_cost: number | string | null;
+  default_other_unit_cost: number | string | null;
+  default_client_unit_price: number | string | null;
+  is_active: boolean;
+}
+
+/** Nested catalog category node as returned inside GET /boq-catalog/categories. */
+export interface BoqCatalogCategoryNode {
+  id: number | string;
+  organization_id: number | string | null;
+  is_system: boolean;
+  parent_id: number | string | null;
+  name: string;
+  name_en: string | null;
+  name_ar: string | null;
+  sort_order: number;
+  items: BoqCatalogItemSummary[];
+  children: BoqCatalogCategoryNode[];
+}
+
+/** GET /boq-catalog/categories (and its /platform mount). */
+export interface BoqCatalogTree {
+  categories: BoqCatalogCategoryNode[];
+}
+
+export const BOQ_TEMPLATE_TYPES = [
+  "FULL_FINISHING",
+  "RENOVATION",
+  "PARTIAL_FINISHING",
+  "ROOM",
+  "TRADE",
+  "PACKAGE",
+  "PREMIUM",
+  "LUXURY",
+  "CUSTOM",
+] as const;
+export type BoqTemplateType = (typeof BOQ_TEMPLATE_TYPES)[number];
+
+export type BoqTemplateFinishingLevel = "BASIC" | "STANDARD" | "PREMIUM" | "LUXURY";
+
+export interface BoqTemplateVersionSummary {
+  id: number | string;
+  version_number: number;
+  status: "draft" | "published" | "archived";
+  published_at: ISODateString | null;
+}
+
+/** A template header — GET /boq-templates and /boq-templates/{id} (and their /platform mounts). */
+export interface BoqTemplate {
+  id: number | string;
+  organization_id: number | string | null;
+  is_system: boolean;
+  code: string;
+  name: string;
+  name_en: string | null;
+  name_ar: string | null;
+  description: string | null;
+  description_en: string | null;
+  description_ar: string | null;
+  template_type: BoqTemplateType;
+  project_type: string | null;
+  finishing_level: BoqTemplateFinishingLevel | null;
+  is_active: boolean;
+  active_version?: BoqTemplateVersionSummary | null;
+  versions_count?: number;
+  applications_count?: number;
+}
+
+export interface BoqTemplateFormInput {
+  code: string;
+  name: string;
+  name_en?: string | null;
+  name_ar?: string | null;
+  description?: string | null;
+  template_type: BoqTemplateType;
+  project_type?: string | null;
+  finishing_level?: BoqTemplateFinishingLevel | null;
+}
+
+/** A template line item — GET /boq-templates/{id}/versions/{versionId}. */
 export interface BoqTemplateItem {
   id: number | string;
-  organization_id: number | string;
+  template_version_id: number | string;
   category_id: number | string;
-  name: string;
-  description: string | null;
-  unit: string;
-  material_unit_cost: number | string;
-  labor_unit_cost: number | string;
-  other_unit_cost: number | string;
-  client_unit_price: number | string;
+  catalog_item?: BoqCatalogItemSummary;
+  default_unit?: BoqUnit | null;
+  default_quantity: number | string | null;
+  quantity_formula: string | null;
+  quantity_source: "FIXED_DEFAULT" | "FORMULA" | "USER_INPUT" | "OPTIONAL";
+  is_required: boolean;
+  is_optional: boolean;
+  is_enabled_by_default: boolean;
+  material_unit_cost: number | string | null;
+  labor_unit_cost: number | string | null;
+  other_unit_cost: number | string | null;
+  client_unit_price: number | string | null;
   notes: string | null;
   sort_order: number;
 }
 
-/** GET /boq-templates/categories. */
-export interface BoqTemplateTree {
-  organization_id: number | string;
-  categories: BoqTemplateCategoryNode[];
+export interface BoqTemplateVersionItemFormInput {
+  catalog_item_id: number | string;
+  category_id?: number | string;
+  default_unit_id?: number | string | null;
+  default_quantity?: number | string | null;
+  is_required?: boolean;
+  is_optional?: boolean;
+  material_unit_cost?: number | string | null;
+  labor_unit_cost?: number | string | null;
+  other_unit_cost?: number | string | null;
+  client_unit_price?: number | string | null;
+  notes?: string | null;
+  sort_order?: number;
 }
 
-/** POST /projects/{id}/boq/apply-template/{templateCategoryId}. */
-export interface ApplyBoqTemplateResult {
-  applied_category_id: number | string;
-  boq: BoqTree;
+/** GET /boq-templates/{id}/versions/{versionId}. */
+export interface BoqTemplateVersion {
+  id: number | string;
+  template_id: number | string;
+  version_number: number;
+  status: "draft" | "published" | "archived";
+  published_at: ISODateString | null;
+  change_notes: string | null;
+  items_count?: number;
+  items?: BoqTemplateItem[];
+}
+
+export interface BoqTemplateUsage {
+  applications_count: number;
+  recent_applications: Array<{
+    id: number | string;
+    project: { id: number | string; name: string } | null;
+    item_count: number;
+    created_at: ISODateString;
+  }>;
+}
+
+/** One entry of POST /projects/{id}/boq/template-preview's `selections[]`. */
+export interface BoqTemplatePreviewSelection {
+  template_version_id: number | string;
+  selected_optional_item_ids?: Array<number | string>;
+}
+
+/** A merged line item inside the preview tree — the fields the apply dialog lets the engineer review/edit before commit. */
+export interface BoqTemplatePreviewItem {
+  catalog_item_id: number | string;
+  name: string;
+  name_en: string | null;
+  name_ar: string | null;
+  default_unit: BoqUnit | null;
+  quantity: number | string | null;
+  quantity_source: string;
+  is_required: boolean;
+  suggested_material_unit_cost: number | string | null;
+  suggested_labor_unit_cost: number | string | null;
+  suggested_other_unit_cost: number | string | null;
+  suggested_client_unit_price: number | string | null;
+  needs_review: boolean;
+  contributed_by: Array<{
+    template_id: number | string;
+    template_name: string;
+    template_version_id: number | string;
+    template_item_id: number | string;
+    default_quantity: number | string | null;
+  }>;
+}
+
+export interface BoqTemplatePreviewCategoryNode {
+  id: number | string;
+  parent_id: number | string | null;
+  name: string;
+  name_en: string | null;
+  name_ar: string | null;
+  items: BoqTemplatePreviewItem[];
+  children: BoqTemplatePreviewCategoryNode[];
+}
+
+/** POST /projects/{id}/boq/template-preview — a pure read, never writes. */
+export interface BoqTemplatePreview {
+  categories: BoqTemplatePreviewCategoryNode[];
+}
+
+/** One resolved line POST /projects/{id}/boq/template-commit's `items[]` expects. */
+export interface BoqTemplateCommitItem {
+  catalog_item_id: number | string;
+  category_id?: number | string;
+  name?: string;
+  unit?: string;
+  quantity: number | string;
+  material_unit_cost?: number | string | null;
+  labor_unit_cost?: number | string | null;
+  other_unit_cost?: number | string | null;
+  client_unit_price?: number | string | null;
+  source_template_id?: number | string | null;
+  source_template_version_id?: number | string | null;
+  source_template_item_id?: number | string | null;
 }
 
 /** POST /projects/{id}/boq/import. */

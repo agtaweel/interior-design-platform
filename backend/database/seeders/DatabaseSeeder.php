@@ -17,6 +17,9 @@ class DatabaseSeeder extends Seeder
     {
         $this->call(RoleSeeder::class);
         $this->call(PlatformAdminSeeder::class);
+        $this->call(BoqUnitSeeder::class);
+        $this->call(BoqMasterCatalogSeeder::class);
+        $this->call(BoqTemplateSeeder::class);
 
         // User::factory(10)->create();
 

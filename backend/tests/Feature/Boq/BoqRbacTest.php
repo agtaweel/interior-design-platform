@@ -4,7 +4,6 @@ namespace Tests\Feature\Boq;
 
 use App\Models\BoqCategory;
 use App\Models\BoqItem;
-use App\Models\BoqTemplateCategory;
 use App\Models\Client;
 use App\Models\Organization;
 use App\Models\OrganizationMember;
@@ -20,21 +19,14 @@ use Tests\TestCase;
  * RBAC coverage for Sprint 2's BOQ surface, updated for Sprint 8's "Permissions hardening"
  * (PROJECT_CONTEXT.md): every BOQ *write* endpoint requires Permissions::MANAGE_BOQ (per
  * StoreBoqCategoryRequest/StoreBoqItemRequest/UpdateBoqItemRequest/StoreRoomRequest/
- * ImportBoqRequest/StoreBoqTemplateCategoryRequest/StoreBoqTemplateItemRequest docblocks, plus
- * Gate::authorize() calls in BoqItemController::destroy() and BoqTemplateController::apply()) —
- * and, as of Sprint 8, so does GET /projects/{id}/boq, GET /projects/{id}/boq/export,
+ * ImportBoqRequest docblocks, plus the Gate::authorize() call in BoqItemController::destroy())
+ * — and, as of Sprint 8, so does GET /projects/{id}/boq, GET /projects/{id}/boq/export,
  * GET /projects/{id}/rooms, since their responses include material_unit_cost/labor_unit_cost/
  * other_unit_cost (see IndexBoqRequest/BoqController/RoomController docblocks).
  *
- * GET /boq-templates/categories was initially left ungated on the reasoning that a template
- * "carries no project-specific cost data" — that reasoning was wrong (flagged by QA's final
- * project-wide Definition of Done review): the response still includes the same three cost
- * fields, just organization-scoped rather than project-scoped. It's now gated behind
- * Permissions::MANAGE_BOQ too (BoqTemplateCategoryController::index()), matching every other
- * cost-bearing BOQ read. Matches database/seeders/RoleSeeder.php, where the seeded "Designer"
- * role has manage_boq => true (they own the BOQ Builder day to day) but a member with no
- * permissions at all (e.g. the seeded "Site Staff" role) is now correctly blocked from every
- * cost-bearing BOQ read, not just writes.
+ * BOQ Master Catalog + Standard Templates RBAC (boq-catalog/*, boq-templates/*,
+ * template-preview/template-commit) is covered separately — see BoqCatalogTreeTest.php and
+ * BoqTemplateVersioningTest.php.
  */
 class BoqRbacTest extends TestCase
 {
@@ -83,9 +75,6 @@ class BoqRbacTest extends TestCase
         $this->withHeaders($headers)->getJson("/api/v1/projects/{$project->id}/rooms")->assertStatus(403);
         $this->withHeaders($headers)->getJson("/api/v1/projects/{$project->id}/boq/export")->assertStatus(403);
 
-        // --- The organization-level template list is also cost-bearing, also forbidden ---
-        $this->withHeaders($headers)->getJson('/api/v1/boq-templates/categories')->assertStatus(403);
-
         // --- Writes are forbidden ---
         $this->withHeaders($headers)
             ->postJson("/api/v1/projects/{$project->id}/boq/categories", ['name' => 'Should Fail'])
@@ -114,20 +103,9 @@ class BoqRbacTest extends TestCase
             ->assertStatus(403);
         $this->assertDatabaseMissing('rooms', ['name' => 'Should Fail']);
 
-        $templateCategory = BoqTemplateCategory::factory()->create(['organization_id' => $organization->id]);
-        $this->withHeaders($headers)
-            ->postJson("/api/v1/projects/{$project->id}/boq/apply-template/{$templateCategory->id}")
-            ->assertStatus(403);
-
-        $this->withHeaders($headers)
-            ->postJson('/api/v1/boq-templates/categories', ['name' => 'Should Fail'])
-            ->assertStatus(403);
-        $this->assertDatabaseMissing('boq_template_categories', ['name' => 'Should Fail']);
-
-        $this->withHeaders($headers)
-            ->postJson("/api/v1/boq-templates/categories/{$templateCategory->id}/items", ['name' => 'Should Fail', 'unit' => 'pcs'])
-            ->assertStatus(403);
-        $this->assertDatabaseMissing('boq_template_items', ['name' => 'Should Fail']);
+        // BOQ Master Catalog + Standard Templates RBAC (boq-catalog/*, boq-templates/*,
+        // template-preview/template-commit) is covered in BoqCatalogTreeTest.php and
+        // BoqTemplateVersioningTest.php rather than duplicated here.
 
         $csv = UploadedFile::fake()->createWithContent('boq.csv', "category_name,name,quantity,unit\nFlooring,Tile,1,m2\n");
         $this->withHeaders($headers)
@@ -149,10 +127,6 @@ class BoqRbacTest extends TestCase
 
         $this->withHeaders($headers)
             ->postJson("/api/v1/projects/{$project->id}/rooms", ['name' => 'Living Room'])
-            ->assertStatus(201);
-
-        $this->withHeaders($headers)
-            ->postJson('/api/v1/boq-templates/categories', ['name' => 'Office Template'])
             ->assertStatus(201);
 
         // Sprint 8 hardening: a MANAGE_BOQ holder (Designer/Admin/Owner) remains unaffected on
