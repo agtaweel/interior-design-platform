@@ -14,6 +14,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Support\Authorization\Permissions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -173,6 +174,11 @@ class ProposalVersioningTest extends TestCase
             'sort_order' => 2,
         ]); // flat 50.00 off
 
+        // Writing the items/rules above auto-filled the project's pricing cache
+        // (ProjectPricingObserver); wipe it so the draft can only get its totals by calling
+        // PricingCalculator itself.
+        DB::table('projects')->where('id', $project->id)->update(['grand_total' => null, 'priced_at' => null]);
+
         $response = $this->createDraft($this->authHeader($user), $project)->assertStatus(201);
 
         // subtotal maps to PricingCalculator's client_subtotal (the fixed anchor), not
@@ -184,10 +190,9 @@ class ProposalVersioningTest extends TestCase
             // 2000.00 + 200.00 - 50.00 = 2150.00
             ->assertJsonPath('data.grand_total', '2150.00');
 
-        // Confirm this is genuinely independent of the project's own cache columns (which were
-        // never populated by a POST /projects/{id}/pricing/recalculate call in this test) —
-        // proving ProposalVersionService calls PricingCalculator directly rather than reading a
-        // stale/absent cache.
+        // Confirm this is genuinely independent of the project's own cache columns (wiped above,
+        // and creating a draft doesn't touch them) — proving ProposalVersionService calls
+        // PricingCalculator directly rather than reading a stale/absent cache.
         $this->assertNull($project->fresh()->grand_total);
     }
 

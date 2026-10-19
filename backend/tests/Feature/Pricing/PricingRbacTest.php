@@ -93,10 +93,15 @@ class PricingRbacTest extends TestCase
             ->assertStatus(403);
         $this->assertDatabaseHas('pricing_rules', ['id' => $rule->id]);
 
+        // The item/rule factories above auto-priced the project; move the clock so a recalculate
+        // that slipped through would show up as a changed priced_at.
+        $pricedAtBefore = $project->fresh()->priced_at;
+        $this->travel(5)->minutes();
+
         $this->withHeaders($headers)
             ->postJson("/api/v1/projects/{$project->id}/pricing/recalculate")
             ->assertStatus(403);
-        $this->assertNull($project->fresh()->priced_at);
+        $this->assertEquals($pricedAtBefore, $project->fresh()->priced_at);
     }
 
     public function test_a_member_with_manage_boq_can_perform_every_pricing_write_operation_and_every_read(): void

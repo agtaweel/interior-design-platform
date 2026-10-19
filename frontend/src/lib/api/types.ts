@@ -840,7 +840,9 @@ export interface ProposalCreateInput {
 
 /** PATCH /proposals/{id} request body — only valid while status is 'draft', 409 otherwise. */
 export interface ProposalUpdateInput {
-  content_json: ProposalContent;
+  content_json?: ProposalContent;
+  /** Re-pull the project's current BOQ items + pricing into this draft. */
+  resnapshot?: boolean;
 }
 
 /** POST /proposals/{id}/send response — the one-time-only surface for the public link + OTP;

@@ -40,8 +40,8 @@ export function getProposal(proposalId: string | number) {
   return apiGetResource<ProposalVersion>(`/proposals/${proposalId}`);
 }
 
-/** PATCH /proposals/{id} — updates content_json. Only succeeds while status is 'draft'; the
- *  caller should only ever invoke this from the editor's draft path (see file docblock). */
+/** PATCH /proposals/{id} — updates content_json and/or re-snapshots the BOQ (`resnapshot`).
+ *  Only succeeds while status is 'draft'; callers only invoke it on drafts (see file docblock). */
 export function updateProposal(proposalId: string | number, input: ProposalUpdateInput) {
   return apiPatchResource<ProposalVersion>(`/proposals/${proposalId}`, input);
 }

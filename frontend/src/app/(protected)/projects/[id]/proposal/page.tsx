@@ -25,6 +25,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useParams } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
+import { WhatsAppShare } from "@/components/share/WhatsAppShare";
 import { createProposal, getProjectProposals, getProposal, sendProposal, updateProposal } from "@/lib/api/resources/proposals";
 import type {
   ProposalContent,
@@ -140,8 +141,15 @@ export default function ProposalPage() {
     setDetailLoading(true);
     setLoadError(null);
     getProposal(selectedId)
+      // A draft is work in progress: re-pull the project's current items and pricing into it
+      // every time it's opened, so the preview — and what "Send to Client" freezes — always
+      // matches the BOQ as it is now (edits made after the draft was created used to be silently
+      // missing). Falls back to the draft as stored if the refresh fails (e.g. no manage_boq).
+      .then((data) =>
+        data.status === "draft" ? updateProposal(data.id, { resnapshot: true }).catch(() => data) : data,
+      )
       .then((data) => {
-        if (!cancelled) setDetail(data);
+        if (!cancelled) handleDetailUpdated(data);
       })
       .catch((err) => {
         if (!cancelled) setLoadError(err instanceof ApiError ? err.message : t("common.unknownError"));
@@ -416,7 +424,7 @@ function ProposalVersionPanel({
       </Card>
 
       {detail.status === "sent" ? (
-        <SentShareCard result={sendResult} t={t} />
+        <SentShareCard result={sendResult} projectId={String(detail.project_id)} t={t} />
       ) : null}
 
       <Card>
@@ -475,7 +483,7 @@ function ProposalVersionPanel({
   );
 }
 
-function SentShareCard({ result, t }: { result: ProposalSendResult | null; t: T }) {
+function SentShareCard({ result, projectId, t }: { result: ProposalSendResult | null; projectId: string; t: T }) {
   return (
     <Card>
       <CardHeader>
@@ -487,6 +495,7 @@ function SentShareCard({ result, t }: { result: ProposalSendResult | null; t: T 
         {result ? (
           <>
             <p className="text-sm text-zinc-600 dark:text-zinc-300">{t("proposal.send.resultNote")}</p>
+            <WhatsAppShare kind="proposal" projectId={projectId} url={result.public_url} otp={result.otp_code} />
             <CopyField label={t("proposal.send.linkLabel")} value={result.public_url} t={t} />
             <CopyField label={t("proposal.send.otpLabel")} value={result.otp_code} t={t} />
             <p className="text-xs text-zinc-400">{t("proposal.send.otpOnceNote")}</p>

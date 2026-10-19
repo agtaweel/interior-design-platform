@@ -16,8 +16,9 @@ What already shipped from this review (branch `worktree-simplify-flow-and-guides
   data, hideable, disappears when done.
 - **Language switch on the signed-out screens** (login, signup, forgot/reset password) — before
   this, an Arabic speaker could not switch language until after signing up.
+- **All of P1** (below) — shipped on the same branch after approval on 2026-10-19.
 
-Everything below is a **proposal** — not built, because each one changes product behaviour.
+P2–P4 are still **proposals** — not built, because each one changes product behaviour.
 
 ---
 
@@ -25,16 +26,16 @@ Everything below is a **proposal** — not built, because each one changes produ
 
 | # | Moment | What happens | Why it hurts a non-technical user |
 |---|---|---|---|
-| 1 | Opening the site | `/` redirects straight to the login form. | Nothing says what the product is or why to sign up. *(Partly fixed: `/guide` exists and is linked, but `/` still lands on login.)* |
+| 1 | Opening the site | `/` redirects straight to the login form. | Nothing says what the product is or why to sign up. *(Fixed: `/` shows the guide to signed-out visitors — P1.1.)* |
 | 2 | Login / signup | English only, no language switch. | *(Fixed.)* |
-| 3 | Signup | "Organization name". | Owners think "company", not "organization". |
+| 3 | Signup | "Organization name". | Owners think "company", not "organization". *(Fixed — P1.2.)* |
 | 4 | First dashboard | Four zero KPIs and five empty panels. | No "what do I do first?" *(Fixed by the checklist.)* |
 | 5 | Top navigation | 9 items (10 for platform owner): Leads, Clients, Inquiries, Media, Suppliers, Reports… | Leads vs Clients vs Inquiries is three words for "people who might pay me". Too many choices before the first job. |
 | 6 | New project | Client must already exist — the form's first field is a dropdown of clients, empty on day one, with no "add new client" inside it. | Dead end: user has to know to leave, go to Clients, come back. |
-| 7 | Inside a project | 12 tabs always visible (one of them permanently disabled), regardless of stage. | Contract / Payments / Snagging / Handover show on day one of a quote. Feels like a cockpit. |
+| 7 | Inside a project | 12 tabs always visible (one of them permanently disabled), regardless of stage. | Contract / Payments / Snagging / Handover show on day one of a quote. Feels like a cockpit. *(Disabled tab removed — P1.5; stage grouping is P2.3.)* |
 | 8 | BOQ | Empty table; "Apply Templates" is one button among Add Category / Add Room / Add Item / Import CSV. | The fastest path (template) isn't the obvious one. Terms: BOQ, Direct Cost, Category. |
-| 9 | Pricing | Profit is a "rule" with type/method/applies-to; total only updates after **Recalculate**. | Forgetting Recalculate = wrong price on the proposal. |
-| 10 | Proposal | Create New Version → fill 6 fields → Save Draft → Send → copy link → copy OTP. | Six steps; the link and code are shown **once** and must be copied separately into WhatsApp. |
+| 9 | Pricing | Profit is a "rule" with type/method/applies-to; the project total only updates after **Recalculate**. | Forgetting Recalculate leaves the dashboard/reports value stale. *Correction:* proposals were never mis-priced by this — a new draft runs the calculator itself. The real gap was that a draft froze its prices at creation, and the UI had no way to refresh it, so BOQ edits made afterwards were silently missing from what was sent. *(Both fixed — P1.4.)* |
+| 10 | Proposal | Create New Version → fill 6 fields → Save Draft → Send → copy link → copy OTP. | Six steps; the link and code are shown **once** and must be copied separately into WhatsApp. *(Copy step fixed — P1.3.)* |
 | 11 | Client side | A client can receive three different links (portal, proposal approval, change-order approval); the approval pages are English-only. | Clients ask "which link do I open?" — support calls. |
 | 12 | Change orders | After the client approves, nothing changes until staff press "Apply to BOQ & Contract". | Users assume approval = done; contract value silently stays old. |
 | 13 | Jargon | BOQ, Snagging, Handover, Change Orders, Execution, OTP, Gross Profit. | Trade/English terms; fine for engineers, opaque for owners and clients. |
@@ -43,7 +44,31 @@ Everything below is a **proposal** — not built, because each one changes produ
 
 ## Proposals, in priority order
 
-### P1 — Quick wins (copy & small UI; low risk)
+### P1 — Quick wins ✅ shipped
+
+What was built, and where it differs from the original proposal:
+
+- **P1.1** — `app/page.tsx` waits for the auth check, then shows the guide (signed out) or
+  redirects to `/dashboard` (signed in).
+- **P1.2** — renamed in UI strings and both guides: Company, Items & Prices, Site Work,
+  Extras & Changes, Fix List (subtitles keep the trade term in brackets). Body sentences that use
+  the trade terms were left as-is. **Not done:** merging Leads + Inquiries — that is the P2.2
+  navigation change.
+- **P1.3** — `WhatsAppShare` on both send-result cards (proposal and change order): one message in
+  the UI language with greeting, link, code; "Send to <client> on WhatsApp" opens `wa.me` straight
+  to the client's number (Egyptian local numbers normalised to `20…`), otherwise lets WhatsApp
+  pick the contact. Still click-to-chat only — no WhatsApp API, so the locked "manual sharing"
+  decision holds.
+- **P1.4** — backend: `ProjectPricingObserver` on `BoqItem`/`PricingRule` keeps the project's
+  pricing cache current via `ProjectPricingCache` (deferred to commit + de-duplicated inside
+  transactions, so imports reprice once; writes only when a total changes). Frontend: a draft
+  proposal re-snapshots current items/pricing whenever it's opened; the pricing panel re-reads
+  after BOQ edits; "Recalculate" is now a secondary "Refresh totals".
+- **P1.5** — removed the disabled Activity tab, plus two dead cards on the project overview
+  (a permanent 0% "Progress" bar captioned "arrives in a later sprint", and a "Recent Activity"
+  card that always said "No activity recorded yet").
+
+Original proposal:
 
 1. **`/` shows the guide to signed-out visitors** instead of bouncing to login (auth is client-side,
    so: render the guide, and redirect to `/dashboard` only if a token exists).

@@ -69,13 +69,13 @@ class PricingBreakdownTest extends TestCase
         ]);
     }
 
-    public function test_breakdown_reports_not_priced_before_any_recalculation(): void
+    public function test_breakdown_reports_not_priced_for_a_project_that_has_never_been_priced(): void
     {
+        // No BOQ items or rules have ever been written, so nothing has priced it — neither the
+        // automatic refresh (ProjectPricingObserver) nor POST /pricing/recalculate.
         $organization = Organization::factory()->create();
         $project = $this->projectIn($organization);
         $user = $this->fullAccessUser($organization);
-        $this->seedKnownBoq($project);
-        PricingRule::factory()->create(['project_id' => $project->id]); // rules can exist unpriced
 
         $response = $this->withHeaders($this->authHeader($user))
             ->getJson("/api/v1/projects/{$project->id}/pricing/breakdown")
@@ -90,6 +90,28 @@ class PricingBreakdownTest extends TestCase
             ->assertJsonPath('data.discount_total', null)
             ->assertJsonPath('data.grand_total', null)
             ->assertJsonPath('data.priced_at', null);
+    }
+
+    public function test_editing_the_boq_or_rules_keeps_the_persisted_totals_current_without_a_recalculate(): void
+    {
+        $organization = Organization::factory()->create();
+        $project = $this->projectIn($organization);
+        $user = $this->fullAccessUser($organization);
+        $this->seedKnownBoq($project);
+        PricingRule::factory()->create(['project_id' => $project->id]);
+
+        $live = $this->withHeaders($this->authHeader($user))
+            ->getJson("/api/v1/projects/{$project->id}/pricing/breakdown")
+            ->assertStatus(200)
+            ->assertJsonPath('data.priced', true)
+            ->json('data');
+
+        // The persisted cache (what financials.value, the dashboard and reports read) matches
+        // the live calculation, though no one called POST /pricing/recalculate.
+        $fresh = $project->fresh();
+        $this->assertNotNull($fresh->priced_at);
+        $this->assertEquals($live['grand_total'], $fresh->grand_total);
+        $this->assertEquals($live['client_subtotal'], $fresh->client_subtotal);
     }
 
     public function test_breakdown_returns_the_full_accurate_breakdown_after_recalculation(): void

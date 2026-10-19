@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Services\Pricing\ProjectPricingCache;
 use App\Support\Authorization\Permissions;
 use App\Support\Tenancy\TenantContext;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -19,6 +20,8 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(TenantContext::class);
+        // Scoped, not singleton: its pending-refresh set must not outlive one request/job.
+        $this->app->scoped(ProjectPricingCache::class);
     }
 
     /**

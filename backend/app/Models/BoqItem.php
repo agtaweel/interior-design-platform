@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Models\Concerns\Auditable;
+use App\Observers\ProjectPricingObserver;
 use Database\Factories\BoqItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -33,6 +35,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'supplier_id', 'notes', 'sort_order', 'archived_at',
     'source_template_id', 'source_template_version_id', 'source_template_item_id', 'source_catalog_item_id',
 ])]
+#[ObservedBy([ProjectPricingObserver::class])]
 class BoqItem extends Model
 {
     /** @use HasFactory<BoqItemFactory> */

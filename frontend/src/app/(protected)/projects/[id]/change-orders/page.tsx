@@ -24,6 +24,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
+import { WhatsAppShare } from "@/components/share/WhatsAppShare";
 import {
   applyChangeOrder,
   createChangeOrder,
@@ -671,7 +672,7 @@ function ChangeOrderPanel({
         <ErrorBanner message={t("changeOrders.detail.rejectedNote")} />
       ) : null}
 
-      {!isCreate && detail.status === "sent" ? <SentShareCard result={sendResult} t={t} /> : null}
+      {!isCreate && detail.status === "sent" ? <SentShareCard result={sendResult} projectId={String(detail.project_id)} t={t} /> : null}
 
       {!isCreate && detail.status === "approved" ? (
         <Card>
@@ -1024,7 +1025,7 @@ function ReadonlyChangeOrderContent({ detail, t, locale }: { detail: ChangeOrder
   );
 }
 
-function SentShareCard({ result, t }: { result: ChangeOrderSendResult | null; t: T }) {
+function SentShareCard({ result, projectId, t }: { result: ChangeOrderSendResult | null; projectId: string; t: T }) {
   return (
     <Card>
       <CardHeader>
@@ -1036,6 +1037,7 @@ function SentShareCard({ result, t }: { result: ChangeOrderSendResult | null; t:
         {result ? (
           <>
             <p className="text-sm text-zinc-600 dark:text-zinc-300">{t("changeOrders.send.resultNote")}</p>
+            <WhatsAppShare kind="changeOrder" projectId={projectId} url={result.public_url} otp={result.otp_code} number={result.number} />
             <CopyField label={t("changeOrders.send.linkLabel")} value={result.public_url} t={t} />
             <CopyField label={t("changeOrders.send.otpLabel")} value={result.otp_code} t={t} />
             <p className="text-xs text-zinc-400">{t("changeOrders.send.otpOnceNote")}</p>

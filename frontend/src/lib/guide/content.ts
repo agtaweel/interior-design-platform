@@ -23,7 +23,7 @@ const typed = <T,>(items: T[]): T[] => items;
 export interface GuideStep {
   title: Localized;
   body: Localized;
-  /** Where in the app this happens, e.g. "Project → BOQ & Pricing". */
+  /** Where in the app this happens, e.g. "Project → Items & Prices". */
   where?: Localized;
   /** In-app link for the /help guide; omitted when the step lives inside a specific project. */
   href?: string;
@@ -53,7 +53,7 @@ export interface FaqEntry {
 
 export const GLOSSARY: GlossaryEntry[] = [
   {
-    term: { en: "BOQ (Bill of Quantities)", ar: "الكميات (BOQ)" },
+    term: { en: "Items & Prices (BOQ)", ar: "البنود والأسعار (BOQ)" },
     meaning: {
       en: "The list of every item of work in the job — tiles, paint, electrics — with how much of each and what it costs. It's your price list for this one project.",
       ar: "قائمة بكل بنود الشغل في المشروع — سيراميك، دهانات، كهرباء — بالكمية والتكلفة لكل بند. هي قائمة الأسعار الخاصة بهذا المشروع.",
@@ -88,14 +88,14 @@ export const GLOSSARY: GlossaryEntry[] = [
     },
   },
   {
-    term: { en: "Change order", ar: "أمر التغيير" },
+    term: { en: "Extras & changes (change order)", ar: "الإضافات والتعديلات (أمر تغيير)" },
     meaning: {
       en: "Extra work (or removed work) after the contract is signed. The client approves it first, then it updates the contract value.",
       ar: "شغل إضافي (أو شغل ملغى) بعد توقيع العقد. يوافق عليه العميل أولًا، ثم تتحدث قيمة العقد.",
     },
   },
   {
-    term: { en: "Snag", ar: "ملاحظة (Snag)" },
+    term: { en: "Fix list (snags)", ar: "قائمة الإصلاحات (Snags)" },
     meaning: {
       en: "A defect to fix before handing over — a cracked tile, a door that doesn't close. A \"mandatory\" snag blocks handover until it's closed.",
       ar: "عيب يجب إصلاحه قبل التسليم — بلاطة مشروخة أو باب لا يُغلق. الملاحظة \"الإلزامية\" تمنع التسليم حتى تُغلق.",
@@ -331,7 +331,7 @@ export const APP_GUIDE = {
             en: "Name, legal name, logo, phone and email. These appear on proposals and contracts.",
             ar: "الاسم والاسم القانوني والشعار والهاتف والبريد. تظهر على العروض والعقود.",
           },
-          where: { en: "Settings → Organization Profile", ar: "الإعدادات ← بيانات المؤسسة" },
+          where: { en: "Settings → Company Profile", ar: "الإعدادات ← بيانات الشركة" },
           href: "/settings",
         },
         {
@@ -387,10 +387,10 @@ export const APP_GUIDE = {
         {
           title: { en: "Fill the BOQ from a template", ar: "املأ الكميات من قالب" },
           body: {
-            en: "Open the project, go to \"BOQ & Pricing\" and press \"Apply Templates\". Then just change quantities and costs — click any cell, type, and it saves by itself.",
-            ar: "افتح المشروع، ادخل \"الكميات والتسعير\" واضغط \"تطبيق القوالب\". ثم غيّر الكميات والتكاليف فقط — اضغط على أي خانة واكتب، والحفظ تلقائي.",
+            en: "Open the project, go to \"Items & Prices\" and press \"Apply Templates\". Then just change quantities and costs — click any cell, type, and it saves by itself.",
+            ar: "افتح المشروع، ادخل \"البنود والأسعار\" واضغط \"تطبيق القوالب\". ثم غيّر الكميات والتكاليف فقط — اضغط على أي خانة واكتب، والحفظ تلقائي.",
           },
-          where: { en: "Project → BOQ & Pricing", ar: "المشروع ← الكميات والتسعير" },
+          where: { en: "Project → Items & Prices", ar: "المشروع ← البنود والأسعار" },
           tip: {
             en: "Have it in Excel already? Save it as CSV and use \"Import CSV\".",
             ar: "عندك الملف على إكسل؟ احفظه بصيغة CSV واستخدم \"استيراد CSV\".",
@@ -399,13 +399,13 @@ export const APP_GUIDE = {
         {
           title: { en: "Add your profit", ar: "أضف ربحك" },
           body: {
-            en: "In the pricing panel under the table, press \"Add Rule\" (e.g. Markup 20%), then \"Recalculate\". Use the client preview to see exactly the price they'll see.",
-            ar: "في لوحة التسعير أسفل الجدول، اضغط \"إضافة قاعدة\" (مثلًا هامش 20٪) ثم \"إعادة الحساب\". استخدم معاينة العميل لترى السعر الذي سيظهر له بالضبط.",
+            en: "In the pricing panel under the table, press \"Add Rule\" (e.g. Markup 20%). Totals update by themselves. Use the client preview to see exactly the price they'll see.",
+            ar: "في لوحة التسعير أسفل الجدول، اضغط \"إضافة قاعدة\" (مثلًا هامش 20٪). الإجماليات تتحدث تلقائيًا. استخدم معاينة العميل لترى السعر الذي سيظهر له بالضبط.",
           },
-          where: { en: "Project → BOQ & Pricing", ar: "المشروع ← الكميات والتسعير" },
+          where: { en: "Project → Items & Prices", ar: "المشروع ← البنود والأسعار" },
           tip: {
-            en: "Always press \"Recalculate\" after changing items, or the total won't update.",
-            ar: "اضغط دائمًا \"إعادة الحساب\" بعد تعديل البنود، وإلا لن يتحدث الإجمالي.",
+            en: "Changed items after writing the proposal? Just reopen the draft — it picks up the new prices.",
+            ar: "عدّلت البنود بعد كتابة العرض؟ افتح المسودة من جديد — ستأخذ الأسعار الجديدة تلقائيًا.",
           },
         },
         {
@@ -486,7 +486,7 @@ export const APP_GUIDE = {
             en: "Add tasks and move them from \"To Do\" to \"Done\". After each site visit, add a short report with photos — it can be downloaded as a PDF.",
             ar: "أضف المهام وانقلها من \"قيد الانتظار\" إلى \"مكتملة\". بعد كل زيارة للموقع، أضف تقريرًا قصيرًا بالصور — يمكن تنزيله PDF.",
           },
-          where: { en: "Project → Execution", ar: "المشروع ← التنفيذ" },
+          where: { en: "Project → Site Work", ar: "المشروع ← شغل الموقع" },
         },
         {
           title: { en: "Track purchases and expenses", ar: "تابع المشتريات والمصروفات" },
@@ -499,10 +499,10 @@ export const APP_GUIDE = {
         {
           title: { en: "Client wants something extra?", ar: "العميل عاوز حاجة زيادة؟" },
           body: {
-            en: "Create a change order, add the new or removed items and send it like a proposal. After the client approves, press \"Apply to BOQ & Contract\" — only then does the contract value change.",
-            ar: "أنشئ أمر تغيير، أضف البنود الجديدة أو الملغاة وأرسله مثل العرض. بعد موافقة العميل اضغط \"تطبيق على قائمة الكميات والعقد\" — وقتها فقط تتغير قيمة العقد.",
+            en: "Create a change order, add the new or removed items and send it like a proposal. After the client approves, press \"Apply to Items & Contract\" — only then does the contract value change.",
+            ar: "أنشئ أمر تغيير، أضف البنود الجديدة أو الملغاة وأرسله مثل العرض. بعد موافقة العميل اضغط \"تطبيق على البنود والعقد\" — وقتها فقط تتغير قيمة العقد.",
           },
-          where: { en: "Project → Change Orders", ar: "المشروع ← أوامر التغيير" },
+          where: { en: "Project → Extras & Changes", ar: "المشروع ← الإضافات والتعديلات" },
           tip: {
             en: "Never agree to extras verbally — a change order is your proof.",
             ar: "لا توافق على إضافات شفهيًا — أمر التغيير هو إثباتك.",
@@ -532,7 +532,7 @@ export const APP_GUIDE = {
             en: "Add each defect as a snag. Tick \"Mandatory\" for anything that must be fixed before handover. Close each one when it's done.",
             ar: "أضف كل عيب كملاحظة. علّم \"إلزامي\" على أي شيء يجب إصلاحه قبل التسليم. أغلق كل ملاحظة عند إصلاحها.",
           },
-          where: { en: "Project → Snagging", ar: "المشروع ← الملاحظات" },
+          where: { en: "Project → Fix List", ar: "المشروع ← قائمة الإصلاحات" },
         },
         {
           title: { en: "Record the handover", ar: "سجّل التسليم" },
@@ -584,8 +584,8 @@ export const GETTING_STARTED = {
     price: {
       title: { en: "Price the work", ar: "سعّر الشغل" },
       body: {
-        en: "In the project, open \"BOQ & Pricing\", apply a template, then press \"Recalculate\".",
-        ar: "داخل المشروع افتح \"الكميات والتسعير\"، طبّق قالبًا ثم اضغط \"إعادة الحساب\".",
+        en: "In the project, open \"Items & Prices\" and apply a template — the total fills in by itself.",
+        ar: "داخل المشروع افتح \"البنود والأسعار\" وطبّق قالبًا — يظهر الإجمالي تلقائيًا.",
       },
       cta: { en: "Open project", ar: "افتح المشروع" },
     },

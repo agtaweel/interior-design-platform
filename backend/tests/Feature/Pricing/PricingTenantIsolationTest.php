@@ -113,12 +113,17 @@ class PricingTenantIsolationTest extends TestCase
         $category = BoqCategory::factory()->create(['project_id' => $projectB->id]);
         BoqItem::factory()->create(['project_id' => $projectB->id, 'category_id' => $category->id]);
 
+        // Adding the item auto-priced org B's project (ProjectPricingObserver); move the clock so
+        // any write by org A's request would show up as a changed priced_at.
+        $pricedAtBefore = $projectB->fresh()->priced_at;
+        $this->travel(5)->minutes();
+
         $this->withHeaders($this->authHeader($userA))
             ->postJson("/api/v1/projects/{$projectB->id}/pricing/recalculate")
             ->assertStatus(404);
 
-        // Org B's project must remain unpriced — org A's attempt must not have written anything.
-        $this->assertNull($projectB->fresh()->priced_at);
+        // Org A's attempt must not have written anything to org B's project.
+        $this->assertEquals($pricedAtBefore, $projectB->fresh()->priced_at);
     }
 
     public function test_cannot_view_another_organizations_pricing_breakdown(): void

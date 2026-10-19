@@ -6,9 +6,9 @@
  *   Expenses / Snagging / Handover / Documents / Activity
  * Execution (BRD S16/S17: tasks + site reports), Expenses (BRD S18 "Expenses/Suppliers: actual
  * cost capture" — purchase orders + expenses live together here, matching that screen's own
- * bundled title) and Snagging/Handover (BRD S19/S20) are now live. Only Activity (an audit-log
- * viewer) remains disabled — no BRD screen defines its UI beyond the NFR-level "audit trail"
- * requirement, so it's out of this pass's scope.
+ * bundled title) and Snagging/Handover (BRD S19/S20) are now live. Activity (an audit-log viewer)
+ * is not shown at all until it exists — a permanently disabled tab only confused people; the
+ * org-wide audit log lives under Settings.
  */
 
 import Link from "next/link";
@@ -28,8 +28,7 @@ interface TabItem {
     | "expenses"
     | "snagging"
     | "handover"
-    | "documents"
-    | "activity";
+    | "documents";
   href:
     | ""
     | "boq"
@@ -41,8 +40,7 @@ interface TabItem {
     | "expenses"
     | "snagging"
     | "handover"
-    | "documents"
-    | null;
+    | "documents";
 }
 
 const TAB_ITEMS: TabItem[] = [
@@ -57,7 +55,6 @@ const TAB_ITEMS: TabItem[] = [
   { key: "snagging", href: "snagging" },
   { key: "handover", href: "handover" },
   { key: "documents", href: "documents" },
-  { key: "activity", href: null },
 ];
 
 export default function ProjectLayout({ children }: { children: ReactNode }) {
@@ -71,18 +68,6 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
     <div className="flex flex-col gap-6">
       <nav className="flex flex-wrap items-center gap-1 border-b border-zinc-200 dark:border-zinc-800">
         {TAB_ITEMS.map((tab) => {
-          if (tab.href === null) {
-            return (
-              <span
-                key={tab.key}
-                title={t("nav.comingSoon")}
-                className="cursor-not-allowed px-3 py-2 text-sm font-medium text-zinc-300 dark:text-zinc-700"
-              >
-                {t(`project.tabs.${tab.key}`)}
-              </span>
-            );
-          }
-
           const href = tab.href === "" ? base : `${base}/${tab.href}`;
           const isActive = tab.href === "" ? pathname === base : pathname.startsWith(href);
 

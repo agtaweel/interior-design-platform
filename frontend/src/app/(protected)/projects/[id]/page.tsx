@@ -95,31 +95,6 @@ export default function ProjectOverviewPage() {
               />
             </CardBody>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                {t("project.overview.progress")}
-              </h2>
-            </CardHeader>
-            <CardBody>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
-                <div className="h-full w-0 bg-zinc-900 dark:bg-zinc-100" />
-              </div>
-              <p className="mt-2 text-xs text-zinc-400">{t("project.overview.progressNote")}</p>
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                {t("project.activity.title")}
-              </h2>
-            </CardHeader>
-            <CardBody>
-              <EmptyState message={t("project.activity.empty")} />
-            </CardBody>
-          </Card>
         </div>
 
         <Card className="lg:col-span-1">

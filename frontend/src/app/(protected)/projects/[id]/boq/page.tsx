@@ -1287,7 +1287,10 @@ export default function BoqBuilderPage() {
       {/* Pricing (S08) — project-level markup/fee/discount layers on top of the line-item
           pricing above. Rendered as a sibling section within this same "BOQ & Pricing" tab
           rather than a separate route, per PROJECT_CONTEXT.md Sprint 3 UX guidance. */}
-      <PricingPanel projectId={projectId} />
+      <PricingPanel
+        projectId={projectId}
+        boqSignature={`${grandTotal.direct_cost}|${grandTotal.client_total}`}
+      />
     </div>
   );
 }

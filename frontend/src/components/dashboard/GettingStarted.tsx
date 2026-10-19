@@ -5,8 +5,8 @@
  * proposal on a client's phone. Every tick is derived from real data, never self-reported:
  *  - client:  GET /clients meta.total > 0 (fetched here — the dashboard doesn't otherwise need it)
  *  - project: the dashboard's GET /projects total > 0
- *  - price:   some project has a priced value (financials.value is the cached grand_total, set by
- *             "Recalculate")
+ *  - price:   some project has a priced value (financials.value is the cached grand_total, kept
+ *             current automatically whenever BOQ items or pricing rules change)
  *  - send:    a proposal is out with a client, or a project already has a contract/payments
  *             (outstanding/collected > 0) — covers accounts whose proposal was already approved,
  *             and roles without VIEW_FINANCIALS where `summary` is null.

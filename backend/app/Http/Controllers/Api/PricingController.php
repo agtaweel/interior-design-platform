@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Services\Pricing\PricingCalculator;
+use App\Services\Pricing\ProjectPricingCache;
 use App\Support\Authorization\Permissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -60,10 +61,17 @@ use Illuminate\Support\Facades\Gate;
  * the totals shown here can differ from the persisted cache columns (and thus from
  * ProjectResource.financials.value) until POST /pricing/recalculate is called again — that
  * divergence is expected and is exactly what should prompt a designer to hit "Recalculate".
+ *
+ * Update (P1 simplification): the cache is now also refreshed automatically whenever a BOQ item
+ * or pricing rule changes (ProjectPricingObserver -> ProjectPricingCache), so that divergence no
+ * longer depends on anyone pressing Recalculate. The endpoint remains for an explicit refresh.
  */
 class PricingController extends Controller
 {
-    public function __construct(private readonly PricingCalculator $calculator) {}
+    public function __construct(
+        private readonly PricingCalculator $calculator,
+        private readonly ProjectPricingCache $pricingCache,
+    ) {}
 
     public function recalculate(string $project): JsonResponse
     {
@@ -75,28 +83,9 @@ class PricingController extends Controller
             return $this->notFound();
         }
 
-        $result = DB::transaction(function () use ($projectModel) {
-            $result = $this->calculator->calculate($projectModel);
-
-            // forceFill(), not update()/fill(): Project's cache columns are deliberately NOT
-            // in the model's #[Fillable] attribute (see Project's cast() docblock) precisely
-            // so a general client-supplied update (PATCH /projects/{id}) can never write them
-            // — but that same guarding also silently drops a plain ->update() call from HERE,
-            // the one legitimate writer. forceFill() bypasses mass-assignment protection for
-            // this intentional internal write while leaving the fillable guard fully intact
-            // for every other caller.
-            $projectModel->forceFill([
-                'direct_cost_total' => $result['direct_cost_total'],
-                'client_subtotal' => $result['client_subtotal'],
-                'markup_total' => $result['markup_total'],
-                'fees_total' => $result['fees_total'],
-                'discount_total' => $result['discount_total'],
-                'grand_total' => $result['grand_total'],
-                'priced_at' => now(),
-            ])->save();
-
-            return $result;
-        });
+        // Same writer the automatic refresh uses (ProjectPricingCache), but always persists —
+        // pressing Recalculate stamps priced_at even when nothing changed.
+        $result = DB::transaction(fn () => $this->pricingCache->refresh($projectModel));
 
         return response()->json([
             'data' => [

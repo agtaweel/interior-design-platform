@@ -98,6 +98,19 @@ class PricingRecalculationTest extends TestCase
     }
 
     /**
+     * Writing BOQ items/rules now auto-prices the project (ProjectPricingObserver). Tests that pin
+     * what the recalculate ENDPOINT itself persists wipe the cache first, straight in the DB, so
+     * a passing assertion can only come from the endpoint's own write.
+     */
+    private function clearPricingCache(Project $project): void
+    {
+        DB::table('projects')->where('id', $project->id)->update([
+            'direct_cost_total' => null, 'client_subtotal' => null, 'markup_total' => null,
+            'fees_total' => null, 'discount_total' => null, 'grand_total' => null, 'priced_at' => null,
+        ]);
+    }
+
+    /**
      * Normalizes a raw decimal column value read via rawProjectRow() to a fixed 2-decimal money
      * string for comparison. Needed because the test suite runs against SQLite (phpunit.xml
      * forces DB_CONNECTION=sqlite :memory: for speed/isolation from the dev Postgres database —
@@ -371,7 +384,8 @@ class PricingRecalculationTest extends TestCase
             'value' => 10, 'base_selector' => 'boq_client_subtotal',
         ]);
 
-        // Sanity: never priced before recalculation.
+        // Sanity: nothing priced before the endpoint runs.
+        $this->clearPricingCache($project);
         $before = $this->rawProjectRow($project);
         $this->assertNull($before->direct_cost_total);
         $this->assertNull($before->grand_total);
@@ -399,6 +413,7 @@ class PricingRecalculationTest extends TestCase
         $project = $this->projectIn($organization);
         $user = $this->fullAccessUser($organization);
         $this->seedKnownBoq($project);
+        $this->clearPricingCache($project);
 
         $this->assertNull($this->rawProjectRow($project)->priced_at);
 

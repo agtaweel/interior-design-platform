@@ -19,7 +19,7 @@
  * the sprint scope explicitly calls out building the habit now.
  */
 
-import { useEffect, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type Dispatch, type FormEvent, type ReactNode, type SetStateAction } from "react";
 import { ApiError } from "@/lib/api/client";
 import {
   createPricingRule,
@@ -76,9 +76,13 @@ interface PricingPanelProps {
    *  project header if it displays the grand total elsewhere. Optional — the panel is fully
    *  self-sufficient without it. */
   onRecalculated?: (breakdown: PricingBreakdown) => void;
+  /** Changes whenever the BOQ's priced totals change on the parent page (e.g. its running client
+   *  total). The server re-prices on every item edit (ProjectPricingObserver), so this only
+   *  tells the panel to re-read the breakdown — no Recalculate press needed. */
+  boqSignature?: string;
 }
 
-export function PricingPanel({ projectId, onRecalculated }: PricingPanelProps) {
+export function PricingPanel({ projectId, onRecalculated, boqSignature }: PricingPanelProps) {
   const { t, locale } = useLocale();
 
   const [rules, setRules] = useState<PricingRule[]>([]);
@@ -147,6 +151,16 @@ export function PricingPanel({ projectId, onRecalculated }: PricingPanelProps) {
     }
   }
 
+  // Re-read the breakdown after BOQ edits on the same page. Skips the first run: the mount-time
+  // load() above already fetched it.
+  const lastSignature = useRef(boqSignature);
+  useEffect(() => {
+    if (lastSignature.current === boqSignature) return;
+    lastSignature.current = boqSignature;
+    refreshBreakdown();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshBreakdown only uses stable values
+  }, [boqSignature]);
+
   async function handleToggleActive(rule: PricingRule) {
     setActionError(null);
     try {
@@ -182,12 +196,13 @@ export function PricingPanel({ projectId, onRecalculated }: PricingPanelProps) {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <ViewModeToggle mode={viewMode} onChange={setViewMode} t={t} />
-            <Button onClick={handleRecalculate} disabled={recalculating}>
+            <Button variant="secondary" onClick={handleRecalculate} disabled={recalculating}>
               {recalculating ? t("pricing.recalculate.running") : t("pricing.recalculate.cta")}
             </Button>
           </div>
         </CardHeader>
         <CardBody className="flex flex-col gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+          <span>{t("pricing.autoNote")}</span>
           <span>
             {t("pricing.priced.at")}:{" "}
             {breakdown?.priced_at ? formatDateTime(breakdown.priced_at, locale) : t("pricing.priced.never")}
