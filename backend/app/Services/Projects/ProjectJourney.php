@@ -71,6 +71,8 @@ class ProjectJourney
                 ->where('is_mandatory', true)
                 ->count(),
             'has_handover' => Handover::query()->where('project_id', $project->id)->exists(),
+            // P4.3 — lets the project screen label the sample project on every tab.
+            'is_sample' => (bool) $project->is_sample,
         ];
     }
 

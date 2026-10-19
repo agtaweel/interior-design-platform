@@ -196,6 +196,8 @@ export interface ClientSummary {
 export interface Client {
   id: number | string;
   name: string;
+  /** P4.3 — the sample project's client. */
+  is_sample?: boolean;
   phone: string | null;
   email: string | null;
   address: string | null;
@@ -315,6 +317,8 @@ export interface Project {
   code: string | null;
   name: string;
   status: ProjectStatus;
+  /** P4.3 — the company's practice project; excluded from money figures and the checklist. */
+  is_sample?: boolean;
   client?: ClientSummary;
   property?: PropertySummary | null;
   responsible_user?: UserSummary | null;

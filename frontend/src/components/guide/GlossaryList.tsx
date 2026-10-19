@@ -14,7 +14,7 @@ export function GlossaryList({
   return (
     <dl className={`grid gap-x-8 gap-y-5 sm:grid-cols-2 ${className}`}>
       {entries.map((entry) => (
-        <div key={entry.term.en}>
+        <div key={entry.id} id={entry.id} className="scroll-mt-20 rounded-md target:bg-amber-50 target:ring-2 target:ring-amber-300 dark:target:bg-amber-950/30">
           <dt className="font-semibold">{pick(entry.term, locale)}</dt>
           <dd className="mt-1 text-sm leading-relaxed text-[var(--l-muted)]">{pick(entry.meaning, locale)}</dd>
         </div>

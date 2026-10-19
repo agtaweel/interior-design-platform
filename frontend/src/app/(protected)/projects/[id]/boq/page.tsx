@@ -41,6 +41,7 @@ import { commitBoqTemplates, listBoqTemplates, previewBoqTemplates } from "@/lib
 import { flattenPreviewCategories, toCommitItems, type FlatPreviewRow } from "@/lib/boq/templateApply";
 import { getProject } from "@/lib/api/resources/projects";
 import { PricingPanel } from "@/components/pricing/PricingPanel";
+import { HelpHint } from "@/components/guide/HelpHint";
 import type {
   BoqCategoryNode,
   BoqImportResult,
@@ -789,7 +790,9 @@ export default function BoqBuilderPage() {
         <div className="flex flex-col gap-4">
           <Card>
             <CardHeader className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{t("boq.categories.title")}</h2>
+              <h2 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                {t("boq.categories.title")} <HelpHint hint="categoryRoom" />
+              </h2>
               <button
                 type="button"
                 onClick={() => setShowAddCategory((v) => !v)}
@@ -859,7 +862,9 @@ export default function BoqBuilderPage() {
 
           <Card>
             <CardHeader className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{t("boq.rooms.title")}</h2>
+              <h2 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+                {t("boq.rooms.title")} <HelpHint hint="categoryRoom" />
+              </h2>
               <button
                 type="button"
                 onClick={() => setShowAddRoom((v) => !v)}

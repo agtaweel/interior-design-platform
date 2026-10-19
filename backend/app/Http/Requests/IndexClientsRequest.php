@@ -22,6 +22,8 @@ class IndexClientsRequest extends FormRequest
             'q' => ['nullable', 'string', 'max:255'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
             'page' => ['nullable', 'integer', 'min:1'],
+            // P4.3 — the getting-started checklist counts real clients only.
+            'exclude_sample' => ['nullable', 'boolean'],
         ];
     }
 }

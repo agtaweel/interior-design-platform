@@ -20,6 +20,7 @@ import { listClients } from "@/lib/api/resources/clients";
 import type { Project, ReportSummary } from "@/lib/api/types";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import { GETTING_STARTED as G, pick, type Localized } from "@/lib/guide/content";
+import { SampleProjectActions } from "@/components/projects/SampleProject";
 
 const DISMISS_KEY = "idp.gettingStarted.dismissed";
 
@@ -52,7 +53,7 @@ export function GettingStarted({
     // localStorage is client-only; read after mount to keep SSR markup stable.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDismissed(readDismissed());
-    listClients()
+    listClients({ excludeSample: true })
       .then((r) => setClientTotal(r.meta.total))
       // A failed count shouldn't block the checklist — treat it as "not done yet".
       .catch(() => setClientTotal(0));
@@ -62,17 +63,20 @@ export function GettingStarted({
     return null;
   }
 
-  const firstProject = projects[0];
-  const priced = projects.find((proj) => Number(proj.financials.value) > 0);
+  // The sample project (P4.3) is practice — it never ticks a step.
+  const real = projects.filter((proj) => !proj.is_sample);
+  const realTotal = projectTotal - (projects.length - real.length);
+  const firstProject = real[0];
+  const priced = real.find((proj) => Number(proj.financials.value) > 0);
   const sent =
     (summary?.pending_proposals_count ?? 0) > 0 ||
-    projects.some((proj) => Number(proj.financials.outstanding) > 0 || Number(proj.financials.collected) > 0);
+    real.some((proj) => Number(proj.financials.outstanding) > 0 || Number(proj.financials.collected) > 0);
 
   const projectHref = (suffix = "") => (firstProject ? `/projects/${(priced ?? firstProject).id}${suffix}` : "/projects/new");
 
   const steps = [
     { key: "client", done: clientTotal > 0, href: "/clients", copy: G.steps.client },
-    { key: "project", done: projectTotal > 0, href: "/projects/new", copy: G.steps.project },
+    { key: "project", done: realTotal > 0, href: "/projects/new", copy: G.steps.project },
     { key: "price", done: Boolean(priced), href: projectHref("/boq"), copy: G.steps.price },
     { key: "send", done: sent, href: projectHref("/proposal"), copy: G.steps.send },
   ];
@@ -115,6 +119,9 @@ export function GettingStarted({
             {p(G.dismiss)}
           </button>
         </div>
+      </div>
+      <div className="border-b border-[var(--l-border)] px-5 py-3">
+        <SampleProjectActions />
       </div>
       <ol className="grid divide-y divide-[var(--l-rule)] md:grid-cols-4 md:divide-x md:divide-y-0 rtl:md:divide-x-reverse">
         {steps.map((step, i) => {

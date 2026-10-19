@@ -25,6 +25,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
 import { WhatsAppShare } from "@/components/share/WhatsAppShare";
+import { HelpHint } from "@/components/guide/HelpHint";
 import {
   applyChangeOrder,
   createChangeOrder,
@@ -867,6 +868,7 @@ function ItemRow({
             <option value="remove">{t("changeOrders.editor.items.action.remove")}</option>
             <option value="modify">{t("changeOrders.editor.items.action.modify")}</option>
           </select>
+          {index === 0 ? <HelpHint hint="changeOrderAction" /> : null}
         </div>
         {canRemove ? (
           <button

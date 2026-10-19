@@ -9,8 +9,10 @@
 
 import Link from "next/link";
 import { GlossaryList } from "@/components/guide/GlossaryList";
+import { StageVideo } from "@/components/guide/StageVideo";
+import { SampleProjectActions } from "@/components/projects/SampleProject";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
-import { APP_GUIDE as G, GLOSSARY, pick, type Localized } from "@/lib/guide/content";
+import { APP_GUIDE as G, GLOSSARY, HELP_VIDEO_STAGES, pick, type Localized } from "@/lib/guide/content";
 
 export default function HelpPage() {
   const { locale } = useLocale();
@@ -23,6 +25,12 @@ export default function HelpPage() {
         <h1 className="text-2xl font-semibold tracking-[-0.01em]">{p(G.title)}</h1>
         <p className="mt-2 max-w-2xl leading-relaxed text-[var(--l-muted)]">{p(G.intro)}</p>
       </div>
+
+      <section className="rounded-lg border border-[var(--l-border)] bg-[var(--l-surface)] p-5">
+        <h2 className="text-lg font-semibold">{p(G.sampleTitle)}</h2>
+        <p className="mt-1 mb-3 text-sm text-[var(--l-muted)]">{p(G.sampleBody)}</p>
+        <SampleProjectActions />
+      </section>
 
       <nav aria-label={p(G.onThisPage)} className="flex flex-wrap gap-2">
         {G.stages.map((stage) => (
@@ -55,6 +63,7 @@ export default function HelpPage() {
             </h2>
             <p className="mt-1 text-sm text-[var(--l-muted)]">{p(stage.summary)}</p>
           </div>
+          {HELP_VIDEO_STAGES.includes(stage.id) ? <StageVideo stage={stage.id} title={p(stage.title)} /> : null}
           <ol className="divide-y divide-[var(--l-rule)]">
             {stage.steps.map((step, i) => (
               <li key={step.title.en} className="flex gap-4 px-5 py-4">

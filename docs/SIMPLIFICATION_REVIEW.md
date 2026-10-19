@@ -16,9 +16,7 @@ What already shipped from this review (branch `worktree-simplify-flow-and-guides
   data, hideable, disappears when done.
 - **Language switch on the signed-out screens** (login, signup, forgot/reset password) — before
   this, an Arabic speaker could not switch language until after signing up.
-- **All of P1, P2 and P3** (below) — shipped on the same branch after approval on 2026-10-19.
-
-P4 is still a **proposal** — not built.
+- **All of P1–P4** (below) — shipped on the same branch after approval on 2026-10-19.
 
 ---
 
@@ -167,7 +165,30 @@ Original proposal:
 2. **Arabic on the approval pages** (`/p/proposals/…`, `/p/change-orders/…`) — they are
    English-only today while the portal itself is bilingual.
 
-### P4 — Ongoing help
+### P4 — Ongoing help ✅ shipped
+
+What was built, and where it differs from the original proposal:
+
+- **P4.1 — Contextual hints.** A "?" (`HelpHint`) next to the technical fields — pricing rule
+  type / method / "applies to", BOQ categories vs rooms, change-order item action, the
+  "mandatory" fix flag, and Convert to Contract — with a one-line explanation and "Learn more"
+  into the matching `/help` glossary entry (every entry now has an anchor; three new entries).
+- **P4.2 — Walkthrough videos.** One short recording per stage (Quote, Sign, Build, Finish),
+  recorded from the real app by `demo/scripts/record_help_videos.mjs`, **in both UI languages**
+  (the player picks the one matching the interface), each with Arabic and English subtitles timed
+  to the actions, plus a poster frame. ~2.8 MB in `frontend/public/help/videos`.
+  *Difference:* **no voice-over** — a human Arabic narration can't be produced here; the
+  subtitles carry the narration, and a narrated MP4 can replace any clip later under the same
+  file name. Re-run the script after UI changes.
+- **P4.3 — Sample project.** *Difference:* created **on one click** ("Explore a sample project"
+  on the dashboard checklist and in Help), not on every signup — seeding every new company
+  would put fake numbers in their dashboard. It's a 3-bedroom apartment with Standard
+  full-finishing items, a 15% markup and a written draft proposal, in the user's language;
+  flagged `is_sample` on the project and its client, shown with a banner on every tab and a
+  badge in lists, excluded from reports/dashboard money figures and the getting-started
+  checklist, and deleted in one click with everything attached (even after contract/payments).
+
+Original proposal:
 
 1. Contextual "?" hints next to the few genuinely technical fields (pricing rule "applies to",
    category vs room) linking into `/help#…`.

@@ -25,6 +25,10 @@ class ClientController extends Controller
     {
         $query = Client::query()->withCount(['properties', 'projects']);
 
+        if ($request->boolean('exclude_sample')) {
+            $query->where('is_sample', false);
+        }
+
         if ($search = $request->validated('q')) {
             $needle = mb_strtolower($search);
 

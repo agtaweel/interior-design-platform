@@ -49,6 +49,7 @@ use App\Http\Controllers\Api\PublicProposalController;
 use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\RoomController;
+use App\Http\Controllers\Api\SampleProjectController;
 use App\Http\Controllers\Api\HandoverController;
 use App\Http\Controllers\Api\SiteReportController;
 use App\Http\Controllers\Api\SnagController;
@@ -137,6 +138,10 @@ Route::prefix('v1')->group(function () {
             Route::post('/projects', [ProjectController::class, 'store']);
             Route::get('/projects/{project}', [ProjectController::class, 'show']);
             Route::get('/projects/{project}/journey', [ProjectJourneyController::class, 'show']);
+            // P4.3 — one-click sample project (see SampleProjectService).
+            Route::get('/sample-project', [SampleProjectController::class, 'show']);
+            Route::post('/sample-project', [SampleProjectController::class, 'store']);
+            Route::delete('/sample-project', [SampleProjectController::class, 'destroy']);
             Route::patch('/projects/{project}', [ProjectController::class, 'update']);
             Route::post('/projects/{project}/members', [ProjectMemberController::class, 'store']);
             Route::post('/projects/{project}/services', [ProjectServiceController::class, 'store']);

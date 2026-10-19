@@ -18,6 +18,7 @@ import { usePathname, useParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
+import { SampleProjectBanner } from "@/components/projects/SampleProject";
 import {
   ProjectJourneyProvider,
   STAGE_ORDER,
@@ -70,6 +71,11 @@ const GROUPS: Group[] = [
   },
   { stage: null, tabs: [{ label: "project.tabs.documents", segment: "documents" }] },
 ];
+
+function SampleNotice() {
+  const journey = useProjectJourney();
+  return journey?.facts.is_sample ? <SampleProjectBanner /> : null;
+}
 
 function ProjectTabs({ base }: { base: string }) {
   const pathname = usePathname();
@@ -139,6 +145,7 @@ export default function ProjectLayout({ children }: { children: ReactNode }) {
   return (
     <ProjectJourneyProvider projectId={params.id} refreshKey={pathname}>
       <div className="flex flex-col gap-6">
+        <SampleNotice />
         <ProjectTabs base={base} />
         {children}
       </div>

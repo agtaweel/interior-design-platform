@@ -42,6 +42,8 @@ import { Button } from "@/components/ui/Button";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { Badge } from "@/components/ui/Badge";
+import { HelpHint } from "@/components/guide/HelpHint";
+import type { HintKey } from "@/lib/guide/content";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
 import { type Locale } from "@/lib/format/currency";
@@ -670,7 +672,7 @@ function RuleForm({ initial, nextSortOrder, submitLabel, submittingLabel, onSubm
           className={`${INPUT_CLASSES} w-56`}
         />
       </FormField>
-      <FormField label={t("pricing.rules.form.type")} htmlFor="rule-type">
+      <FormField label={t("pricing.rules.form.type")} htmlFor="rule-type" hint="pricingType">
         <select
           id="rule-type"
           value={type}
@@ -684,7 +686,7 @@ function RuleForm({ initial, nextSortOrder, submitLabel, submittingLabel, onSubm
           ))}
         </select>
       </FormField>
-      <FormField label={t("pricing.rules.form.method")} htmlFor="rule-method">
+      <FormField label={t("pricing.rules.form.method")} htmlFor="rule-method" hint="pricingMethod">
         <select
           id="rule-method"
           value={method}
@@ -715,7 +717,7 @@ function RuleForm({ initial, nextSortOrder, submitLabel, submittingLabel, onSubm
           </span>
         </div>
       </FormField>
-      <FormField label={t("pricing.rules.form.base")} htmlFor="rule-base">
+      <FormField label={t("pricing.rules.form.base")} htmlFor="rule-base" hint="pricingBase">
         <select
           id="rule-base"
           value={baseSelector}
@@ -746,12 +748,15 @@ function RuleForm({ initial, nextSortOrder, submitLabel, submittingLabel, onSubm
   );
 }
 
-function FormField({ label, htmlFor, children }: { label: string; htmlFor: string; children: ReactNode }) {
+function FormField({ label, htmlFor, hint, children }: { label: string; htmlFor: string; hint?: HintKey; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={htmlFor} className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-        {label}
-      </label>
+      <span className="flex items-center gap-1.5">
+        <label htmlFor={htmlFor} className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+          {label}
+        </label>
+        {hint ? <HelpHint hint={hint} /> : null}
+      </span>
       {children}
     </div>
   );

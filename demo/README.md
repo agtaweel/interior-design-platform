@@ -37,3 +37,19 @@ python3 demo/scripts/build_pdf.py
 The demo data lives in its own organization and doesn't interfere with any other data in the
 database — safe to re-run repeatedly (each run's seed script creates a new org; delete the old
 one first if you don't want it to accumulate).
+
+## In-app help videos (`/help`)
+
+`scripts/record_help_videos.mjs` records the short per-stage walkthroughs shown on the Help page
+(Quote, Sign, Build, Finish) — once with the Arabic interface and once with the English one —
+and writes them, with poster frames and Arabic + English subtitles timed to the actions, to
+`frontend/public/help/videos/`. It creates its own fresh company through the signup API, so it
+doesn't touch other data. Re-run it whenever the screens it shows change:
+
+```
+# from a directory with playwright installed (npm i playwright@1 && npx playwright install chromium)
+BASE=http://localhost:3000 API=http://localhost:8000/api/v1 \
+  OUT=<repo>/frontend/public/help/videos node <repo>/demo/scripts/record_help_videos.mjs
+```
+
+The clips are silent; a narrated MP4 can replace any `<stage>.<lang>.mp4` under the same name.

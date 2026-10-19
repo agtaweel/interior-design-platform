@@ -57,6 +57,8 @@ class Project extends Model implements HasMedia
     protected function casts(): array
     {
         return [
+            // P4.3 sample project — set only by SampleProjectService (not fillable).
+            'is_sample' => 'boolean',
             'start_date' => 'date',
             'target_end_date' => 'date',
             // Sprint 3 pricing cache columns (see

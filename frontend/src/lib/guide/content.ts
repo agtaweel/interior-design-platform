@@ -38,6 +38,8 @@ export interface GuideStage {
 }
 
 export interface GlossaryEntry {
+  /** Anchor for /help#… links (HelpHint). */
+  id: string;
   term: Localized;
   meaning: Localized;
 }
@@ -53,6 +55,7 @@ export interface FaqEntry {
 
 export const GLOSSARY: GlossaryEntry[] = [
   {
+    id: "term-boq",
     term: { en: "Items & Prices (BOQ)", ar: "البنود والأسعار (BOQ)" },
     meaning: {
       en: "The list of every item of work in the job — tiles, paint, electrics — with how much of each and what it costs. It's your price list for this one project.",
@@ -60,6 +63,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     },
   },
   {
+    id: "term-template",
     term: { en: "Template", ar: "القالب" },
     meaning: {
       en: "A ready-made BOQ (for example \"2-bedroom apartment, standard finish\") you copy into a project so you don't start from an empty table.",
@@ -67,6 +71,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     },
   },
   {
+    id: "term-pricing-rule",
     term: { en: "Pricing rule", ar: "قاعدة التسعير" },
     meaning: {
       en: "Your profit, fees or discount added on top of the cost. The client only ever sees the final price — never your cost or margin.",
@@ -74,6 +79,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     },
   },
   {
+    id: "term-proposal",
     term: { en: "Proposal", ar: "العرض" },
     meaning: {
       en: "The quotation you send the client: your price plus scope, timeline and terms. Each time you change it you create a new version; old versions are kept.",
@@ -81,6 +87,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     },
   },
   {
+    id: "term-otp",
     term: { en: "OTP code", ar: "رمز التحقق (OTP)" },
     meaning: {
       en: "A 6-digit code the client types to approve. It proves the approval really came from them — like the code your bank sends you.",
@@ -88,6 +95,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     },
   },
   {
+    id: "term-change-order",
     term: { en: "Extras & changes (change order)", ar: "الإضافات والتعديلات (أمر تغيير)" },
     meaning: {
       en: "Extra work (or removed work) after the contract is signed. The client approves it first, then it updates the contract value.",
@@ -95,6 +103,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     },
   },
   {
+    id: "term-snag",
     term: { en: "Fix list (snags)", ar: "قائمة الإصلاحات (Snags)" },
     meaning: {
       en: "A defect to fix before handing over — a cracked tile, a door that doesn't close. A \"mandatory\" snag blocks handover until it's closed.",
@@ -102,10 +111,35 @@ export const GLOSSARY: GlossaryEntry[] = [
     },
   },
   {
+    id: "term-portal",
     term: { en: "Client portal", ar: "بوابة العميل" },
     meaning: {
       en: "One private link per project where the client follows progress, proposals, payments and photos from their phone — no app, no password.",
       ar: "رابط خاص لكل مشروع يتابع منه العميل التقدم والعروض والمدفوعات والصور من موبايله — بدون تطبيق وبدون كلمة مرور.",
+    },
+  },
+  {
+    id: "term-pricing-base",
+    term: { en: "\"Applies to\" (pricing base)", ar: "\"يُطبَّق على\" (أساس التسعير)" },
+    meaning: {
+      en: "What a pricing rule is calculated on: your cost, the items' client prices, or the running total after the rules above it. Use the running total for a discount on the final price.",
+      ar: "الأساس الذي تُحسب عليه قاعدة التسعير: تكلفتك، أو أسعار البنود للعميل، أو الإجمالي بعد القواعد التي فوقها. استخدم الإجمالي الجاري لخصم على السعر النهائي.",
+    },
+  },
+  {
+    id: "term-category-room",
+    term: { en: "Category vs room", ar: "الفئة مقابل الغرفة" },
+    meaning: {
+      en: "A category is the type of work (flooring, paint, electrics); a room is where it happens (kitchen, master bedroom). Every item has a category; a room is optional.",
+      ar: "الفئة هي نوع الشغل (أرضيات، دهانات، كهرباء)؛ والغرفة هي مكانه (المطبخ، غرفة النوم الرئيسية). كل بند له فئة، والغرفة اختيارية.",
+    },
+  },
+  {
+    id: "term-contract",
+    term: { en: "Converting to a contract", ar: "التحويل إلى عقد" },
+    meaning: {
+      en: "When the client approves a proposal with their code, converting it is the signing: the approved price is locked into the contract. There is no separate signature step.",
+      ar: "عندما يوافق العميل على العرض برمزه، فإن تحويله هو التوقيع: يُثبَّت السعر المعتمد في العقد. لا توجد خطوة توقيع منفصلة.",
     },
   },
 ];
@@ -310,6 +344,11 @@ export const APP_GUIDE = {
       ar: "إذا تسرّب الرابط، ألغِه من المشروع ← نظرة عامة — يُنشأ رابط جديد عند الإرسال القادم (أو اضغط \"إنشاء رابط\").",
     },
   ],
+  sampleTitle: { en: "Try it on a sample project first", ar: "جرّبه على مشروع نموذجي أولًا" },
+  sampleBody: {
+    en: "A filled-in 3-bedroom apartment job — client, priced items and a draft proposal. Click around, send the proposal to yourself, then delete it. It never counts in your reports.",
+    ar: "مشروع شقة 3 غرف مكتمل — عميل وبنود مسعّرة ومسودة عرض. تجوّل فيه، أرسل العرض لنفسك، ثم احذفه. لا يُحسب في تقاريرك أبدًا.",
+  },
   stillStuckTitle: { en: "Still stuck?", ar: "لا تزال متوقفًا؟" },
   stillStuckBody: {
     en: "Ask your company's owner or admin — they can change your role if a button you need is missing. Missing buttons are usually a permissions setting, not a bug.",
@@ -590,3 +629,64 @@ export const GETTING_STARTED = {
     },
   },
 };
+
+/* ------------------------------------------------------------------------------------------ */
+/* Contextual hints (P4.1) — the "?" next to technical fields; each links to a glossary entry. */
+/* ------------------------------------------------------------------------------------------ */
+
+export const HINTS = {
+  pricingType: {
+    anchor: "term-pricing-rule",
+    text: {
+      en: "Markup adds your profit, a fee adds a charge (e.g. supervision), a discount lowers the price. The client only sees the final price.",
+      ar: "الهامش يضيف ربحك، والرسوم تضيف مبلغًا (مثل الإشراف)، والخصم يقلل السعر. العميل يرى السعر النهائي فقط.",
+    },
+  },
+  pricingMethod: {
+    anchor: "term-pricing-rule",
+    text: {
+      en: "A percentage grows with the job; a fixed amount stays the same whatever the total.",
+      ar: "النسبة تكبر مع حجم المشروع؛ والمبلغ الثابت يبقى كما هو مهما كان الإجمالي.",
+    },
+  },
+  pricingBase: {
+    anchor: "term-pricing-base",
+    text: {
+      en: "What this rule is calculated on: your cost, the items' client prices, or the running total after the rules above it.",
+      ar: "ما تُحسب عليه هذه القاعدة: تكلفتك، أو أسعار البنود للعميل، أو الإجمالي بعد القواعد التي فوقها.",
+    },
+  },
+  categoryRoom: {
+    anchor: "term-category-room",
+    text: {
+      en: "Categories are the type of work (flooring, paint); rooms are where it happens. Every item needs a category; a room is optional.",
+      ar: "الفئات هي نوع الشغل (أرضيات، دهانات)؛ والغرف هي مكانه. كل بند يحتاج فئة، والغرفة اختيارية.",
+    },
+  },
+  changeOrderAction: {
+    anchor: "term-change-order",
+    text: {
+      en: "Add = new work. Remove = drop an item from the job. Modify = change an existing item's quantity or price.",
+      ar: "إضافة = شغل جديد. إزالة = حذف بند من المشروع. تعديل = تغيير كمية أو سعر بند موجود.",
+    },
+  },
+  snagMandatory: {
+    anchor: "term-snag",
+    text: {
+      en: "Mandatory fixes must be closed before you can record the handover. Untick it for small things that can wait.",
+      ar: "الإصلاحات الإلزامية يجب إغلاقها قبل تسجيل التسليم. ألغِ التحديد للأشياء الصغيرة التي يمكن تأجيلها.",
+    },
+  },
+  contractConvert: {
+    anchor: "term-contract",
+    text: {
+      en: "Converting is the signing: the approved price is locked into the contract. There's no separate signature.",
+      ar: "التحويل هو التوقيع: يُثبَّت السعر المعتمد في العقد. لا يوجد توقيع منفصل.",
+    },
+  },
+} satisfies Record<string, { anchor: string; text: Localized }>;
+
+export type HintKey = keyof typeof HINTS;
+
+/** Stages with a recorded walkthrough in /public/help/videos (demo/scripts/record_help_videos.mjs). */
+export const HELP_VIDEO_STAGES: string[] = ["quote", "sign", "build", "finish"];

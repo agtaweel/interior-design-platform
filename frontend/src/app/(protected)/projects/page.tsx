@@ -134,6 +134,11 @@ function ProjectsPageContent() {
                     <div>
                       <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
                         {project.name}
+                        {project.is_sample ? (
+                          <span className="ms-2 rounded bg-sky-100 px-1.5 py-0.5 text-xs font-semibold text-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                            {t("sample.badge")}
+                          </span>
+                        ) : null}
                       </p>
                       <p className="text-xs text-zinc-500 dark:text-zinc-400">
                         {project.client?.name ?? t("common.na")} · {project.code ?? "—"}

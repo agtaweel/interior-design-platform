@@ -2,9 +2,10 @@ import { apiGet, apiGetResource, apiPatchResource, apiPostResource } from "@/lib
 import type { Client, ClientFormInput, Paginated, Property, PropertyFormInput } from "@/lib/api/types";
 
 /** GET /clients is a paginated list endpoint — the envelope itself is {data, links, meta}. */
-export function listClients(params: { q?: string; page?: number } = {}) {
+export function listClients(params: { q?: string; page?: number; excludeSample?: boolean } = {}) {
   const search = new URLSearchParams();
   if (params.q) search.set("q", params.q);
+  if (params.excludeSample) search.set("exclude_sample", "1");
   if (params.page) search.set("page", String(params.page));
   const qs = search.toString();
   return apiGet<Paginated<Client>>(`/clients${qs ? `?${qs}` : ""}`);

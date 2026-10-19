@@ -48,14 +48,16 @@ final class ReportService
      */
     public function summary(): array
     {
-        $projects = Project::query()->get();
+        // The sample project (P4.3) is practice data — never part of the company's money figures.
+        $projects = Project::query()->where('is_sample', false)->get();
+        $sampleIds = Project::query()->where('is_sample', true)->pluck('id');
 
-        $totalRevenue = BoqMoney::sumAccessor(Payment::query()->get(), 'amount');
+        $totalRevenue = BoqMoney::sumAccessor(Payment::query()->whereNotIn('project_id', $sampleIds)->get(), 'amount');
 
         // Calendar-month-to-date, not a rolling 30 days — matches how "Monthly Revenue" reads on
         // a dashboard (resets each 1st, same as e.g. a billing-cycle KPI would).
         $monthlyRevenue = BoqMoney::sumAccessor(
-            Payment::query()->whereBetween('paid_at', [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()])->get(),
+            Payment::query()->whereNotIn('project_id', $sampleIds)->whereBetween('paid_at', [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()])->get(),
             'amount'
         );
 
@@ -141,6 +143,7 @@ final class ReportService
     public function projectRows(): array
     {
         return Project::query()
+            ->where('is_sample', false)
             ->orderBy('name')
             ->get()
             ->map(fn (Project $project) => $this->rowFor($project))

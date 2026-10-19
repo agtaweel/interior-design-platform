@@ -92,10 +92,11 @@ export default function DashboardPage() {
 
   const today = cairoToday();
   const canSeeMoney = summary !== null;
-  const activeRows = active.state === "ready" ? active.data.rows : [];
+  // The sample project (P4.3) is practice — kept out of the collection and deadline blocks.
+  const activeRows = active.state === "ready" ? active.data.rows.filter((p) => !p.is_sample) : [];
   const finish = finishSchedule(activeRows, today);
   const recentRows = recent.state === "ready" ? recent.data.rows : [];
-  const known = [...activeRows, ...recentRows.filter((p) => !activeRows.some((a) => a.id === p.id))];
+  const known = [...activeRows, ...recentRows.filter((p) => !p.is_sample && !activeRows.some((a) => a.id === p.id))];
   const collection = collectionRows(known);
   const collectionState = active.state === "error" ? active : recent.state === "error" ? recent : active.state === "loading" || recent.state === "loading" ? { state: "loading" as const } : { state: "ready" as const };
   const lateCount = finish.filter((row) => row.days < 0).length;

@@ -17,6 +17,14 @@ class Client extends Model
     /** @use HasFactory<ClientFactory> */
     use HasFactory, BelongsToOrganization, Auditable;
 
+    protected function casts(): array
+    {
+        return [
+            // P4.3 sample client — set only by SampleProjectService (not fillable).
+            'is_sample' => 'boolean',
+        ];
+    }
+
     public function properties(): HasMany
     {
         return $this->hasMany(Property::class);

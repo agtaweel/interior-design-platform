@@ -17,6 +17,7 @@ class ClientResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'is_sample' => (bool) $this->is_sample,
             'phone' => $this->phone,
             'email' => $this->email,
             'address' => $this->address,

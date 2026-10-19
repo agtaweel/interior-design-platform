@@ -20,6 +20,7 @@
  * ever missing from the error details.
  */
 
+import { HelpHint } from "@/components/guide/HelpHint";
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
@@ -269,8 +270,8 @@ function ConvertCard({
   return (
     <Card>
       <CardHeader>
-        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-          {t("contract.convert.title")}
+        <h2 className="flex items-center gap-1.5 text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+          {t("contract.convert.title")} <HelpHint hint="contractConvert" />
         </h2>
       </CardHeader>
       <CardBody className="flex flex-col gap-4">

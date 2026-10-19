@@ -6,6 +6,7 @@
  * completed or handed over (see backend Snag::hasOpenMandatorySnags()).
  */
 
+import { HelpHint } from "@/components/guide/HelpHint";
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "next/navigation";
 import { closeSnag, createSnag, getSnags, reopenSnag } from "@/lib/api/resources/snags";
@@ -259,6 +260,7 @@ function CreateSnagForm({
           <input type="checkbox" checked={isMandatory} onChange={(e) => setIsMandatory(e.target.checked)} />
           {t("snagging.create.mandatory")}
         </label>
+        <HelpHint hint="snagMandatory" />
       </div>
 
       {error ? <ErrorBanner message={error} /> : null}

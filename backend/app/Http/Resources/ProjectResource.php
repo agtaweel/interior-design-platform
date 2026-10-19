@@ -39,6 +39,7 @@ class ProjectResource extends JsonResource
             'code' => $this->code,
             'name' => $this->name,
             'status' => $this->status,
+            'is_sample' => (bool) $this->is_sample,
             'client' => new ClientSummaryResource($this->whenLoaded('client')),
             'property' => new PropertySummaryResource($this->whenLoaded('property')),
             'responsible_user' => new UserSummaryResource($this->whenLoaded('responsibleUser')),
