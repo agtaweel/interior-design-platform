@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/Button";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { FitoutLogo } from "@/components/brand/FitoutLogo";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { LanguageToggle } from "@/components/ui/LanguageToggle";
 
 export default function ForgotPasswordPage() {
   const { t } = useLocale();
@@ -43,7 +44,10 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="flex min-h-screen flex-1 flex-col items-center justify-center gap-6 bg-zinc-50 px-4 dark:bg-black">
-      <ThemeToggle className="fixed right-4 top-4" />
+      <div className="fixed end-4 top-4 flex items-center gap-2">
+        <ThemeToggle />
+        <LanguageToggle />
+      </div>
       <FitoutLogo />
       <div className="w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
         <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">{t("forgotPassword.title")}</h1>

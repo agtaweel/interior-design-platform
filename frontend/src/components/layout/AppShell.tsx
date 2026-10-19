@@ -87,6 +87,28 @@ function NavLink({
   );
 }
 
+// Help sits with the header controls rather than in the nav row: the links already only just fit
+// at xl, and a "?" is recognisable to people who don't read the labels.
+function HelpLink({ label, isActive }: { label: string; isActive: boolean }) {
+  return (
+    <Link
+      href="/help"
+      aria-label={label}
+      title={label}
+      aria-current={isActive ? "page" : undefined}
+      className={`flex h-9 w-9 items-center justify-center rounded-md hover:bg-[var(--l-raised)] hover:text-[var(--l-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--l-text)] ${
+        isActive ? "bg-[var(--l-active)] text-[var(--l-text)]" : "text-[var(--l-muted)]"
+      }`}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6" />
+        <circle cx="12" cy="17" r="0.6" fill="currentColor" />
+      </svg>
+    </Link>
+  );
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
@@ -137,6 +159,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <div className="hidden shrink-0 items-center gap-2 xl:flex">
             <ThemeToggle />
+            <HelpLink label={t("nav.help")} isActive={pathname.startsWith("/help")} />
             <NotificationBell />
             {localeSwitcher}
             {user ? (
@@ -154,6 +177,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <div className="flex items-center gap-2 xl:hidden">
             <ThemeToggle />
+            <HelpLink label={t("nav.help")} isActive={pathname.startsWith("/help")} />
             <NotificationBell />
             <button
               type="button"

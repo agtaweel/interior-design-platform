@@ -44,6 +44,7 @@ import {
   StatusPill,
   Track,
 } from "@/components/dashboard/Ledger";
+import { GettingStarted } from "@/components/dashboard/GettingStarted";
 
 const LIST_CAP = 5;
 
@@ -164,6 +165,12 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      <GettingStarted
+        projects={recent.state === "ready" ? recent.data.rows : undefined}
+        projectTotal={recent.state === "ready" ? recent.data.total : undefined}
+        summary={summary}
+      />
 
       <KpiStrip
         cells={[
