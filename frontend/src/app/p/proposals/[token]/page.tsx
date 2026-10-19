@@ -131,8 +131,8 @@ export default function ClientProposalPortalPage() {
 
   return (
     <PortalShell>
-      <header className="border-b border-zinc-200 bg-white px-4 py-5 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mx-auto max-w-2xl">
+      <header className="border-b border-zinc-200 bg-white px-4 py-5 sm:px-6 lg:px-8 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="w-full">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
               {data.organization?.logo_url ? (
@@ -165,7 +165,7 @@ export default function ClientProposalPortalPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-4 py-6">
+      <main className="w-full flex-1 space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         <DecisionBanner kind="proposal" status={status} justNow={justDecided} />
 
         <ProposalContentSections content={data.content} />

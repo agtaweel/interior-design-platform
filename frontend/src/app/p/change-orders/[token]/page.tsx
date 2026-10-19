@@ -152,8 +152,8 @@ export default function ClientChangeOrderPortalPage() {
 
   return (
     <PortalShell>
-      <header className="border-b border-zinc-200 bg-white px-4 py-5 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mx-auto flex max-w-2xl items-start justify-between gap-3">
+      <header className="border-b border-zinc-200 bg-white px-4 py-5 sm:px-6 lg:px-8 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="flex w-full items-start justify-between gap-3">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{t("publicDoc.changeOrder")}</p>
             <div className="mt-1 flex items-center gap-2">
@@ -167,7 +167,7 @@ export default function ClientChangeOrderPortalPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-4 py-6">
+      <main className="w-full flex-1 space-y-6 px-4 py-6 sm:px-6 lg:px-8">
         <DecisionBanner kind="changeOrder" status={data.status} justNow={justDecided} />
 
         <ChangeOrderReason reason={data.reason} />
