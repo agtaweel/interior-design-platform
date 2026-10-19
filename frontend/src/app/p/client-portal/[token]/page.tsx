@@ -116,7 +116,7 @@ function FinancialStat({
     <div
       className={`rounded-lg border p-3 ${
         emphasize
-          ? "border-amber-600 bg-amber-600 text-white dark:border-amber-500 dark:bg-amber-500 dark:text-zinc-950"
+          ? "border-zinc-300 bg-zinc-200 font-medium text-zinc-950 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white"
           : "border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
       }`}
     >

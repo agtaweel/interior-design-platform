@@ -282,7 +282,7 @@ function VersionHistoryList({
               onClick={() => onSelect(String(v.id))}
               className={`flex flex-col gap-1 rounded-md px-3 py-2 text-left transition-colors ${
                 active
-                  ? "bg-amber-600 text-white dark:bg-amber-500 dark:text-zinc-950"
+                  ? "bg-zinc-200 font-medium text-zinc-950 dark:bg-zinc-700 dark:text-white"
                   : "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-zinc-800"
               }`}
             >
@@ -292,7 +292,7 @@ function VersionHistoryList({
                 </span>
                 <Badge tone={STATUS_TONE[v.status]}>{t(`proposal.status.${v.status}`)}</Badge>
               </div>
-              <span className={`text-xs ${active ? "text-white/80 dark:text-zinc-900/70" : "text-zinc-400"}`}>
+              <span className={`text-xs ${active ? "text-zinc-700 dark:text-zinc-200" : "text-zinc-400"}`}>
                 {t("proposal.list.grandTotal")}: {formatMoney(v.grand_total)}
               </span>
               <span className={`text-xs ${active ? "text-white/70 dark:text-zinc-900/60" : "text-zinc-400"}`}>

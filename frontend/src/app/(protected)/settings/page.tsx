@@ -492,7 +492,7 @@ function MarketplaceProfileSection({ organizationId }: { organizationId: string 
               {t("settings.marketplace.portfolio.title")}
             </h3>
             <label>
-              <span className="inline-flex cursor-pointer items-center rounded-md bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600">
+              <span className="inline-flex cursor-pointer items-center rounded-md bg-zinc-950 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200">
                 {uploading ? t("settings.marketplace.portfolio.uploading") : t("settings.marketplace.portfolio.upload")}
               </span>
               <input

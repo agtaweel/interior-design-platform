@@ -1296,12 +1296,12 @@ function TreeButton({
       style={{ paddingInlineStart: `${8 + depth * 12}px` }}
       className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
         active
-          ? "bg-amber-600 text-white dark:bg-amber-500 dark:text-zinc-950"
+          ? "bg-zinc-200 font-medium text-zinc-950 dark:bg-zinc-700 dark:text-white"
           : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
       }`}
     >
       <span className="truncate">{label}</span>
-      <span className={`shrink-0 text-xs ${active ? "text-white/80 dark:text-zinc-900/70" : "text-zinc-400"}`}>
+      <span className={`shrink-0 text-xs ${active ? "text-zinc-700 dark:text-zinc-200" : "text-zinc-500 dark:text-zinc-400"}`}>
         {value}
       </span>
     </button>

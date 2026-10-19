@@ -392,7 +392,7 @@ function FilterTabs({
           onClick={() => onChange(option)}
           className={`rounded px-3 py-1 font-medium transition-colors ${
             filter === option
-              ? "bg-amber-600 text-white dark:bg-amber-500 dark:text-zinc-950"
+              ? "bg-zinc-200 font-medium text-zinc-950 dark:bg-zinc-700 dark:text-white"
               : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
           }`}
         >
@@ -492,7 +492,7 @@ function AddScheduleForm({ contractId, nextSequenceNo, onCreated, onCancel, t }:
             onClick={() => setMode("percentage")}
             className={`rounded px-3 py-1 font-medium transition-colors ${
               mode === "percentage"
-                ? "bg-amber-600 text-white dark:bg-amber-500 dark:text-zinc-950"
+                ? "bg-zinc-200 font-medium text-zinc-950 dark:bg-zinc-700 dark:text-white"
                 : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
             }`}
           >
@@ -503,7 +503,7 @@ function AddScheduleForm({ contractId, nextSequenceNo, onCreated, onCancel, t }:
             onClick={() => setMode("amount")}
             className={`rounded px-3 py-1 font-medium transition-colors ${
               mode === "amount"
-                ? "bg-amber-600 text-white dark:bg-amber-500 dark:text-zinc-950"
+                ? "bg-zinc-200 font-medium text-zinc-950 dark:bg-zinc-700 dark:text-white"
                 : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
             }`}
           >

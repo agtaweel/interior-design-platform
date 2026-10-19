@@ -241,7 +241,7 @@ function ViewModeToggle({
           onClick={() => onChange("internal")}
           className={`rounded px-3 py-1 font-medium transition-colors ${
             mode === "internal"
-              ? "bg-amber-600 text-white dark:bg-amber-500 dark:text-zinc-950"
+              ? "bg-zinc-200 font-medium text-zinc-950 dark:bg-zinc-700 dark:text-white"
               : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
           }`}
         >
@@ -252,7 +252,7 @@ function ViewModeToggle({
           onClick={() => onChange("client")}
           className={`rounded px-3 py-1 font-medium transition-colors ${
             mode === "client"
-              ? "bg-amber-600 text-white dark:bg-amber-500 dark:text-zinc-950"
+              ? "bg-zinc-200 font-medium text-zinc-950 dark:bg-zinc-700 dark:text-white"
               : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
           }`}
         >
