@@ -1046,6 +1046,7 @@ const en = {
   "common.previous": "Previous",
   "common.next": "Next",
 
+  "clientPortal.tabs.label": "Project sections",
   "clientPortal.tabs.overview": "Overview",
   "clientPortal.tabs.proposals": "Proposals",
   "clientPortal.tabs.contract": "Contract",
@@ -2151,6 +2152,7 @@ const ar: Dictionary = {
   "common.previous": "السابق",
   "common.next": "التالي",
 
+  "clientPortal.tabs.label": "أقسام المشروع",
   "clientPortal.tabs.overview": "نظرة عامة",
   "clientPortal.tabs.proposals": "العروض",
   "clientPortal.tabs.contract": "العقد",
