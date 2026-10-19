@@ -192,7 +192,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
       <header className="ledger border-b border-[var(--l-border)] bg-[var(--l-surface)]">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
+        <div className="flex w-full items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-5">
             <FitoutLogo className="shrink-0" />
             <nav className="hidden items-center gap-0.5 lg:flex">
@@ -284,7 +284,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         ) : null}
       </header>
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">{children}</main>
+      <main className="w-full flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</main>
     </div>
   );
 }
