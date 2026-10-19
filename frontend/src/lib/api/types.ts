@@ -1233,6 +1233,8 @@ export interface OrganizationProfile {
   email: string | null;
   currency: string | null;
   timezone: string | null;
+  /** P2.4 — client approval of a change order also applies it to the BOQ + contract. */
+  auto_apply_change_orders: boolean;
   created_at: ISODateString;
   updated_at: ISODateString;
 }
@@ -1245,6 +1247,7 @@ export interface OrganizationProfileFormInput {
   email?: string | null;
   currency?: string | null;
   timezone?: string | null;
+  auto_apply_change_orders?: boolean;
 }
 
 export interface OrganizationRoleSummary {

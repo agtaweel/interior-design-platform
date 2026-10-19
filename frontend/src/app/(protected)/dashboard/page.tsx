@@ -158,7 +158,7 @@ export default function DashboardPage() {
             {t("dashboard.refresh")}
           </button>
           <Link
-            href="/projects?new=1"
+            href="/projects/new"
             className="inline-flex h-9 items-center rounded-md bg-[var(--l-primary)] px-4 text-sm font-medium text-[var(--l-primary-ink)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--l-text)]"
           >
             {t("projects.new.cta")}

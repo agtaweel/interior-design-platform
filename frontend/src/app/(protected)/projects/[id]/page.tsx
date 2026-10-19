@@ -12,6 +12,7 @@
  * tasks and audit-log surfacing are Phase 2, also out of scope) — both stubbed permanently.
  */
 
+import { NextStepCard } from "@/components/projects/NextStepCard";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
@@ -24,6 +25,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import type { TranslationKey } from "@/lib/i18n/dictionaries";
 import { formatDate } from "@/lib/format/date";
 import { useMoneyFormatter } from "@/lib/format/useMoneyFormatter";
 
@@ -70,6 +72,8 @@ export default function ProjectOverviewPage() {
         <StatusBadge status={project.status} />
       </div>
 
+      <NextStepCard projectId={project.id} />
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="flex flex-col gap-6 lg:col-span-2">
           <Card>
@@ -82,7 +86,12 @@ export default function ProjectOverviewPage() {
               <Field label={t("project.details.client")} value={project.client?.name ?? t("common.na")} />
               <Field
                 label={t("project.details.property")}
-                value={project.property?.compound ?? project.property?.address ?? t("common.na")}
+                value={
+                  project.property?.compound ||
+                  project.property?.address ||
+                  // Places added through the new-project wizard often have only a type.
+                  (project.property?.type ? t(`property.type.${project.property.type}` as TranslationKey) : t("common.na"))
+                }
               />
               <Field
                 label={t("project.details.responsible")}

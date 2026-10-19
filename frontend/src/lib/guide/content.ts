@@ -282,8 +282,8 @@ export const PUBLIC_GUIDE = {
 export const APP_GUIDE = {
   title: { en: "Help & guide", ar: "المساعدة والدليل" },
   intro: {
-    en: "Every project goes through the same five stages. Find the stage you're at and follow the steps — each one names the exact button to press.",
-    ar: "كل مشروع يمر بنفس المراحل الخمس. ابحث عن المرحلة التي وصلت إليها واتبع الخطوات — كل خطوة تذكر اسم الزر الذي تضغطه بالضبط.",
+    en: "Every project goes through the same stages. Inside a project, the tabs are grouped by stage and the Overview shows your next step — this guide explains each one and names the exact button to press.",
+    ar: "كل مشروع يمر بنفس المراحل. داخل المشروع، التبويبات مقسمة حسب المرحلة وتعرض نظرة عامة خطوتك التالية — هذا الدليل يشرح كل مرحلة ويذكر اسم الزر الذي تضغطه بالضبط.",
   },
   onThisPage: { en: "Stages", ar: "المراحل" },
   stepLabel: { en: "Step", ar: "خطوة" },
@@ -331,7 +331,7 @@ export const APP_GUIDE = {
             en: "Name, legal name, logo, phone and email. These appear on proposals and contracts.",
             ar: "الاسم والاسم القانوني والشعار والهاتف والبريد. تظهر على العروض والعقود.",
           },
-          where: { en: "Settings → Company Profile", ar: "الإعدادات ← بيانات الشركة" },
+          where: { en: "More → Settings → Company Profile", ar: "المزيد ← الإعدادات ← بيانات الشركة" },
           href: "/settings",
         },
         {
@@ -340,7 +340,7 @@ export const APP_GUIDE = {
             en: "Press \"Invite Member\", enter their email and pick a role. Designers can't see money; site staff can only view.",
             ar: "اضغط \"دعوة عضو\" واكتب البريد واختر الدور. المصمم لا يرى الأرقام المالية، وطاقم الموقع للاطّلاع فقط.",
           },
-          where: { en: "Settings → Members & Roles", ar: "الإعدادات ← الأعضاء والأدوار" },
+          where: { en: "More → Settings → Members & Roles", ar: "المزيد ← الإعدادات ← الأعضاء والأدوار" },
           href: "/settings",
         },
         {
@@ -349,7 +349,7 @@ export const APP_GUIDE = {
             en: "Ready-made BOQs for common jobs. Adjust the prices to your own once, and every new quote starts from them.",
             ar: "قوائم كميات جاهزة للأعمال الشائعة. عدّل الأسعار لتناسبك مرة واحدة، وكل عرض جديد يبدأ منها.",
           },
-          where: { en: "Settings → BOQ templates", ar: "الإعدادات ← قوالب الكميات" },
+          where: { en: "More → Settings → BOQ templates", ar: "المزيد ← الإعدادات ← قوالب الكميات" },
           href: "/settings/boq-templates",
         },
       ],
@@ -363,32 +363,23 @@ export const APP_GUIDE = {
       },
       steps: [
         {
-          title: { en: "Add the client", ar: "أضف العميل" },
+          title: { en: "Start a new project", ar: "ابدأ مشروعًا جديدًا" },
           body: {
-            en: "Press \"New Client\" — only the name is required; add the phone so you can WhatsApp them. Not sure they'll buy yet? Add them as a lead instead and convert later.",
-            ar: "اضغط \"عميل جديد\" — الاسم فقط مطلوب، وأضف الموبايل لتراسله على واتساب. غير متأكد أنه سيتعاقد؟ أضفه كعميل محتمل وحوّله لاحقًا.",
+            en: "Press \"New Project\". Three short steps: pick the client (or type a new one with their mobile number), describe the job, and choose a ready template — Standard, Premium or Luxury finishing. You land on the price list already filled in.",
+            ar: "اضغط \"مشروع جديد\". ثلاث خطوات قصيرة: اختر العميل (أو اكتب عميلًا جديدًا برقم موبايله)، صِف المشروع، واختر قالبًا جاهزًا — تشطيب عادي أو مميز أو فاخر. ستصل إلى قائمة الأسعار وهي ممتلئة بالفعل.",
           },
-          where: { en: "Clients (or Leads)", ar: "العملاء (أو العملاء المحتملون)" },
-          href: "/clients",
-        },
-        {
-          title: { en: "Create the project", ar: "أنشئ المشروع" },
-          body: {
-            en: "Press \"New Project\", choose the client, give it a name like \"Ahmed — Zayed apartment\". Dates are optional.",
-            ar: "اضغط \"مشروع جديد\"، اختر العميل، وسمّه مثلًا \"أحمد — شقة زايد\". التواريخ اختيارية.",
-          },
-          where: { en: "Projects", ar: "المشاريع" },
-          href: "/projects?new=1",
+          where: { en: "Projects → New Project", ar: "المشاريع ← مشروع جديد" },
+          href: "/projects/new",
           tip: {
-            en: "The client must exist first — add them in Clients, then come back.",
-            ar: "يجب أن يكون العميل موجودًا أولًا — أضفه من العملاء ثم ارجع.",
+            en: "Not sure they'll go ahead yet? Add them under Requests → Leads first and turn them into a project later.",
+            ar: "غير متأكد أنه سيتعاقد؟ أضفه أولًا في الطلبات ← العملاء المحتملون وحوّله إلى مشروع لاحقًا.",
           },
         },
         {
-          title: { en: "Fill the BOQ from a template", ar: "املأ الكميات من قالب" },
+          title: { en: "Adjust the items and quantities", ar: "عدّل البنود والكميات" },
           body: {
-            en: "Open the project, go to \"Items & Prices\" and press \"Apply Templates\". Then just change quantities and costs — click any cell, type, and it saves by itself.",
-            ar: "افتح المشروع، ادخل \"البنود والأسعار\" واضغط \"تطبيق القوالب\". ثم غيّر الكميات والتكاليف فقط — اضغط على أي خانة واكتب، والحفظ تلقائي.",
+            en: "Change quantities and costs to match this job — click any cell, type, and it saves by itself. Need a kitchen or bathroom package on top? Press \"Apply Templates\".",
+            ar: "غيّر الكميات والتكاليف لتناسب هذا المشروع — اضغط على أي خانة واكتب، والحفظ تلقائي. تحتاج باقة مطبخ أو حمام إضافية؟ اضغط \"تطبيق القوالب\".",
           },
           where: { en: "Project → Items & Prices", ar: "المشروع ← البنود والأسعار" },
           tip: {
@@ -504,8 +495,8 @@ export const APP_GUIDE = {
           },
           where: { en: "Project → Extras & Changes", ar: "المشروع ← الإضافات والتعديلات" },
           tip: {
-            en: "Never agree to extras verbally — a change order is your proof.",
-            ar: "لا توافق على إضافات شفهيًا — أمر التغيير هو إثباتك.",
+            en: "Never agree to extras verbally — a change order is your proof. Want approved extras applied without the extra click? Turn it on in More → Settings → Extras & Changes.",
+            ar: "لا توافق على إضافات شفهيًا — أمر التغيير هو إثباتك. تريد تطبيق الإضافات المعتمدة بدون ضغطة إضافية؟ فعّلها من المزيد ← الإعدادات ← الإضافات والتعديلات.",
           },
         },
         {
@@ -548,7 +539,7 @@ export const APP_GUIDE = {
             en: "Reports show each project's contract value, collected, outstanding and margin. Export to CSV for your accountant.",
             ar: "التقارير تعرض لكل مشروع قيمة العقد والمحصَّل والمتبقي والهامش. صدّرها CSV لمحاسبك.",
           },
-          where: { en: "Reports", ar: "التقارير" },
+          where: { en: "More → Reports", ar: "المزيد ← التقارير" },
           href: "/reports",
         },
       ],
@@ -578,7 +569,7 @@ export const GETTING_STARTED = {
     },
     project: {
       title: { en: "Create a project for them", ar: "أنشئ مشروعًا له" },
-      body: { en: "Pick the client and give the job a name.", ar: "اختر العميل وسمِّ المشروع." },
+      body: { en: "Pick the client, describe the job and choose a template.", ar: "اختر العميل، صِف المشروع واختر قالبًا." },
       cta: { en: "New project", ar: "مشروع جديد" },
     },
     price: {

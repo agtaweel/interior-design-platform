@@ -63,11 +63,15 @@ class ChangeOrderApplyService
     public function __construct(private readonly FinancialLedgerService $ledger) {}
 
     /**
+     * @param  int|null  $actingUserId  who the ledger entry is attributed to; defaults to the
+     *                                  authenticated user. ChangeOrderAutoApplier passes the change
+     *                                  order's creator, since the public approval route has none.
+     *
      * @throws ChangeOrderApplyException if the project has no contract to apply against
      */
-    public function apply(ChangeOrder $changeOrder): ChangeOrder
+    public function apply(ChangeOrder $changeOrder, ?int $actingUserId = null): ChangeOrder
     {
-        return DB::transaction(function () use ($changeOrder) {
+        return DB::transaction(function () use ($changeOrder, $actingUserId) {
             $project = $changeOrder->project;
 
             // "find the project's contract (if none exists, this should probably fail — a
@@ -99,7 +103,7 @@ class ChangeOrderApplyService
                 };
             }
 
-            $this->applyToContract($contract, $changeOrder);
+            $this->applyToContract($contract, $changeOrder, $actingUserId ?? auth()->id());
 
             $changeOrder->forceFill(['status' => 'applied', 'applied_at' => now()])->save();
 
@@ -180,7 +184,7 @@ class ChangeOrderApplyService
      * no schedule impact) or negative (a pull-forward); Carbon's addDays() handles negative
      * values as subtraction natively, so no separate branch is needed for that case.
      */
-    private function applyToContract(Contract $contract, ChangeOrder $changeOrder): void
+    private function applyToContract(Contract $contract, ChangeOrder $changeOrder, ?int $actingUserId): void
     {
         $attrs = [
             'contract_value' => bcadd((string) $contract->contract_value, (string) $changeOrder->price_delta, 2),
@@ -202,7 +206,7 @@ class ChangeOrderApplyService
             'type' => FinancialTransaction::TYPE_CHANGE_ORDER_CHARGE,
             'amount' => (string) $changeOrder->price_delta,
             'transaction_date' => now()->toDateString(),
-            'created_by' => auth()->id(),
+            'created_by' => $actingUserId,
         ]);
     }
 

@@ -23,6 +23,7 @@ class OrganizationResource extends JsonResource
             'email' => $this->email,
             'currency' => $this->currency,
             'timezone' => $this->timezone,
+            'auto_apply_change_orders' => (bool) $this->auto_apply_change_orders,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

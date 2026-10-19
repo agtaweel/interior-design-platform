@@ -71,6 +71,7 @@ export default function SettingsPage() {
       {currentOrganizationId ? (
         <>
           <OrganizationProfileSection organizationId={currentOrganizationId} />
+          <ChangeOrderPolicySection organizationId={currentOrganizationId} />
           <BoqTemplatesLinkSection />
           <MarketplaceProfileSection organizationId={currentOrganizationId} />
           <MembersSection organizationId={currentOrganizationId} />
@@ -80,6 +81,78 @@ export default function SettingsPage() {
         <LoadingScreen label={t("common.loading")} />
       )}
     </div>
+  );
+}
+
+/**
+ * docs/SIMPLIFICATION_REVIEW.md P2.4 — opt-in: when the client approves an extra/change, apply it
+ * to the items and contract straight away instead of waiting for someone to press "Apply". Same
+ * MANAGE_ORGANIZATION posture as OrganizationProfileSection (hidden when the load 403s). Saves on
+ * toggle — it's a single yes/no, so a separate Save button would just be one more step.
+ */
+function ChangeOrderPolicySection({ organizationId }: { organizationId: string }) {
+  const { t } = useLocale();
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [hidden, setHidden] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getOrganizationProfile(organizationId)
+      .then((p) => !cancelled && setEnabled(Boolean(p.auto_apply_change_orders)))
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.status === 403) setHidden(true);
+        else setError(err instanceof ApiError ? err.message : t("common.unknownError"));
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- organizationId is the only real dep
+  }, [organizationId]);
+
+  async function toggle(next: boolean) {
+    // Show the new state at once; put it back if the save fails.
+    const previous = enabled;
+    setEnabled(next);
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await updateOrganizationProfile(organizationId, { auto_apply_change_orders: next });
+      setEnabled(Boolean(updated.auto_apply_change_orders));
+    } catch (err) {
+      setEnabled(previous);
+      setError(err instanceof ApiError ? err.message : t("common.unknownError"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (hidden) return null;
+
+  return (
+    <Card>
+      <CardHeader>
+        <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{t("settings.changeOrders.title")}</h2>
+      </CardHeader>
+      <CardBody className="flex flex-col gap-3">
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-1 h-4 w-4"
+            checked={enabled ?? false}
+            disabled={enabled === null || saving}
+            onChange={(e) => toggle(e.target.checked)}
+          />
+          <span>
+            <span className="block text-sm font-medium text-zinc-900 dark:text-zinc-50">{t("settings.changeOrders.autoApply")}</span>
+            <span className="mt-1 block text-sm text-zinc-500 dark:text-zinc-400">{t("settings.changeOrders.autoApplyHint")}</span>
+          </span>
+        </label>
+        {error ? <ErrorBanner message={error} /> : null}
+      </CardBody>
+    </Card>
   );
 }
 

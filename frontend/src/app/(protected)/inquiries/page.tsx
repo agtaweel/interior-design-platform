@@ -5,6 +5,7 @@
  * started with this organization. Same 60s-poll pattern as NotificationBell.tsx.
  */
 
+import { RequestsTabs } from "@/components/layout/RequestsTabs";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { listInquiries } from "@/lib/api/resources/inquiries";
@@ -46,6 +47,7 @@ export default function InquiriesPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <RequestsTabs />
       <div>
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">{t("inquiries.title")}</h1>
         <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{t("inquiries.subtitle")}</p>

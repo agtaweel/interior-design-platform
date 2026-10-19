@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
-#[Fillable(['name', 'legal_name', 'logo_url', 'phone', 'email', 'currency', 'timezone', 'settings_json'])]
+#[Fillable(['name', 'legal_name', 'logo_url', 'phone', 'email', 'currency', 'timezone', 'settings_json', 'auto_apply_change_orders'])]
 class Organization extends Model implements HasMedia
 {
     /** @use HasFactory<OrganizationFactory> */
@@ -45,6 +45,7 @@ class Organization extends Model implements HasMedia
     {
         return [
             'settings_json' => 'array',
+            'auto_apply_change_orders' => 'boolean',
         ];
     }
 

@@ -34,6 +34,8 @@ class UpdateOrganizationRequest extends FormRequest
             'email' => ['sometimes', 'nullable', 'email', 'max:255'],
             'currency' => ['sometimes', 'nullable', 'string', 'max:10'],
             'timezone' => ['sometimes', 'nullable', 'string', 'max:64'],
+            // P2.4 opt-in — see ChangeOrderAutoApplier. Owner-only via MANAGE_ORGANIZATION above.
+            'auto_apply_change_orders' => ['sometimes', 'boolean'],
         ];
     }
 }

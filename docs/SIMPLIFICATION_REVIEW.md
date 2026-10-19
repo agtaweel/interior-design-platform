@@ -16,9 +16,9 @@ What already shipped from this review (branch `worktree-simplify-flow-and-guides
   data, hideable, disappears when done.
 - **Language switch on the signed-out screens** (login, signup, forgot/reset password) — before
   this, an Arabic speaker could not switch language until after signing up.
-- **All of P1** (below) — shipped on the same branch after approval on 2026-10-19.
+- **All of P1 and P2** (below) — shipped on the same branch after approval on 2026-10-19.
 
-P2–P4 are still **proposals** — not built, because each one changes product behaviour.
+P3–P4 are still **proposals** — not built, because each one changes product behaviour.
 
 ---
 
@@ -30,14 +30,14 @@ P2–P4 are still **proposals** — not built, because each one changes product 
 | 2 | Login / signup | English only, no language switch. | *(Fixed.)* |
 | 3 | Signup | "Organization name". | Owners think "company", not "organization". *(Fixed — P1.2.)* |
 | 4 | First dashboard | Four zero KPIs and five empty panels. | No "what do I do first?" *(Fixed by the checklist.)* |
-| 5 | Top navigation | 9 items (10 for platform owner): Leads, Clients, Inquiries, Media, Suppliers, Reports… | Leads vs Clients vs Inquiries is three words for "people who might pay me". Too many choices before the first job. |
-| 6 | New project | Client must already exist — the form's first field is a dropdown of clients, empty on day one, with no "add new client" inside it. | Dead end: user has to know to leave, go to Clients, come back. |
+| 5 | Top navigation | 9 items (10 for platform owner): Leads, Clients, Inquiries, Media, Suppliers, Reports… | Leads vs Clients vs Inquiries is three words for "people who might pay me". Too many choices before the first job. *(Fixed — P2.2.)* |
+| 6 | New project | Client must already exist — the form's first field is a dropdown of clients, empty on day one, with no "add new client" inside it. | Dead end: user has to know to leave, go to Clients, come back. *(Fixed — P2.1.)* |
 | 7 | Inside a project | 12 tabs always visible (one of them permanently disabled), regardless of stage. | Contract / Payments / Snagging / Handover show on day one of a quote. Feels like a cockpit. *(Disabled tab removed — P1.5; stage grouping is P2.3.)* |
 | 8 | BOQ | Empty table; "Apply Templates" is one button among Add Category / Add Room / Add Item / Import CSV. | The fastest path (template) isn't the obvious one. Terms: BOQ, Direct Cost, Category. |
 | 9 | Pricing | Profit is a "rule" with type/method/applies-to; the project total only updates after **Recalculate**. | Forgetting Recalculate leaves the dashboard/reports value stale. *Correction:* proposals were never mis-priced by this — a new draft runs the calculator itself. The real gap was that a draft froze its prices at creation, and the UI had no way to refresh it, so BOQ edits made afterwards were silently missing from what was sent. *(Both fixed — P1.4.)* |
 | 10 | Proposal | Create New Version → fill 6 fields → Save Draft → Send → copy link → copy OTP. | Six steps; the link and code are shown **once** and must be copied separately into WhatsApp. *(Copy step fixed — P1.3.)* |
 | 11 | Client side | A client can receive three different links (portal, proposal approval, change-order approval); the approval pages are English-only. | Clients ask "which link do I open?" — support calls. |
-| 12 | Change orders | After the client approves, nothing changes until staff press "Apply to BOQ & Contract". | Users assume approval = done; contract value silently stays old. |
+| 12 | Change orders | After the client approves, nothing changes until staff press "Apply to BOQ & Contract". | Users assume approval = done; contract value silently stays old. *(Optional auto-apply + a "Next step" prompt — P2.4/P2.3.)* |
 | 13 | Jargon | BOQ, Snagging, Handover, Change Orders, Execution, OTP, Gross Profit. | Trade/English terms; fine for engineers, opaque for owners and clients. |
 
 ---
@@ -86,7 +86,39 @@ Original proposal:
    created), so "Recalculate" can't be forgotten.
 5. **Hide the disabled "Activity" tab** until it exists.
 
-### P2 — Flow changes (medium effort, biggest UX gain)
+### P2 — Flow changes ✅ shipped
+
+What was built, and where it differs from the original proposal:
+
+- **P2.1 — New-project wizard** at `/projects/new` (client → the job → start from). Pick or type a
+  client (name + mobile); for a returning client, choose one of their saved places (one place is
+  pre-selected) or a new one with type + area; name (suggested from client + place); optional
+  start/target dates. Step 3 offers Standard / Premium / Luxury full finishing (Standard
+  suggested), the renovation templates, or empty; lands on Items & Prices already filled.
+  *Differences:* templates are suggested by finishing level, not by property type — the seeded
+  templates carry no `project_type`, and every template quantity is a fixed default, so area
+  doesn't scale quantities (it's saved on the property). Built by chaining the existing endpoints
+  rather than a new all-in-one endpoint, remembering what's already created so a retry never
+  duplicates. The old inline form is removed; `?new=1` and `?new_client_id=` redirect into the
+  wizard.
+- **P2.2 — Nav cut to 5**: Home · Requests · Clients · Projects · More ▾ (Media, Suppliers,
+  Reports, Settings, Help; + Platform for the platform owner). Leads and Inquiries stay separate
+  screens under one "Requests" entry with a shared tab bar. The bar now fits from 1024px (was
+  1280px).
+- **P2.3 — Stage-grouped project tabs + "Next step" card**, driven by a new read-only
+  `GET /projects/{id}/journey` (stage + next step from existing records; counts/statuses only, no
+  money). *Difference:* later stages are dimmed with a hint but **still clickable**, not locked —
+  real jobs do order materials or log site visits before signing.
+- **P2.4 — Auto-apply approved change orders**, as an **opt-in per company, off by default**
+  (More → Settings → Extras & Changes; Owner only). When on, the client's approval applies the
+  change order to the items and contract in the same transaction. It never makes the approval
+  fail: it only runs when a contract exists, inside its own savepoint, and otherwise leaves the
+  change order "approved" for manual apply. The ledger entry is attributed to the staff member who
+  created the change order (the public approval has no logged-in user). Stored as a typed column
+  `organizations.auto_apply_change_orders`, not in `settings_json`. *Not built:* the "undo within
+  X minutes" variant.
+
+Original proposal:
 
 1. **New-project wizard (3 screens)** — replaces Client → Property → Project → BOQ hopping:
    1. *Who's it for?* pick a client **or type a new name + phone inline**;
@@ -123,9 +155,10 @@ Original proposal:
 
 ---
 
-## Decisions needed before building P1–P3
+## Decisions still open
 
-- Label renames (P1.2) touch every screen and the Arabic guides — approve the wording first.
-- P2.4 (auto-apply change orders) and P3.1 (in-portal approval) change the commercial/approval
-  model documented in `PROJECT_CONTEXT.md` (signed links + OTP per document) — confirm before
-  implementation; both stay within the "OTP, no e-signature vendor" locked decision.
+- **P2.4 default.** Auto-apply ships **off** for every company. Should new companies default to
+  on? (Existing companies should stay off unless they opt in.)
+- **P3.1** (in-portal approval) changes the per-document signed-link + OTP model documented in
+  `PROJECT_CONTEXT.md` — confirm before implementation; it stays within the "OTP, no e-signature
+  vendor" locked decision.

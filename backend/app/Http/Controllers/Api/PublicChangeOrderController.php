@@ -11,6 +11,7 @@ use App\Models\ChangeOrder;
 use App\Models\IdempotencyKey;
 use App\Models\OtpChallenge;
 use App\Models\SignedLink;
+use App\Services\ChangeOrders\ChangeOrderAutoApplier;
 use App\Services\ChangeOrders\ChangeOrderSendService;
 use App\Services\Notifications\ClientPortalEventMailer;
 use App\Services\Notifications\NotificationService;
@@ -48,6 +49,7 @@ class PublicChangeOrderController extends Controller
         private readonly OtpChallengeService $otpService,
         private readonly NotificationService $notificationService,
         private readonly ClientPortalEventMailer $clientMailer,
+        private readonly ChangeOrderAutoApplier $autoApplier,
     ) {}
 
     private const PURPOSE = ChangeOrderSendService::PURPOSE;
@@ -140,18 +142,26 @@ class PublicChangeOrderController extends Controller
 
             $challenge->forceFill(['verified_at' => $approvedAt])->save();
 
+            // Opt-in per organization (P2.4): apply to the BOQ + contract in this same step.
+            // Never fails the approval — see ChangeOrderAutoApplier.
+            $applied = $this->autoApplier->attempt($changeOrder);
+
             $this->notificationService->notify($changeOrder->project, 'change_order_approved', [
                 'project_id' => $changeOrder->project_id,
                 'project_name' => $changeOrder->project->name,
                 'change_order_id' => $changeOrder->id,
                 'number' => $changeOrder->number,
-                'summary' => sprintf('Change Order %s for %s was approved by the client.', $changeOrder->number, $changeOrder->project->name),
+                'applied' => $applied,
+                'summary' => $applied
+                    ? sprintf('Change Order %s for %s was approved by the client and applied to the BOQ and contract automatically.', $changeOrder->number, $changeOrder->project->name)
+                    : sprintf('Change Order %s for %s was approved by the client.', $changeOrder->number, $changeOrder->project->name),
             ]);
 
             return [
                 'status' => 'approved',
                 'approved_at' => $approvedAt->toJSON(),
                 'approval_id' => $approval->id,
+                'applied' => $applied,
             ];
         });
 

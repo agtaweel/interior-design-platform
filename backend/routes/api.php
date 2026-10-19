@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\PricingRuleController;
 use App\Http\Controllers\Api\ProjectCloseoutController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectFinancialsController;
+use App\Http\Controllers\Api\ProjectJourneyController;
 use App\Http\Controllers\Api\ProjectMediaController;
 use App\Http\Controllers\Api\ProjectMemberController;
 use App\Http\Controllers\Api\ProjectServiceController;
@@ -135,6 +136,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/projects', [ProjectController::class, 'index']);
             Route::post('/projects', [ProjectController::class, 'store']);
             Route::get('/projects/{project}', [ProjectController::class, 'show']);
+            Route::get('/projects/{project}/journey', [ProjectJourneyController::class, 'show']);
             Route::patch('/projects/{project}', [ProjectController::class, 'update']);
             Route::post('/projects/{project}/members', [ProjectMemberController::class, 'store']);
             Route::post('/projects/{project}/services', [ProjectServiceController::class, 'store']);

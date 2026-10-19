@@ -64,7 +64,7 @@ export default function InquiryThreadPage() {
     try {
       const result = await createClientFromInquiry(params.conversationId);
       if (result.client) {
-        router.push(`/projects?new_client_id=${result.client.id}`);
+        router.push(`/projects/new?client_id=${result.client.id}`);
         return;
       }
       setHandoffNotice(t("inquiries.handoff.ambiguous"));

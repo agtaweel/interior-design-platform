@@ -68,11 +68,11 @@ export function GettingStarted({
     (summary?.pending_proposals_count ?? 0) > 0 ||
     projects.some((proj) => Number(proj.financials.outstanding) > 0 || Number(proj.financials.collected) > 0);
 
-  const projectHref = (suffix = "") => (firstProject ? `/projects/${(priced ?? firstProject).id}${suffix}` : "/projects?new=1");
+  const projectHref = (suffix = "") => (firstProject ? `/projects/${(priced ?? firstProject).id}${suffix}` : "/projects/new");
 
   const steps = [
     { key: "client", done: clientTotal > 0, href: "/clients", copy: G.steps.client },
-    { key: "project", done: projectTotal > 0, href: "/projects?new=1", copy: G.steps.project },
+    { key: "project", done: projectTotal > 0, href: "/projects/new", copy: G.steps.project },
     { key: "price", done: Boolean(priced), href: projectHref("/boq"), copy: G.steps.price },
     { key: "send", done: sent, href: projectHref("/proposal"), copy: G.steps.send },
   ];

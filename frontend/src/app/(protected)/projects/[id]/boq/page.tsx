@@ -38,6 +38,7 @@ import {
   updateBoqItem,
 } from "@/lib/api/resources/boq";
 import { commitBoqTemplates, listBoqTemplates, previewBoqTemplates } from "@/lib/api/resources/boqTemplates";
+import { flattenPreviewCategories, toCommitItems, type FlatPreviewRow } from "@/lib/boq/templateApply";
 import { getProject } from "@/lib/api/resources/projects";
 import { PricingPanel } from "@/components/pricing/PricingPanel";
 import type {
@@ -47,9 +48,6 @@ import type {
   BoqItemFormInput,
   BoqRoom,
   BoqTemplate,
-  BoqTemplateCommitItem,
-  BoqTemplatePreviewCategoryNode,
-  BoqTemplatePreviewItem,
   Project,
 } from "@/lib/api/types";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -72,19 +70,6 @@ interface FlatCategory {
   name: string;
   parent_id: string | null;
   depth: number;
-}
-
-/** One merged preview row, flattened out of its category tree for simple table rendering. */
-interface FlatPreviewRow {
-  categoryId: string;
-  item: BoqTemplatePreviewItem;
-}
-
-function flattenPreviewCategories(nodes: BoqTemplatePreviewCategoryNode[]): FlatPreviewRow[] {
-  return nodes.flatMap((node) => [
-    ...node.items.map((item) => ({ categoryId: String(node.id), item })),
-    ...flattenPreviewCategories(node.children),
-  ]);
 }
 
 function flattenCategories(nodes: BoqCategoryNode[], depth = 0): FlatCategory[] {
@@ -530,25 +515,12 @@ export default function BoqBuilderPage() {
     setApplyingTemplate(true);
     setTemplateError(null);
     try {
-      const items: BoqTemplateCommitItem[] = previewRows
-        .map((row) => {
-          const quantity = previewQuantities[String(row.item.catalog_item_id)];
-          const unit = previewUnits[String(row.item.catalog_item_id)];
-          if (!quantity || Number(quantity) <= 0) return null;
-          const firstContributor = row.item.contributed_by[0];
-          const resolved: BoqTemplateCommitItem = {
-            catalog_item_id: row.item.catalog_item_id,
-            category_id: row.categoryId,
-            quantity,
-            source_template_id: firstContributor?.template_id ?? null,
-            source_template_version_id: firstContributor?.template_version_id ?? null,
-            source_template_item_id: firstContributor?.template_item_id ?? null,
-            name: localizedName(row.item, locale),
-          };
-          if (unit) resolved.unit = unit;
-          return resolved;
-        })
-        .filter((item): item is BoqTemplateCommitItem => item !== null);
+      const items = toCommitItems(
+        previewRows,
+        locale,
+        (row) => previewQuantities[String(row.item.catalog_item_id)],
+        (row) => previewUnits[String(row.item.catalog_item_id)],
+      );
 
       if (items.length === 0) {
         setTemplateError(t("boq.template.preview.empty"));

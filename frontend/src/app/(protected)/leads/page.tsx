@@ -12,6 +12,7 @@
  * docblock) that a lead can never be PATCHed into "converted" directly.
  */
 
+import { RequestsTabs } from "@/components/layout/RequestsTabs";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { convertLead, createLead, getLeads, updateLeadStatus } from "@/lib/api/resources/leads";
 import type { Lead, LeadStatus } from "@/lib/api/types";
@@ -108,6 +109,7 @@ export default function LeadsPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <RequestsTabs />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">{t("leads.title")}</h1>
