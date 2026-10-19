@@ -68,11 +68,12 @@ class OtpEmailDeliveryTest extends TestCase
         Mail::assertSent(OtpCodeMail::class, function (OtpCodeMail $mail) use ($send) {
             return $mail->hasTo('client@example.com')
                 && $mail->code === $send->json('data.otp_code')
-                && $mail->publicUrl === $send->json('data.public_url')
+                // P3.1: the email points at the proposal inside the client portal.
+                && $mail->publicUrl === $send->json('data.portal_url')
                 && $mail->documentLabel === 'proposal';
         });
 
-        // The manual-relay fields staff have always used are still returned unchanged.
+        // The manual-relay fields staff have always used are still returned.
         $this->assertNotNull($send->json('data.otp_code'));
         $this->assertNotNull($send->json('data.public_url'));
     }

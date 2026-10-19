@@ -21,7 +21,15 @@ import { fillTemplate, toWhatsAppNumber, whatsAppUrl } from "@/lib/share/whatsap
 
 type Props =
   | { kind: "proposal"; projectId: string; url: string; otp: string }
-  | { kind: "changeOrder"; projectId: string; url: string; otp: string; number: string };
+  | { kind: "changeOrder"; projectId: string; url: string; otp: string; number: string }
+  /** Just the client's project page (P3.1) — no document, no code. */
+  | { kind: "portal"; projectId: string; url: string };
+
+const MESSAGE_KEY = {
+  proposal: "share.whatsapp.message.proposal",
+  changeOrder: "share.whatsapp.message.changeOrder",
+  portal: "share.whatsapp.message.portal",
+} as const;
 
 export function WhatsAppShare(props: Props) {
   const { t } = useLocale();
@@ -45,16 +53,13 @@ export function WhatsAppShare(props: Props) {
     organizations[0]?.organization.name ??
     "Fitout";
 
-  const message = fillTemplate(
-    t(props.kind === "proposal" ? "share.whatsapp.message.proposal" : "share.whatsapp.message.changeOrder"),
-    {
-      name: client?.name || t("share.whatsapp.fallbackName"),
-      company,
-      url: props.url,
-      otp: props.otp,
-      number: props.kind === "changeOrder" ? props.number : "",
-    },
-  );
+  const message = fillTemplate(t(MESSAGE_KEY[props.kind]), {
+    name: client?.name || t("share.whatsapp.fallbackName"),
+    company,
+    url: props.url,
+    otp: props.kind === "portal" ? "" : props.otp,
+    number: props.kind === "changeOrder" ? props.number : "",
+  });
   const hasNumber = Boolean(toWhatsAppNumber(client?.phone));
   const ready = client !== undefined;
 
@@ -70,7 +75,7 @@ export function WhatsAppShare(props: Props) {
 
   return (
     <div className="flex flex-col gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-900 dark:bg-emerald-950/40">
-      <p className="text-sm text-zinc-700 dark:text-zinc-200">{t("share.whatsapp.hint")}</p>
+      {props.kind !== "portal" ? <p className="text-sm text-zinc-700 dark:text-zinc-200">{t("share.whatsapp.hint")}</p> : null}
       <div className="flex flex-wrap gap-2">
         <a
           href={ready ? whatsAppUrl(message, client?.phone) : undefined}

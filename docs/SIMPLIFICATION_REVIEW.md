@@ -16,9 +16,9 @@ What already shipped from this review (branch `worktree-simplify-flow-and-guides
   data, hideable, disappears when done.
 - **Language switch on the signed-out screens** (login, signup, forgot/reset password) — before
   this, an Arabic speaker could not switch language until after signing up.
-- **All of P1 and P2** (below) — shipped on the same branch after approval on 2026-10-19.
+- **All of P1, P2 and P3** (below) — shipped on the same branch after approval on 2026-10-19.
 
-P3–P4 are still **proposals** — not built, because each one changes product behaviour.
+P4 is still a **proposal** — not built.
 
 ---
 
@@ -36,7 +36,7 @@ P3–P4 are still **proposals** — not built, because each one changes product 
 | 8 | BOQ | Empty table; "Apply Templates" is one button among Add Category / Add Room / Add Item / Import CSV. | The fastest path (template) isn't the obvious one. Terms: BOQ, Direct Cost, Category. |
 | 9 | Pricing | Profit is a "rule" with type/method/applies-to; the project total only updates after **Recalculate**. | Forgetting Recalculate leaves the dashboard/reports value stale. *Correction:* proposals were never mis-priced by this — a new draft runs the calculator itself. The real gap was that a draft froze its prices at creation, and the UI had no way to refresh it, so BOQ edits made afterwards were silently missing from what was sent. *(Both fixed — P1.4.)* |
 | 10 | Proposal | Create New Version → fill 6 fields → Save Draft → Send → copy link → copy OTP. | Six steps; the link and code are shown **once** and must be copied separately into WhatsApp. *(Copy step fixed — P1.3.)* |
-| 11 | Client side | A client can receive three different links (portal, proposal approval, change-order approval); the approval pages are English-only. | Clients ask "which link do I open?" — support calls. |
+| 11 | Client side | A client can receive three different links (portal, proposal approval, change-order approval); the approval pages are English-only. | Clients ask "which link do I open?" — support calls. *(Fixed — P3.)* |
 | 12 | Change orders | After the client approves, nothing changes until staff press "Apply to BOQ & Contract". | Users assume approval = done; contract value silently stays old. *(Optional auto-apply + a "Next step" prompt — P2.4/P2.3.)* |
 | 13 | Jargon | BOQ, Snagging, Handover, Change Orders, Execution, OTP, Gross Profit. | Trade/English terms; fine for engineers, opaque for owners and clients. |
 
@@ -137,7 +137,29 @@ Original proposal:
    or an explicit "review before applying" setting for companies that want the gate. Today's
    two-step is safe but invisible to users.
 
-### P3 — Client-side simplification
+### P3 — Client-side simplification ✅ shipped
+
+What was built:
+
+- **P3.1 — One link per client.** The portal link is now the only link staff send. It's created
+  on the first send and reused by every later one, and staff can copy it again any time from
+  Project → Overview → Client Portal (plus a WhatsApp button). To make that possible the portal
+  token is stored **encrypted with the app key** next to its hash — portal links only; one-time
+  approval links stay hash-only, and a DB dump alone still yields no usable link. Clients approve
+  / request changes / reject **inside the portal** with the per-document 6-digit code; the
+  WhatsApp message and the OTP email now carry the portal link. The older per-document links keep
+  working for anything already sent. Both paths share one implementation of the rules
+  (`ProposalClientDecision`, `ChangeOrderClientDecision`). Revoke (no token needed) closes every
+  portal link of the project; the next send issues a new one.
+  *Also fixed on the way:* an already **applied** change order could be approved again (the
+  "already approved" guard only checked `approved`); with P2.4 auto-apply a client double-tap
+  could have reached that. Now refused with 409.
+- **P3.2 — Arabic on the approval pages.** `/p/proposals/…` and `/p/change-orders/…` (and the new
+  in-portal decision panel) are fully bilingual, with a language button; error messages are
+  translated by code rather than showing the server's English text; Arabic number agreement for
+  timeline days.
+
+Original proposal:
 
 1. **One link per client**: approvals happen *inside* the portal (Approve button + OTP on the
    proposal page) instead of separate per-document links. The portal link becomes the only thing
@@ -159,6 +181,6 @@ Original proposal:
 
 - **P2.4 default.** Auto-apply ships **off** for every company. Should new companies default to
   on? (Existing companies should stay off unless they opt in.)
-- **P3.1** (in-portal approval) changes the per-document signed-link + OTP model documented in
-  `PROJECT_CONTEXT.md` — confirm before implementation; it stays within the "OTP, no e-signature
-  vendor" locked decision.
+- **Retrievable portal links (P3.1).** Storing the portal token encrypted is a deliberate
+  trade-off for "staff can always resend the one link". If you'd rather keep hash-only storage,
+  the alternative is regenerating the link on demand (which invalidates the client's bookmark).

@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * verification. See App\Support\PublicLinks\SignedLinkService for the intended API.
  */
 #[Fillable([
-    'purpose', 'token_hash', 'payload_json', 'expires_at', 'revoked_at',
+    'purpose', 'token_hash', 'token_encrypted', 'payload_json', 'expires_at', 'revoked_at',
     'last_used_at', 'use_count', 'created_by',
 ])]
 class SignedLink extends Model
@@ -23,9 +23,15 @@ class SignedLink extends Model
     /** @use HasFactory<SignedLinkFactory> */
     use HasFactory;
 
+    /** Never serialised — only SignedLinkService::reveal() reads it, for retrievable links. */
+    protected $hidden = ['token_hash', 'token_encrypted'];
+
     protected function casts(): array
     {
         return [
+            // Raw token for "retrievable" links only (the client portal link) — see
+            // the add_token_encrypted_to_signed_links_table migration.
+            'token_encrypted' => 'encrypted',
             'payload_json' => 'array',
             'expires_at' => 'datetime',
             'revoked_at' => 'datetime',

@@ -1037,8 +1037,8 @@ function SentShareCard({ result, projectId, t }: { result: ChangeOrderSendResult
         {result ? (
           <>
             <p className="text-sm text-zinc-600 dark:text-zinc-300">{t("changeOrders.send.resultNote")}</p>
-            <WhatsAppShare kind="changeOrder" projectId={projectId} url={result.public_url} otp={result.otp_code} number={result.number} />
-            <CopyField label={t("changeOrders.send.linkLabel")} value={result.public_url} t={t} />
+            <WhatsAppShare kind="changeOrder" projectId={projectId} url={result.portal_url} otp={result.otp_code} number={result.number} />
+            <CopyField label={t("changeOrders.send.linkLabel")} value={result.portal_url} t={t} />
             <CopyField label={t("changeOrders.send.otpLabel")} value={result.otp_code} t={t} />
             <p className="text-xs text-zinc-400">{t("changeOrders.send.otpOnceNote")}</p>
           </>

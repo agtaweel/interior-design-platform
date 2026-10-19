@@ -23,15 +23,25 @@ export function updateProject(id: string | number, input: Partial<ProjectFormInp
 }
 
 /**
- * BRD v3 §17 "Client Portal" — issues the long-lived, multi-use signed link a client can
- * bookmark. See ClientPortalLinkController on the backend; the returned token must be combined
- * client-side with `/p/client-portal/{token}` (the backend has no concept of the frontend's own
- * base URL to build a full link with).
+ * BRD v3 §17 "Client Portal" — the long-lived link a client bookmarks. Since
+ * docs/SIMPLIFICATION_REVIEW.md P3.1 it's the one link they ever get and it can be read again:
+ * GET returns the project's current link (or null), POST issues a new one, and revoke without a
+ * token closes every portal link of the project. `url` is built by the backend from its
+ * configured frontend URL.
  */
-export function issueClientPortalLink(projectId: string | number) {
-  return apiPostResource<{ token: string }>(`/projects/${projectId}/client-portal-link`, {});
+export interface ClientPortalLink {
+  token: string;
+  url: string;
 }
 
-export function revokeClientPortalLink(projectId: string | number, token: string) {
-  return apiPost<void>(`/projects/${projectId}/client-portal-link/revoke`, { token });
+export function getClientPortalLink(projectId: string | number) {
+  return apiGetResource<ClientPortalLink | null>(`/projects/${projectId}/client-portal-link`);
+}
+
+export function issueClientPortalLink(projectId: string | number) {
+  return apiPostResource<ClientPortalLink>(`/projects/${projectId}/client-portal-link`, {});
+}
+
+export function revokeClientPortalLinks(projectId: string | number) {
+  return apiPost<void>(`/projects/${projectId}/client-portal-link/revoke`, {});
 }

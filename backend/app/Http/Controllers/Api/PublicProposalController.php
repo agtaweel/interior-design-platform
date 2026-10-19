@@ -6,13 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ApprovePublicProposalRequest;
 use App\Http\Requests\RequestChangesPublicProposalRequest;
 use App\Http\Resources\PublicProposalResource;
-use App\Models\IdempotencyKey;
-use App\Models\OtpChallenge;
 use App\Models\ProposalVersion;
 use App\Models\SignedLink;
-use App\Services\Proposals\OtpChallengeService;
-use App\Services\Proposals\OtpVerificationException;
-use App\Services\Proposals\ProposalApprovalService;
+use App\Services\Proposals\ProposalClientDecision;
 use App\Services\Proposals\ProposalPresenter;
 use App\Support\PublicLinks\SignedLinkException;
 use App\Support\PublicLinks\SignedLinkService;
@@ -40,9 +36,8 @@ class PublicProposalController extends Controller
 {
     public function __construct(
         private readonly SignedLinkService $signedLinkService,
-        private readonly OtpChallengeService $otpService,
         private readonly ProposalPresenter $presenter,
-        private readonly ProposalApprovalService $approvalService,
+        private readonly ProposalClientDecision $decision,
     ) {}
 
     private const PURPOSE = 'proposal_approval';
@@ -116,76 +111,18 @@ class PublicProposalController extends Controller
             return $version;
         }
 
-        $scope = "proposal_approve:{$version->id}";
-        $idempotencyKey = $request->header('Idempotency-Key');
+        // Same rules as approving from the client portal — see ProposalClientDecision.
+        [$status, $body] = $this->decision->approve(
+            $version,
+            SignedLink::query()->where('token_hash', hash('sha256', $token))->first(),
+            $request->validated('otp'),
+            $request->validated('name'),
+            $request->validated('comment'),
+            $request->ip(),
+            $request->header('Idempotency-Key'),
+        );
 
-        if ($idempotencyKey) {
-            $stored = IdempotencyKey::query()->where('scope', $scope)->where('key', $idempotencyKey)->first();
-
-            if ($stored) {
-                return response()->json($stored->response_body, $stored->response_status);
-            }
-        }
-
-        $link = SignedLink::query()->where('token_hash', hash('sha256', $token))->first();
-        $challenge = $link ? OtpChallenge::query()->where('signed_link_id', $link->id)->latest('id')->first() : null;
-
-        if (! $link || ! $challenge) {
-            // Data-integrity fallback only — every 'sent' version gets exactly one signed
-            // link + one otp_challenge in the same transaction (ProposalSendService::send()),
-            // so this branch should be unreachable in practice.
-            return $this->linkError();
-        }
-
-        try {
-            $this->otpService->verify($challenge, $request->validated('otp'));
-        } catch (OtpVerificationException $e) {
-            return match ($e->reason) {
-                'locked' => $this->error(422, 'OTP_LOCKED', 'Too many incorrect attempts. This proposal can no longer be approved from this link.'),
-                'expired' => $this->error(422, 'OTP_EXPIRED', 'This verification code has expired.'),
-                default => $this->error(422, 'OTP_INVALID', 'The verification code is incorrect.', ['attempts_remaining' => $e->attemptsRemaining]),
-            };
-        }
-
-        // Checked AFTER OTP validation, per PROJECT_CONTEXT.md's literal ordering — see
-        // OtpChallengeService::verify()'s docblock for why this order is deliberate (a wrong
-        // OTP against an already-approved proposal still reports OTP_INVALID, not this).
-        //
-        // Kept UPPERCASE (unlike this codebase's usual lowercase snake_case error codes, e.g.
-        // 'not_found', 'validation_failed') to match PRD §3.3's literal example verbatim —
-        // PROJECT_CONTEXT.md quotes this exact code, so we reproduce it rather than
-        // lowercasing it for internal-convention consistency.
-        if ($version->status === 'approved') {
-            return $this->error(409, 'PROPOSAL_ALREADY_APPROVED', 'This proposal has already been approved.');
-        }
-
-        // No dedicated "approver name" column on `approvals` (see migration/model — only
-        // approver_type/user_id/comment/ip_address). Rather than silently dropping the
-        // client-supplied `name`, we fold it into `comment` with a clear prefix so it's still
-        // captured for audit/traceability — documented here rather than left unexplained.
-        $comment = $this->composeComment($request->validated('name'), $request->validated('comment'));
-
-        $body = $this->approvalService->approve($version, $comment, $request->ip());
-        // markUsed()/verified_at stamp are specific to the token+OTP flow, not part of the
-        // shared approval transaction — ProposalApprovalService has no concept of either.
-        // Stamped from the service's own approved_at so both records agree on the moment.
-        $challenge->forceFill(['verified_at' => $body['approved_at']])->save();
-        $this->signedLinkService->markUsed($token);
-
-        // Only a genuinely NEW successful request stores an idempotency record — a replay
-        // never reaches here (it returned above), and a failed/409 response is deliberately
-        // NOT stored (see class docblock: idempotency only protects the successful mutation,
-        // not every possible response).
-        if ($idempotencyKey) {
-            IdempotencyKey::create([
-                'scope' => $scope,
-                'key' => $idempotencyKey,
-                'response_status' => 200,
-                'response_body' => $body,
-            ]);
-        }
-
-        return response()->json($body, 200);
+        return response()->json($body, $status);
     }
 
     /**
@@ -212,19 +149,14 @@ class PublicProposalController extends Controller
             return $version;
         }
 
-        if ($version->status === 'approved') {
-            return $this->error(409, 'PROPOSAL_ALREADY_APPROVED', 'This proposal has already been approved and can no longer be sent back for changes.');
-        }
+        [$status, $body] = $this->decision->requestChanges(
+            $version,
+            $request->validated('name'),
+            $request->validated('comment'),
+            $request->ip(),
+        );
 
-        $comment = $this->composeComment($request->validated('name'), $request->validated('comment'));
-
-        $this->approvalService->requestChanges($version, $comment, $request->ip());
-
-        return response()->json([
-            'data' => [
-                'status' => 'changes_requested',
-            ],
-        ]);
+        return response()->json($body, $status);
     }
 
     /**
@@ -257,11 +189,6 @@ class PublicProposalController extends Controller
         }
 
         return $version;
-    }
-
-    private function composeComment(string $name, ?string $comment): string
-    {
-        return $comment ? "{$name}: {$comment}" : $name;
     }
 
     private function linkError(): JsonResponse

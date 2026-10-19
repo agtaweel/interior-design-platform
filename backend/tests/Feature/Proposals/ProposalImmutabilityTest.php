@@ -150,9 +150,9 @@ class ProposalImmutabilityTest extends TestCase
 
         $response->assertStatus(409)->assertJsonPath('error.code', 'PROPOSAL_NOT_DRAFT');
 
-        // Only one signed link / otp challenge should exist — a second send() call must not
-        // have silently re-issued a new one.
-        $this->assertDatabaseCount('signed_links', 1);
+        // Only one approval link / otp challenge should exist — a second send() call must not
+        // have silently re-issued a new one. (The project's client-portal link is separate.)
+        $this->assertSame(1, \App\Models\SignedLink::where('purpose', 'proposal_approval')->count());
         $this->assertDatabaseCount('otp_challenges', 1);
     }
 

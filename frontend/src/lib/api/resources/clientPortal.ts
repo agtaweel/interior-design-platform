@@ -5,7 +5,7 @@
  * credential.
  */
 
-import { publicGetResource, publicGetResourceWithOrg } from "@/lib/api/publicClient";
+import { publicGetResource, publicGetResourceWithOrg, publicPost } from "@/lib/api/publicClient";
 import type {
   ClientPortalChangeOrder,
   ClientPortalContract,
@@ -14,7 +14,8 @@ import type {
   ClientPortalPayment,
   ClientPortalProposalSummary,
 } from "@/lib/api/clientPortalTypes";
-import type { PublicProposalData } from "@/lib/api/publicTypes";
+import type { PublicApproveResult, PublicProposalData, PublicRequestChangesResult } from "@/lib/api/publicTypes";
+import type { PublicChangeOrderApproveResult, PublicChangeOrderRejectResult } from "@/lib/api/publicChangeOrderTypes";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
 
@@ -52,6 +53,39 @@ export function getClientPortalPayments(token: string) {
 
 export function getClientPortalChangeOrders(token: string) {
   return publicGetResourceWithOrg<ClientPortalChangeOrder[]>(`${base(token)}/change-orders`);
+}
+
+// --- Decisions inside the portal (P3.1) — same response shapes as the per-document links:
+// approve returns the flat body, request-changes/reject the `{data}` envelope.
+
+export function approveClientPortalProposal(
+  token: string,
+  proposalVersionId: string | number,
+  input: { name: string; comment?: string; otp: string },
+) {
+  return publicPost<PublicApproveResult>(`${base(token)}/proposals/${encodeURIComponent(String(proposalVersionId))}/approve`, input);
+}
+
+export function requestClientPortalProposalChanges(
+  token: string,
+  proposalVersionId: string | number,
+  input: { name: string; comment: string },
+) {
+  return publicPost<{ data: PublicRequestChangesResult }>(
+    `${base(token)}/proposals/${encodeURIComponent(String(proposalVersionId))}/request-changes`,
+    input,
+  ).then((res) => res.data);
+}
+
+export function approveClientPortalChangeOrder(token: string, number: string, input: { name: string; comment?: string; otp: string }) {
+  return publicPost<PublicChangeOrderApproveResult>(`${base(token)}/change-orders/${encodeURIComponent(number)}/approve`, input);
+}
+
+export function rejectClientPortalChangeOrder(token: string, number: string, input: { name: string; comment: string }) {
+  return publicPost<{ data: PublicChangeOrderRejectResult }>(
+    `${base(token)}/change-orders/${encodeURIComponent(number)}/reject`,
+    input,
+  ).then((res) => res.data);
 }
 
 export function getClientPortalMedia(token: string) {

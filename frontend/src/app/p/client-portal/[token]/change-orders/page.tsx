@@ -1,8 +1,20 @@
 "use client";
 
+/**
+ * The client's Extras & Changes in the portal. Since docs/SIMPLIFICATION_REVIEW.md P3.1 a change
+ * waiting for the client is approved (with its 6-digit code) or rejected right here — same rules
+ * as the per-document link, via ChangeOrderClientDecision on the backend.
+ */
+
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getClientPortalChangeOrders } from "@/lib/api/resources/clientPortal";
+import {
+  approveClientPortalChangeOrder,
+  getClientPortalChangeOrders,
+  rejectClientPortalChangeOrder,
+} from "@/lib/api/resources/clientPortal";
+import { DecisionBanner, DecisionPanel, type DecisionOutcome } from "@/components/client-decision/DecisionPanel";
+import type { TranslationKey } from "@/lib/i18n/dictionaries";
 import { PublicApiError } from "@/lib/api/publicClient";
 import type { ClientPortalChangeOrder } from "@/lib/api/clientPortalTypes";
 import { formatEGP } from "@/lib/format/currency";
@@ -20,6 +32,18 @@ export default function ClientPortalChangeOrdersPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [orders, setOrders] = useState<ClientPortalChangeOrder[]>([]);
   const [currency, setCurrency] = useState("EGP");
+  const [justDecided, setJustDecided] = useState<Set<string>>(new Set());
+
+  function handleDecided(number: string, outcome: DecisionOutcome) {
+    if (outcome === "alreadyDecided") {
+      load();
+      return;
+    }
+    setJustDecided((prev) => new Set(prev).add(number));
+    setOrders((prev) =>
+      prev.map((o) => (o.number === number ? { ...o, status: outcome === "approved" ? "approved" : "rejected" } : o)),
+    );
+  }
 
   const load = useCallback(() => {
     setPhase("loading");
@@ -70,8 +94,8 @@ export default function ClientPortalChangeOrdersPage() {
           <p dir={directionFor(order.reason)} className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
             {order.reason}
           </p>
-          <p className="mt-1 text-xs capitalize text-zinc-500 dark:text-zinc-500">
-            {order.status.replace(/_/g, " ")}
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
+            {t(`clientPortal.changeOrders.status.${order.status}` as TranslationKey)}
             {order.sent_at ? ` · ${t("clientPortal.changeOrders.sentPrefix")} ${formatDate(order.sent_at)}` : ""}
           </p>
 
@@ -86,6 +110,19 @@ export default function ClientPortalChangeOrdersPage() {
                 </p>
               </div>
             ))}
+          </div>
+
+          <div className="mt-3">
+            {order.status === "sent" ? (
+              <DecisionPanel
+                kind="changeOrder"
+                approve={(input) => approveClientPortalChangeOrder(token, order.number, input)}
+                decline={(input) => rejectClientPortalChangeOrder(token, order.number, input)}
+                onDecided={(outcome) => handleDecided(order.number, outcome)}
+              />
+            ) : (
+              <DecisionBanner kind="changeOrder" status={order.status} justNow={justDecided.has(order.number)} />
+            )}
           </div>
         </div>
       ))}

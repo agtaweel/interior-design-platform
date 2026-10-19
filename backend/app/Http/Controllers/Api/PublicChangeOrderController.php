@@ -6,21 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ApprovePublicChangeOrderRequest;
 use App\Http\Requests\RejectPublicChangeOrderRequest;
 use App\Http\Resources\PublicChangeOrderResource;
-use App\Models\Approval;
 use App\Models\ChangeOrder;
-use App\Models\IdempotencyKey;
-use App\Models\OtpChallenge;
 use App\Models\SignedLink;
-use App\Services\ChangeOrders\ChangeOrderAutoApplier;
+use App\Services\ChangeOrders\ChangeOrderClientDecision;
 use App\Services\ChangeOrders\ChangeOrderSendService;
-use App\Services\Notifications\ClientPortalEventMailer;
-use App\Services\Notifications\NotificationService;
-use App\Services\Proposals\OtpChallengeService;
-use App\Services\Proposals\OtpVerificationException;
 use App\Support\PublicLinks\SignedLinkException;
 use App\Support\PublicLinks\SignedLinkService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
 
 /**
  * GET /public/change-orders/{token}, POST /public/change-orders/{token}/approve, POST
@@ -37,19 +29,17 @@ use Illuminate\Support\Facades\DB;
  * (SignedLinkService::verify(), purpose ChangeOrderSendService::PURPOSE). Carries the same
  * `public-links` rate limiter as the proposal public routes (see routes/api.php).
  *
- * Approving does NOT touch the BOQ or contract — that's the separate, staff-triggered
+ * Approving does NOT touch the BOQ or contract by default — that's the separate, staff-triggered
  * POST /change-orders/{id}/apply (ChangeOrderController::apply()), per PROJECT_CONTEXT.md's
- * explicit "approve != apply" design (gives staff a deliberate checkpoint before the
- * BOQ/contract actually change).
+ * explicit "approve != apply" design — unless the organization opted into auto-apply
+ * (ChangeOrderAutoApplier, docs/SIMPLIFICATION_REVIEW.md P2.4). The decision logic itself lives in
+ * ChangeOrderClientDecision, shared with approving from the client portal (P3.1).
  */
 class PublicChangeOrderController extends Controller
 {
     public function __construct(
         private readonly SignedLinkService $signedLinkService,
-        private readonly OtpChallengeService $otpService,
-        private readonly NotificationService $notificationService,
-        private readonly ClientPortalEventMailer $clientMailer,
-        private readonly ChangeOrderAutoApplier $autoApplier,
+        private readonly ChangeOrderClientDecision $decision,
     ) {}
 
     private const PURPOSE = ChangeOrderSendService::PURPOSE;
@@ -80,107 +70,18 @@ class PublicChangeOrderController extends Controller
             return $changeOrder;
         }
 
-        $scope = "change_order_approve:{$changeOrder->id}";
-        $idempotencyKey = $request->header('Idempotency-Key');
+        // Same rules as approving from the client portal — see ChangeOrderClientDecision.
+        [$status, $body] = $this->decision->approve(
+            $changeOrder,
+            SignedLink::query()->where('token_hash', hash('sha256', $token))->first(),
+            $request->validated('otp'),
+            $request->validated('name'),
+            $request->validated('comment'),
+            $request->ip(),
+            $request->header('Idempotency-Key'),
+        );
 
-        if ($idempotencyKey) {
-            $stored = IdempotencyKey::query()->where('scope', $scope)->where('key', $idempotencyKey)->first();
-
-            if ($stored) {
-                return response()->json($stored->response_body, $stored->response_status);
-            }
-        }
-
-        $link = SignedLink::query()->where('token_hash', hash('sha256', $token))->first();
-        $challenge = $link ? OtpChallenge::query()->where('signed_link_id', $link->id)->latest('id')->first() : null;
-
-        if (! $link || ! $challenge) {
-            // Data-integrity fallback only — every 'sent' change order gets exactly one signed
-            // link + one otp_challenge in the same transaction (ChangeOrderSendService::send()),
-            // so this branch should be unreachable in practice.
-            return $this->linkError();
-        }
-
-        try {
-            $this->otpService->verify($challenge, $request->validated('otp'));
-        } catch (OtpVerificationException $e) {
-            return match ($e->reason) {
-                'locked' => $this->error(422, 'OTP_LOCKED', 'Too many incorrect attempts. This change order can no longer be approved from this link.'),
-                'expired' => $this->error(422, 'OTP_EXPIRED', 'This verification code has expired.'),
-                default => $this->error(422, 'OTP_INVALID', 'The verification code is incorrect.', ['attempts_remaining' => $e->attemptsRemaining]),
-            };
-        }
-
-        // Checked AFTER OTP validation, same deliberate ordering as
-        // PublicProposalController::approve() — a wrong OTP against an already-approved change
-        // order still reports OTP_INVALID, not this.
-        if ($changeOrder->status === 'approved') {
-            return $this->error(409, 'CHANGE_ORDER_ALREADY_APPROVED', 'This change order has already been approved.');
-        }
-
-        // No dedicated "approver name" column on `approvals` — folded into `comment` with a
-        // clear prefix, same convention as PublicProposalController::composeComment().
-        $comment = $this->composeComment($request->validated('name'), $request->validated('comment'));
-
-        $body = DB::transaction(function () use ($changeOrder, $challenge, $comment, $request) {
-            $approvedAt = now();
-
-            $changeOrder->forceFill(['status' => 'approved', 'approved_at' => $approvedAt])->save();
-
-            $approval = Approval::create([
-                'organization_id' => $changeOrder->project->organization_id,
-                'project_id' => $changeOrder->project_id,
-                'entity_type' => ChangeOrder::ENTITY_TYPE,
-                'entity_id' => $changeOrder->id,
-                'approver_type' => 'client',
-                'user_id' => null,
-                'status' => 'approved',
-                'comment' => $comment,
-                'approved_at' => $approvedAt,
-                'ip_address' => $request->ip(),
-            ]);
-
-            $challenge->forceFill(['verified_at' => $approvedAt])->save();
-
-            // Opt-in per organization (P2.4): apply to the BOQ + contract in this same step.
-            // Never fails the approval — see ChangeOrderAutoApplier.
-            $applied = $this->autoApplier->attempt($changeOrder);
-
-            $this->notificationService->notify($changeOrder->project, 'change_order_approved', [
-                'project_id' => $changeOrder->project_id,
-                'project_name' => $changeOrder->project->name,
-                'change_order_id' => $changeOrder->id,
-                'number' => $changeOrder->number,
-                'applied' => $applied,
-                'summary' => $applied
-                    ? sprintf('Change Order %s for %s was approved by the client and applied to the BOQ and contract automatically.', $changeOrder->number, $changeOrder->project->name)
-                    : sprintf('Change Order %s for %s was approved by the client.', $changeOrder->number, $changeOrder->project->name),
-            ]);
-
-            return [
-                'status' => 'approved',
-                'approved_at' => $approvedAt->toJSON(),
-                'approval_id' => $approval->id,
-                'applied' => $applied,
-            ];
-        });
-
-        $this->clientMailer->changeOrderDecided($changeOrder, 'approved');
-        $this->signedLinkService->markUsed($token);
-
-        // Only a genuinely NEW successful request stores an idempotency record — a replay never
-        // reaches here (it returned above), and a failed/409 response is deliberately NOT
-        // stored, same convention as PublicProposalController::approve().
-        if ($idempotencyKey) {
-            IdempotencyKey::create([
-                'scope' => $scope,
-                'key' => $idempotencyKey,
-                'response_status' => 200,
-                'response_body' => $body,
-            ]);
-        }
-
-        return response()->json($body, 200);
+        return response()->json($body, $status);
     }
 
     /**
@@ -198,43 +99,14 @@ class PublicChangeOrderController extends Controller
             return $changeOrder;
         }
 
-        if ($changeOrder->status === 'approved') {
-            return $this->error(409, 'CHANGE_ORDER_ALREADY_APPROVED', 'This change order has already been approved and can no longer be rejected.');
-        }
+        [$status, $body] = $this->decision->reject(
+            $changeOrder,
+            $request->validated('name'),
+            $request->validated('comment'),
+            $request->ip(),
+        );
 
-        $comment = $this->composeComment($request->validated('name'), $request->validated('comment'));
-
-        DB::transaction(function () use ($changeOrder, $comment, $request) {
-            $changeOrder->forceFill(['status' => 'rejected'])->save();
-
-            Approval::create([
-                'organization_id' => $changeOrder->project->organization_id,
-                'project_id' => $changeOrder->project_id,
-                'entity_type' => ChangeOrder::ENTITY_TYPE,
-                'entity_id' => $changeOrder->id,
-                'approver_type' => 'client',
-                'user_id' => null,
-                'status' => 'rejected',
-                'comment' => $comment,
-                'ip_address' => $request->ip(),
-            ]);
-
-            $this->notificationService->notify($changeOrder->project, 'change_order_rejected', [
-                'project_id' => $changeOrder->project_id,
-                'project_name' => $changeOrder->project->name,
-                'change_order_id' => $changeOrder->id,
-                'number' => $changeOrder->number,
-                'summary' => sprintf('Change Order %s for %s was rejected by the client.', $changeOrder->number, $changeOrder->project->name),
-            ]);
-        });
-
-        $this->clientMailer->changeOrderDecided($changeOrder, 'rejected');
-
-        return response()->json([
-            'data' => [
-                'status' => 'rejected',
-            ],
-        ]);
+        return response()->json($body, $status);
     }
 
     /**
@@ -262,11 +134,6 @@ class PublicChangeOrderController extends Controller
         }
 
         return $changeOrder;
-    }
-
-    private function composeComment(string $name, ?string $comment): string
-    {
-        return $comment ? "{$name}: {$comment}" : $name;
     }
 
     private function linkError(): JsonResponse

@@ -4,15 +4,20 @@
  * Reuses the exact same content/items/total renderers as `/p/proposals/[token]` (the
  * per-proposal approval page) — both surfaces render the identical `PublicProposalData` shape
  * (see PublicClientPortalController::proposal(), which wraps the same PublicProposalResource).
- * No approve/request-changes actions here: those still happen exclusively through the
- * proposal's own dedicated approval link/OTP flow (the client received that link separately when
- * the proposal was sent) — this page is a read-only "view it again later" convenience inside the
- * broader portal.
+ * Since docs/SIMPLIFICATION_REVIEW.md P3.1 the client also decides here — approve with the
+ * 6-digit code, or request changes — so the portal link is the only link they need. Same rules as
+ * the per-document link (both go through ProposalClientDecision on the backend).
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { getClientPortalProposal, clientPortalProposalPdfUrl } from "@/lib/api/resources/clientPortal";
+import {
+  approveClientPortalProposal,
+  clientPortalProposalPdfUrl,
+  getClientPortalProposal,
+  requestClientPortalProposalChanges,
+} from "@/lib/api/resources/clientPortal";
+import { DecisionBanner, DecisionPanel, type DecisionOutcome } from "@/components/client-decision/DecisionPanel";
 import { PublicApiError } from "@/lib/api/publicClient";
 import type { PublicProposalData } from "@/lib/api/publicTypes";
 import { directionFor } from "@/lib/i18n/textDirection";
@@ -32,6 +37,7 @@ export default function ClientPortalProposalDetailPage() {
   const [phase, setPhase] = useState<"loading" | "loaded" | "invalid-token" | "load-error">("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [data, setData] = useState<PublicProposalData | null>(null);
+  const [justDecided, setJustDecided] = useState(false);
 
   const load = useCallback(() => {
     setPhase("loading");
@@ -59,16 +65,42 @@ export default function ClientPortalProposalDetailPage() {
   if (phase === "load-error") return <PortalLoadError message={errorMessage} onRetry={load} />;
   if (!data) return null;
 
+  function handleDecided(outcome: DecisionOutcome) {
+    if (outcome === "alreadyDecided") {
+      load();
+      return;
+    }
+    setJustDecided(true);
+    setData((prev) =>
+      prev ? { ...prev, proposal: { ...prev.proposal, status: outcome === "approved" ? "approved" : "changes_requested" } } : prev,
+    );
+  }
+
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-4 py-6">
       <header>
         <h1 dir={directionFor(data.project.name)} className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           {t("clientPortal.proposalDetail.title")} v{data.proposal.version_no}
         </h1>
-        <p className="mt-0.5 text-xs capitalize text-zinc-500 dark:text-zinc-400">
-          {data.proposal.status.replace(/_/g, " ")}
+        <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+          {data.proposal.status === "approved"
+            ? t("clientPortal.proposals.status.approved")
+            : data.proposal.status === "changes_requested"
+              ? t("clientPortal.proposals.status.changesRequested")
+              : t("clientPortal.proposals.status.sent")}
         </p>
       </header>
+
+      {data.proposal.status === "sent" ? (
+        <DecisionPanel
+          kind="proposal"
+          approve={(input) => approveClientPortalProposal(token, id, input)}
+          decline={(input) => requestClientPortalProposalChanges(token, id, input)}
+          onDecided={handleDecided}
+        />
+      ) : (
+        <DecisionBanner kind="proposal" status={data.proposal.status} justNow={justDecided} />
+      )}
 
       <ProposalContentSections content={data.content} />
 

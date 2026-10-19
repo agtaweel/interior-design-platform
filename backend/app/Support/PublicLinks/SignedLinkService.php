@@ -28,6 +28,9 @@ use Illuminate\Support\Str;
  *
  * The raw token is a 64-char cryptographically random string. Only its SHA-256 hash is
  * persisted (see the signed_links migration) — a database dump does not yield usable links.
+ * Exception, by design: links issued with `retrievable: true` (the client portal link, which
+ * staff must be able to copy again — docs/SIMPLIFICATION_REVIEW.md P3.1) also keep the raw
+ * token encrypted with the app key, so even then a dump alone (without APP_KEY) yields nothing.
  * If the locked OTP-gating decision applies to a given link type, that's a second, independent
  * check the calling controller performs after verify() succeeds; this service only answers
  * "is this token currently valid, and what does it point to".
@@ -41,12 +44,14 @@ class SignedLinkService
         array $payload,
         CarbonInterface $expiresAt,
         ?int $createdBy = null,
+        bool $retrievable = false,
     ): string {
         $token = Str::random(self::TOKEN_LENGTH);
 
         SignedLink::create([
             'purpose' => $purpose,
             'token_hash' => $this->hash($token),
+            'token_encrypted' => $retrievable ? $token : null,
             'payload_json' => $payload,
             'expires_at' => $expiresAt,
             'created_by' => $createdBy,
@@ -91,6 +96,21 @@ class SignedLinkService
                 'last_used_at' => now(),
                 'use_count' => \Illuminate\Support\Facades\DB::raw('use_count + 1'),
             ]);
+    }
+
+    /** Same as markUsed(), for callers that resolved the link some other way than by its token. */
+    public function markLinkUsed(SignedLink $link): void
+    {
+        SignedLink::query()->whereKey($link->id)->update([
+            'last_used_at' => now(),
+            'use_count' => \Illuminate\Support\Facades\DB::raw('use_count + 1'),
+        ]);
+    }
+
+    /** The raw token of a link issued with `retrievable: true`; null for every other link. */
+    public function reveal(SignedLink $link): ?string
+    {
+        return $link->token_encrypted;
     }
 
     public function revoke(string $token): void

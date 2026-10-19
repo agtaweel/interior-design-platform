@@ -327,6 +327,7 @@ Route::prefix('v1')->group(function () {
 
             // BRD v3 §17 "Client Portal" — issuing/revoking the long-lived portal link. The
             // portal itself is served by the token-authenticated public routes below.
+            Route::get('/projects/{project}/client-portal-link', [ClientPortalLinkController::class, 'show']);
             Route::post('/projects/{project}/client-portal-link', [ClientPortalLinkController::class, 'store']);
             Route::post('/projects/{project}/client-portal-link/revoke', [ClientPortalLinkController::class, 'revoke']);
 
@@ -520,6 +521,11 @@ Route::prefix('v1')->group(function () {
         Route::get('/public/client-portal/{token}/contract', [PublicClientPortalController::class, 'contract']);
         Route::get('/public/client-portal/{token}/payments', [PublicClientPortalController::class, 'payments']);
         Route::get('/public/client-portal/{token}/change-orders', [PublicClientPortalController::class, 'changeOrders']);
+        // P3.1 — decide inside the portal (same rules as the per-document links above).
+        Route::post('/public/client-portal/{token}/proposals/{proposalVersion}/approve', [PublicClientPortalController::class, 'approveProposal']);
+        Route::post('/public/client-portal/{token}/proposals/{proposalVersion}/request-changes', [PublicClientPortalController::class, 'requestProposalChanges']);
+        Route::post('/public/client-portal/{token}/change-orders/{number}/approve', [PublicClientPortalController::class, 'approveChangeOrder']);
+        Route::post('/public/client-portal/{token}/change-orders/{number}/reject', [PublicClientPortalController::class, 'rejectChangeOrder']);
         Route::get('/public/client-portal/{token}/media', [PublicClientPortalController::class, 'media']);
         Route::get('/public/client-portal/{token}/media/{media}/file', [PublicClientPortalController::class, 'mediaFile']);
 

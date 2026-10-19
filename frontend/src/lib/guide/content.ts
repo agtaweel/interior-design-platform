@@ -294,20 +294,20 @@ export const APP_GUIDE = {
   clientTitle: { en: "What your client sees", ar: "ماذا يرى عميلك" },
   clientPoints: [
     {
-      en: "One portal link per project (Project → Overview → Generate Link). Send it once; it shows proposals, contract, payments, change orders and photos.",
-      ar: "رابط بوابة واحد لكل مشروع (المشروع ← نظرة عامة ← إنشاء رابط). أرسله مرة واحدة؛ يعرض العروض والعقد والمدفوعات وأوامر التغيير والصور.",
+      en: "One link per project — the client's project page. It's created the first time you send something, and you can copy it again any time from Project → Overview → Client Portal. It shows proposals, contract, payments, extras and photos.",
+      ar: "رابط واحد لكل مشروع — صفحة مشروع العميل. يُنشأ أول مرة ترسل فيها شيئًا، ويمكنك نسخه مرة أخرى في أي وقت من المشروع ← نظرة عامة ← بوابة العميل. يعرض العروض والعقد والمدفوعات والإضافات والصور.",
     },
     {
-      en: "To approve a proposal or a change order, the client uses the separate link and 6-digit code you get when you press \"Send to Client\".",
-      ar: "للموافقة على عرض أو أمر تغيير، يستخدم العميل الرابط المنفصل والرمز المكوّن من 6 أرقام الذي يظهر لك عند الضغط على \"إرسال إلى العميل\".",
+      en: "To approve a proposal or an extra, the client opens it on that page and types the 6-digit code you send with it — the WhatsApp message carries both. They can also ask for changes or reject, in Arabic or English.",
+      ar: "للموافقة على عرض أو إضافة، يفتحه العميل من تلك الصفحة ويكتب الرمز المكوّن من 6 أرقام الذي ترسله معه — رسالة واتساب تحتوي الاثنين. ويمكنه أيضًا طلب تعديل أو الرفض، بالعربية أو الإنجليزية.",
     },
     {
       en: "The client never sees your costs, suppliers or profit — only final prices.",
       ar: "العميل لا يرى أبدًا تكاليفك أو مورديك أو أرباحك — فقط الأسعار النهائية.",
     },
     {
-      en: "If a link leaks, cancel it (\"Revoke\") and generate a new one.",
-      ar: "إذا تسرّب رابط، ألغِه (\"إلغاء الرابط\") وأنشئ رابطًا جديدًا.",
+      en: "If the link leaks, revoke it from Project → Overview — a new one is made when you next send something (or press \"Generate Link\").",
+      ar: "إذا تسرّب الرابط، ألغِه من المشروع ← نظرة عامة — يُنشأ رابط جديد عند الإرسال القادم (أو اضغط \"إنشاء رابط\").",
     },
   ],
   stillStuckTitle: { en: "Still stuck?", ar: "لا تزال متوقفًا؟" },
@@ -402,13 +402,13 @@ export const APP_GUIDE = {
         {
           title: { en: "Write and send the proposal", ar: "اكتب العرض وأرسله" },
           body: {
-            en: "Press \"Create New Version\", fill the scope, timeline and payment plan, press \"Save Draft\", then \"Send to Client\". Copy the link and the 6-digit code and send both to the client on WhatsApp.",
-            ar: "اضغط \"إنشاء إصدار جديد\"، اكتب نطاق العمل والجدول الزمني وخطة الدفع، اضغط \"حفظ المسودة\" ثم \"إرسال إلى العميل\". انسخ الرابط والرمز المكوّن من 6 أرقام وأرسلهما للعميل على واتساب.",
+            en: "Press \"Create New Version\", fill the scope, timeline and payment plan, press \"Save Draft\", then \"Send to Client\". Then press the green WhatsApp button — one message with the client's project link and the 6-digit code.",
+            ar: "اضغط \"إنشاء إصدار جديد\"، اكتب نطاق العمل والجدول الزمني وخطة الدفع، اضغط \"حفظ المسودة\" ثم \"إرسال إلى العميل\". ثم اضغط زر واتساب الأخضر — رسالة واحدة فيها رابط مشروع العميل والرمز المكوّن من 6 أرقام.",
           },
           where: { en: "Project → Proposal", ar: "المشروع ← العرض" },
           tip: {
-            en: "The link and code are shown only once — copy them before closing the box.",
-            ar: "الرابط والرمز يظهران مرة واحدة فقط — انسخهما قبل إغلاق النافذة.",
+            en: "The code is shown only once — send it before closing the box. The project link you can copy again any time.",
+            ar: "الرمز يظهر مرة واحدة فقط — أرسله قبل إغلاق النافذة. أما رابط المشروع فيمكنك نسخه في أي وقت.",
           },
         },
       ],
@@ -454,10 +454,10 @@ export const APP_GUIDE = {
           where: { en: "Project → Payments", ar: "المشروع ← المدفوعات" },
         },
         {
-          title: { en: "Share the client portal", ar: "شارك بوابة العميل" },
+          title: { en: "Remind the client of their project page", ar: "ذكّر العميل بصفحة مشروعه" },
           body: {
-            en: "Press \"Generate Link\" and send it once. The client can follow everything from now on without asking you.",
-            ar: "اضغط \"إنشاء رابط\" وأرسله مرة واحدة. يستطيع العميل متابعة كل شيء من الآن دون أن يسألك.",
+            en: "They already have it from your first WhatsApp message. Need to send it again? Use the WhatsApp button in Client Portal — from now on they can follow everything without asking you.",
+            ar: "لديه الرابط بالفعل من أول رسالة واتساب. تحتاج إرساله مرة أخرى؟ استخدم زر واتساب في بوابة العميل — من الآن يستطيع متابعة كل شيء دون أن يسألك.",
           },
           where: { en: "Project → Overview", ar: "المشروع ← نظرة عامة" },
         },

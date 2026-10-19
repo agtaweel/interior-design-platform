@@ -926,3 +926,24 @@ last checkpoint to catch anything that slipped through an earlier sprint's revie
 
 This is the final sprint. After it, do a full-project summary rather than a "start Sprint 9"
 checkpoint — there is no Sprint 9 in the PRD's delivery order.
+
+## Post-MVP simplification changes (2026-10-19)
+
+From `docs/SIMPLIFICATION_REVIEW.md`, approved by the user. Two of them change behaviour this
+file describes above:
+
+- **Change-order auto-apply (P2.4)** — opt-in per organization
+  (`organizations.auto_apply_change_orders`, default **false**, Owner-only). When on, the client's
+  approval also applies the change order to the BOQ and contract in the same transaction
+  (`ChangeOrderAutoApplier`). Off = the original "approve != apply" two-step above.
+- **One client link (P3.1)** — the client portal link is the one link staff send. It is issued
+  *retrievable* (raw token kept encrypted with the app key in `signed_links.token_encrypted`,
+  portal links only; approval links stay hash-only), reused by every proposal/change-order send
+  (`ClientPortalLinks::ensure`), and readable again via `GET /projects/{id}/client-portal-link`.
+  Clients approve / request changes / reject **inside the portal** with the same per-document OTP
+  (`POST /public/client-portal/{token}/proposals/{id}/approve|request-changes`,
+  `.../change-orders/{number}/approve|reject`). Both the portal and the older per-document links
+  (`/public/proposals/{token}`, `/public/change-orders/{token}`) go through the same
+  `ProposalClientDecision` / `ChangeOrderClientDecision` services. Still within locked decisions
+  #3 and #5: secure link + OTP, no e-signature vendor, links shared manually by staff (WhatsApp
+  click-to-chat only) and revocable.

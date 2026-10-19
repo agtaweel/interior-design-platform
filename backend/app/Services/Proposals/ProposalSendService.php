@@ -6,6 +6,7 @@ use App\Mail\MarketplaceDealMail;
 use App\Mail\OtpCodeMail;
 use App\Models\ProposalVersion;
 use App\Models\SignedLink;
+use App\Services\ClientPortal\ClientPortalLinks;
 use App\Support\PublicLinks\SignedLinkService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -38,10 +39,15 @@ class ProposalSendService
         private readonly SignedLinkService $signedLinkService,
         private readonly OtpChallengeService $otpService,
         private readonly ProposalPresenter $presenter,
+        private readonly ClientPortalLinks $portalLinks,
     ) {}
 
     /**
-     * @return array{version: ProposalVersion, token: string, otp_code: string, public_url: string}
+     * `portal_url` (docs/SIMPLIFICATION_REVIEW.md P3.1) opens this proposal inside the project's
+     * client portal, where the client approves it with the same code — the one link staff send.
+     * The per-document `public_url` keeps working too.
+     *
+     * @return array{version: ProposalVersion, token: string, otp_code: string, public_url: string, portal_url: string}
      */
     public function send(ProposalVersion $version): array
     {
@@ -76,11 +82,14 @@ class ProposalSendService
 
             $publicUrl = sprintf('%s/p/proposals/%s', config('app.frontend_url'), $token);
 
+            $portalToken = $this->portalLinks->ensure($version->project, $version->created_by);
+
             return [
                 'version' => $version->fresh(['items']),
                 'token' => $token,
                 'otp_code' => $otp['code'],
                 'public_url' => $publicUrl,
+                'portal_url' => $this->portalLinks->url($portalToken, "/proposals/{$version->id}"),
             ];
         });
 
@@ -88,7 +97,7 @@ class ProposalSendService
         // itself a commercial mutation that needs to share the parent action's atomicity" reasoning
         // ContractController::fromProposal() already established for its own post-commit
         // notification call.
-        $this->deliverOtpByEmail($result['version'], $result['otp_code'], $result['public_url']);
+        $this->deliverOtpByEmail($result['version'], $result['otp_code'], $result['portal_url']);
 
         return $result;
     }

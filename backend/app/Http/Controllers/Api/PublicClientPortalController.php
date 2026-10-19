@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ApprovePublicChangeOrderRequest;
+use App\Http\Requests\ApprovePublicProposalRequest;
+use App\Http\Requests\RejectPublicChangeOrderRequest;
+use App\Http\Requests\RequestChangesPublicProposalRequest;
 use App\Http\Resources\ContractResource;
 use App\Http\Resources\PaymentResource;
 use App\Http\Resources\ProjectMediaResource;
@@ -13,7 +17,9 @@ use App\Models\Contract;
 use App\Models\Payment;
 use App\Models\Project;
 use App\Models\ProposalVersion;
+use App\Services\ChangeOrders\ChangeOrderClientDecision;
 use App\Services\Payments\ProjectFinancialsCalculator;
+use App\Services\Proposals\ProposalClientDecision;
 use App\Services\Proposals\ProposalPresenter;
 use App\Support\PublicLinks\SignedLinkException;
 use App\Support\PublicLinks\SignedLinkService;
@@ -55,6 +61,8 @@ class PublicClientPortalController extends Controller
         private readonly SignedLinkService $signedLinkService,
         private readonly ProjectFinancialsCalculator $financialsCalculator,
         private readonly ProposalPresenter $proposalPresenter,
+        private readonly ProposalClientDecision $proposalDecision,
+        private readonly ChangeOrderClientDecision $changeOrderDecision,
     ) {}
 
     public function overview(string $token): JsonResponse
@@ -327,6 +335,146 @@ class PublicClientPortalController extends Controller
         }
 
         return $version;
+    }
+
+    // --- Decisions inside the portal (docs/SIMPLIFICATION_REVIEW.md P3.1) ----------------------
+    //
+    // The client approves / requests changes / rejects right where they read the document, with
+    // the 6-digit code staff sent them — so the portal link is the only link they ever need.
+    // Exactly the same rules as the per-document links: both delegate to *ClientDecision, and the
+    // code checked is the one issued with that document's own send link. Every document is
+    // resolved inside the token's own project, so a portal token can't act on another project.
+
+    public function approveProposal(ApprovePublicProposalRequest $request, string $token, string $proposalVersion): JsonResponse
+    {
+        $version = $this->decidableProposal($token, $proposalVersion);
+
+        if ($version instanceof JsonResponse) {
+            return $version;
+        }
+
+        [$status, $body] = $this->proposalDecision->approve(
+            $version,
+            $this->proposalDecision->sendLinkFor($version),
+            $request->validated('otp'),
+            $request->validated('name'),
+            $request->validated('comment'),
+            $request->ip(),
+            $request->header('Idempotency-Key'),
+        );
+
+        return response()->json($body, $status);
+    }
+
+    public function requestProposalChanges(RequestChangesPublicProposalRequest $request, string $token, string $proposalVersion): JsonResponse
+    {
+        $version = $this->decidableProposal($token, $proposalVersion);
+
+        if ($version instanceof JsonResponse) {
+            return $version;
+        }
+
+        [$status, $body] = $this->proposalDecision->requestChanges(
+            $version,
+            $request->validated('name'),
+            $request->validated('comment'),
+            $request->ip(),
+        );
+
+        return response()->json($body, $status);
+    }
+
+    public function approveChangeOrder(ApprovePublicChangeOrderRequest $request, string $token, string $number): JsonResponse
+    {
+        $changeOrder = $this->decidableChangeOrder($token, $number);
+
+        if ($changeOrder instanceof JsonResponse) {
+            return $changeOrder;
+        }
+
+        [$status, $body] = $this->changeOrderDecision->approve(
+            $changeOrder,
+            $this->changeOrderDecision->sendLinkFor($changeOrder),
+            $request->validated('otp'),
+            $request->validated('name'),
+            $request->validated('comment'),
+            $request->ip(),
+            $request->header('Idempotency-Key'),
+        );
+
+        return response()->json($body, $status);
+    }
+
+    public function rejectChangeOrder(RejectPublicChangeOrderRequest $request, string $token, string $number): JsonResponse
+    {
+        $changeOrder = $this->decidableChangeOrder($token, $number);
+
+        if ($changeOrder instanceof JsonResponse) {
+            return $changeOrder;
+        }
+
+        [$status, $body] = $this->changeOrderDecision->reject(
+            $changeOrder,
+            $request->validated('name'),
+            $request->validated('comment'),
+            $request->ip(),
+        );
+
+        return response()->json($body, $status);
+    }
+
+    /**
+     * A proposal of the token's project that has been sent and not superseded by a decision the
+     * client can no longer change. 'approved' passes through on purpose: the decision service
+     * answers it with PROPOSAL_ALREADY_APPROVED *after* checking the code, the same ordering as
+     * the per-document link.
+     */
+    private function decidableProposal(string $token, string $proposalVersion): ProposalVersion|JsonResponse
+    {
+        $project = $this->resolveProjectFromToken($token);
+
+        if ($project instanceof JsonResponse) {
+            return $project;
+        }
+
+        $version = $this->resolveProposalVersion($project, $proposalVersion);
+
+        if (! $version) {
+            return $this->notFound();
+        }
+
+        if (! in_array($version->status, ['sent', 'approved'], true)) {
+            return $this->error(409, 'PROPOSAL_NOT_AWAITING_DECISION', 'This proposal is not waiting for your decision.');
+        }
+
+        return $version->load('project');
+    }
+
+    /** Change orders are addressed by their number, as the portal list already shows them. */
+    private function decidableChangeOrder(string $token, string $number): ChangeOrder|JsonResponse
+    {
+        $project = $this->resolveProjectFromToken($token);
+
+        if ($project instanceof JsonResponse) {
+            return $project;
+        }
+
+        $changeOrder = ChangeOrder::query()
+            ->where('project_id', $project->id)
+            ->where('number', $number)
+            ->where('status', '!=', 'draft')
+            ->with('project')
+            ->first();
+
+        if (! $changeOrder) {
+            return $this->notFound();
+        }
+
+        if (! in_array($changeOrder->status, ['sent', 'approved', 'applied'], true)) {
+            return $this->error(409, 'CHANGE_ORDER_NOT_AWAITING_DECISION', 'This change is not waiting for your decision.');
+        }
+
+        return $changeOrder;
     }
 
     private function linkError(): JsonResponse

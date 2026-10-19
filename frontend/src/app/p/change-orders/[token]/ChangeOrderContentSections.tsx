@@ -1,6 +1,8 @@
+"use client";
+
 /**
  * Renders the reason, timeline impact, price impact, and line-items table for the S14 public
- * Change Order approval page. Pure presentational — no fetching, no auth-adjacent imports.
+ * Change Order approval page — in Arabic or English (docs/SIMPLIFICATION_REVIEW.md P3.2). Pure presentational — no fetching, no auth-adjacent imports.
  * Sibling to `/p/proposals/[token]/ProposalContentSections.tsx`; follows the same mobile-first
  * "stacked row per item" pattern for the same reason (a 375px phone screen opening a
  * WhatsApp-shared link shouldn't need horizontal scrolling to read the number that matters).
@@ -8,6 +10,8 @@
 
 import type { PublicChangeOrderItem } from "@/lib/api/publicChangeOrderTypes";
 import { formatEGP } from "@/lib/format/currency";
+import { useLocale } from "@/lib/i18n/LocaleProvider";
+import type { Locale } from "@/lib/i18n/dictionaries";
 import { directionFor } from "@/lib/i18n/textDirection";
 
 function toNumber(value: number | string | null | undefined): number {
@@ -19,26 +23,32 @@ function toNumber(value: number | string | null | undefined): number {
 /** Prefixes an explicit "+"/"-" sign onto an amount so a price increase vs. decrease reads
  *  unambiguously at a glance — `formatEGP` alone renders a negative with a leading minus but a
  *  positive with none, which isn't distinct enough for a number this consequential. */
-function formatSignedEGP(amount: number | string, currency: string): string {
+function formatSignedEGP(amount: number | string, currency: string, locale: Locale): string {
   const n = toNumber(amount);
-  const magnitude = formatEGP(Math.abs(n), "en", currency);
+  const magnitude = formatEGP(Math.abs(n), locale, currency);
   if (n === 0) return magnitude;
   return n > 0 ? `+${magnitude}` : `-${magnitude}`;
 }
 
-/** "+5 days" / "-3 days" / "No timeline impact" — per the task spec's exact examples. */
-export function formatTimelineImpact(days: number | null): string {
-  if (days === null || days === undefined || days === 0) return "No timeline impact";
-  const unit = Math.abs(days) === 1 ? "day" : "days";
-  return days > 0 ? `+${days} ${unit}` : `${days} ${unit}`;
+/** "+5 days" / "-3 days" — Arabic uses its own number agreement (يوم واحد، يومان، أيام، يومًا). */
+function formatDays(days: number, locale: Locale): string {
+  const n = Math.abs(days);
+  const sign = days > 0 ? "+" : "-";
+  if (locale === "ar") {
+    const digits = new Intl.NumberFormat("ar-EG").format(n);
+    const words = n === 1 ? "يوم واحد" : n === 2 ? "يومان" : n <= 10 ? `${digits} أيام` : `${digits} يومًا`;
+    return `${sign}${words}`;
+  }
+  return `${sign}${n} ${n === 1 ? "day" : "days"}`;
 }
 
 export function ChangeOrderReason({ reason }: { reason: string }) {
+  const { t } = useLocale();
   if (!reason || !reason.trim()) return null;
   return (
     <section>
       <h2 className="mb-1.5 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-        Reason
+        {t("publicDoc.co.reason")}
       </h2>
       <p
         dir={directionFor(reason)}
@@ -62,6 +72,7 @@ export function ChangeOrderPriceImpact({
   priceDelta: number | string;
   currency?: string;
 }) {
+  const { t, locale } = useLocale();
   const n = toNumber(priceDelta);
   const tone =
     n > 0
@@ -72,20 +83,22 @@ export function ChangeOrderPriceImpact({
 
   return (
     <div className={`flex items-center justify-between rounded-lg px-4 py-4 ${tone}`}>
-      <span className="text-sm font-medium uppercase tracking-wide opacity-80">Price Impact</span>
-      <span className="text-xl font-semibold">{formatSignedEGP(priceDelta, currency)}</span>
+      <span className="text-sm font-medium uppercase tracking-wide opacity-80">{t("publicDoc.co.priceImpact")}</span>
+      <span className="text-xl font-semibold" dir="ltr">{formatSignedEGP(priceDelta, currency, locale)}</span>
     </div>
   );
 }
 
 export function ChangeOrderTimelineImpact({ timelineDeltaDays }: { timelineDeltaDays: number | null }) {
+  const { t, locale } = useLocale();
+  const days = timelineDeltaDays ? Number(timelineDeltaDays) : 0;
   return (
     <div className="flex items-center justify-between rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-800">
       <span className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-        Timeline Impact
+        {t("publicDoc.co.timelineImpact")}
       </span>
       <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-        {formatTimelineImpact(timelineDeltaDays)}
+        {days === 0 ? t("publicDoc.co.noTimelineImpact") : formatDays(days, locale)}
       </span>
     </div>
   );
@@ -96,28 +109,29 @@ export function ChangeOrderTimelineImpact({ timelineDeltaDays }: { timelineDelta
  *  `old_unit_price`/`new_unit_price` is present, since the public payload has no `action`
  *  field (see publicChangeOrderTypes.ts's docblock). */
 function ItemPriceChange({ item, currency }: { item: PublicChangeOrderItem; currency: string }) {
+  const { t, locale } = useLocale();
   const hasOld = item.old_unit_price !== null && item.old_unit_price !== undefined;
   const hasNew = item.new_unit_price !== null && item.new_unit_price !== undefined;
 
   if (hasOld && hasNew) {
     return (
       <span className="text-zinc-500 dark:text-zinc-400">
-        {formatEGP(item.old_unit_price, "en", currency)} <span aria-hidden="true">&rarr;</span>{" "}
-        {formatEGP(item.new_unit_price, "en", currency)}
+        {formatEGP(item.old_unit_price, locale, currency)} <span aria-hidden="true">{locale === "ar" ? "←" : "→"}</span>{" "}
+        {formatEGP(item.new_unit_price, locale, currency)}
       </span>
     );
   }
   if (hasNew) {
     return (
       <span className="text-zinc-500 dark:text-zinc-400">
-        New item &middot; {formatEGP(item.new_unit_price, "en", currency)}
+        {t("publicDoc.co.newItem")} &middot; {formatEGP(item.new_unit_price, locale, currency)}
       </span>
     );
   }
   if (hasOld) {
     return (
       <span className="text-zinc-500 dark:text-zinc-400">
-        Removed &middot; <span className="line-through">{formatEGP(item.old_unit_price, "en", currency)}</span>
+        {t("publicDoc.co.removed")} &middot; <span className="line-through">{formatEGP(item.old_unit_price, locale, currency)}</span>
       </span>
     );
   }
@@ -131,8 +145,9 @@ export function ChangeOrderItemsTable({
   items: PublicChangeOrderItem[];
   currency?: string;
 }) {
+  const { t, locale } = useLocale();
   if (items.length === 0) {
-    return <p className="text-sm text-zinc-500 dark:text-zinc-400">No line items on this change order.</p>;
+    return <p className="text-sm text-zinc-500 dark:text-zinc-400">{t("publicDoc.co.noItems")}</p>;
   }
 
   return (
@@ -160,7 +175,7 @@ export function ChangeOrderItemsTable({
                       : "text-zinc-900 dark:text-zinc-50"
                 }`}
               >
-                {formatSignedEGP(item.line_delta, currency)}
+                <span dir="ltr">{formatSignedEGP(item.line_delta, currency, locale)}</span>
               </span>
             </div>
             <div className="mt-0.5 text-sm">

@@ -16,7 +16,14 @@ import { NextStepCard } from "@/components/projects/NextStepCard";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { ApiError } from "@/lib/api/client";
-import { getProject, issueClientPortalLink, revokeClientPortalLink } from "@/lib/api/resources/projects";
+import {
+  getClientPortalLink,
+  getProject,
+  issueClientPortalLink,
+  revokeClientPortalLinks,
+  type ClientPortalLink,
+} from "@/lib/api/resources/projects";
+import { WhatsAppShare } from "@/components/share/WhatsAppShare";
 import type { Project } from "@/lib/api/types";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
@@ -149,38 +156,50 @@ export default function ProjectOverviewPage() {
 }
 
 /**
- * BRD v3 §17 "Client Portal" — generates/copies/revokes the long-lived signed link a client can
- * bookmark. The token itself is never persisted anywhere in this app after issuance (matches the
- * backend's own posture: only its sha256 hash is stored) — if staff navigate away without
- * copying it, generating again issues a brand-new token rather than exposing a "forgotten" one,
- * same one-time-visibility discipline as the proposal/change-order send flows' OTP codes.
+ * The client's one link (docs/SIMPLIFICATION_REVIEW.md P3.1): their project page, where they read
+ * every document and approve with the codes you send. The link can be copied again at any time;
+ * sending a proposal or change order creates it automatically if it doesn't exist yet. Revoking
+ * closes every portal link of the project (e.g. if one leaked); the next send or "Generate" makes
+ * a new one. Hidden for roles without manage_projects (the GET 403s).
  */
 function ClientPortalCard({ projectId, t }: { projectId: string; t: ReturnType<typeof useLocale>["t"] }) {
-  const [token, setToken] = useState<string | null>(null);
-  const [revoked, setRevoked] = useState(false);
+  // undefined = loading; null = no link yet.
+  const [link, setLink] = useState<ClientPortalLink | null | undefined>(undefined);
+  const [forbidden, setForbidden] = useState(false);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [revoked, setRevoked] = useState(false);
 
-  const portalUrl = token
-    ? `${typeof window !== "undefined" ? window.location.origin : ""}/p/client-portal/${token}`
-    : "";
+  useEffect(() => {
+    let cancelled = false;
+    getClientPortalLink(projectId)
+      .then((current) => !cancelled && setLink(current))
+      .catch((err) => {
+        if (cancelled) return;
+        if (err instanceof ApiError && err.status === 403) setForbidden(true);
+        setLink(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   async function handleGenerate() {
     setBusy(true);
     setRevoked(false);
     try {
-      const result = await issueClientPortalLink(projectId);
-      setToken(result.token);
+      setLink(await issueClientPortalLink(projectId));
     } finally {
       setBusy(false);
     }
   }
 
   async function handleRevoke() {
-    if (!token) return;
+    if (!window.confirm(t("project.clientPortal.revokeConfirm"))) return;
     setBusy(true);
     try {
-      await revokeClientPortalLink(projectId, token);
+      await revokeClientPortalLinks(projectId);
+      setLink(null);
       setRevoked(true);
     } finally {
       setBusy(false);
@@ -188,8 +207,9 @@ function ClientPortalCard({ projectId, t }: { projectId: string; t: ReturnType<t
   }
 
   async function handleCopy() {
+    if (!link) return;
     try {
-      await navigator.clipboard.writeText(portalUrl);
+      await navigator.clipboard.writeText(link.url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -197,9 +217,15 @@ function ClientPortalCard({ projectId, t }: { projectId: string; t: ReturnType<t
     }
   }
 
-  if (!token) {
+  if (forbidden) {
+    return <p className="text-sm text-zinc-500 dark:text-zinc-400">{t("project.clientPortal.noAccess")}</p>;
+  }
+  if (link === undefined) return <p className="text-sm text-zinc-400">{t("common.loading")}</p>;
+
+  if (!link) {
     return (
       <div className="flex flex-col gap-3 text-sm">
+        {revoked ? <p className="text-xs text-amber-600 dark:text-amber-400">{t("project.clientPortal.revokedNote")}</p> : null}
         <p className="text-zinc-500 dark:text-zinc-400">{t("project.clientPortal.description")}</p>
         <Button type="button" onClick={handleGenerate} disabled={busy}>
           {t("project.clientPortal.generate")}
@@ -210,13 +236,13 @@ function ClientPortalCard({ projectId, t }: { projectId: string; t: ReturnType<t
 
   return (
     <div className="flex flex-col gap-3 text-sm">
-      <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
-        {t("project.clientPortal.linkLabel")}
-      </p>
+      <p className="text-zinc-500 dark:text-zinc-400">{t("project.clientPortal.oneLink")}</p>
       <div className="flex items-center gap-2">
         <input
           readOnly
-          value={portalUrl}
+          dir="ltr"
+          aria-label={t("project.clientPortal.linkLabel")}
+          value={link.url}
           onFocus={(e) => e.currentTarget.select()}
           className="w-full min-w-0 rounded-md border border-zinc-300 bg-zinc-50 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-950"
         />
@@ -224,13 +250,15 @@ function ClientPortalCard({ projectId, t }: { projectId: string; t: ReturnType<t
           {copied ? t("changeOrders.send.copied") : t("changeOrders.send.copy")}
         </Button>
       </div>
-      {revoked ? (
-        <p className="text-xs text-amber-600 dark:text-amber-400">{t("project.clientPortal.revokedNote")}</p>
-      ) : (
-        <Button type="button" variant="secondary" onClick={handleRevoke} disabled={busy}>
-          {t("project.clientPortal.revoke")}
-        </Button>
-      )}
+      <WhatsAppShare kind="portal" projectId={projectId} url={link.url} />
+      <button
+        type="button"
+        onClick={handleRevoke}
+        disabled={busy}
+        className="self-start text-xs text-zinc-500 underline underline-offset-2 hover:text-red-700 dark:text-zinc-400"
+      >
+        {t("project.clientPortal.revoke")}
+      </button>
     </div>
   );
 }

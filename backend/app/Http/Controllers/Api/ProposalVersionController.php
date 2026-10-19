@@ -153,6 +153,7 @@ class ProposalVersionController extends Controller
                 // Internal-only response: staff copy these to relay via WhatsApp/email
                 // manually (locked product decision, no WhatsApp Business API integration).
                 'public_url' => $result['public_url'],
+                'portal_url' => $result['portal_url'],
                 'otp_code' => $result['otp_code'],
             ],
         ]);

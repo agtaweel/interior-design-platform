@@ -141,6 +141,7 @@ class ChangeOrderController extends Controller
                 // manually (locked product decision, no WhatsApp Business API integration) —
                 // same shape as ProposalVersionController::send()'s response.
                 'public_url' => $result['public_url'],
+                'portal_url' => $result['portal_url'],
                 'otp_code' => $result['otp_code'],
             ],
         ]);

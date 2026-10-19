@@ -108,10 +108,14 @@ class ProposalSendTest extends TestCase
 
         $this->withHeaders($headers)->postJson("/api/v1/proposals/{$id}/send")->assertStatus(200);
 
-        $this->assertDatabaseCount('signed_links', 1);
+        // One approval link for this proposal (plus the project's reusable client-portal link,
+        // created on first send since P3.1 — see ClientPortalLinks).
+        $this->assertDatabaseCount('signed_links', 2);
+        $this->assertSame(1, SignedLink::where('purpose', 'proposal_approval')->count());
+        $this->assertSame(1, SignedLink::where('purpose', 'client_portal')->count());
         $this->assertDatabaseCount('otp_challenges', 1);
 
-        $link = SignedLink::first();
+        $link = SignedLink::where('purpose', 'proposal_approval')->first();
         $this->assertSame('proposal_approval', $link->purpose);
         $this->assertSame($id, $link->payload_json['proposal_version_id']);
 

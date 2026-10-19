@@ -495,8 +495,8 @@ function SentShareCard({ result, projectId, t }: { result: ProposalSendResult | 
         {result ? (
           <>
             <p className="text-sm text-zinc-600 dark:text-zinc-300">{t("proposal.send.resultNote")}</p>
-            <WhatsAppShare kind="proposal" projectId={projectId} url={result.public_url} otp={result.otp_code} />
-            <CopyField label={t("proposal.send.linkLabel")} value={result.public_url} t={t} />
+            <WhatsAppShare kind="proposal" projectId={projectId} url={result.portal_url} otp={result.otp_code} />
+            <CopyField label={t("proposal.send.linkLabel")} value={result.portal_url} t={t} />
             <CopyField label={t("proposal.send.otpLabel")} value={result.otp_code} t={t} />
             <p className="text-xs text-zinc-400">{t("proposal.send.otpOnceNote")}</p>
           </>

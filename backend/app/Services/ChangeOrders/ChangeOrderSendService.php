@@ -5,6 +5,7 @@ namespace App\Services\ChangeOrders;
 use App\Mail\OtpCodeMail;
 use App\Models\ChangeOrder;
 use App\Models\SignedLink;
+use App\Services\ClientPortal\ClientPortalLinks;
 use App\Services\Proposals\OtpChallengeService;
 use App\Support\PublicLinks\SignedLinkService;
 use Illuminate\Support\Facades\DB;
@@ -36,10 +37,14 @@ class ChangeOrderSendService
     public function __construct(
         private readonly SignedLinkService $signedLinkService,
         private readonly OtpChallengeService $otpService,
+        private readonly ClientPortalLinks $portalLinks,
     ) {}
 
     /**
-     * @return array{change_order: ChangeOrder, token: string, otp_code: string, public_url: string}
+     * `portal_url` (P3.1) opens the project's client portal on its Extras & Changes page, where
+     * the client approves with the same code — the one link staff send.
+     *
+     * @return array{change_order: ChangeOrder, token: string, otp_code: string, public_url: string, portal_url: string}
      */
     public function send(ChangeOrder $changeOrder): array
     {
@@ -59,16 +64,19 @@ class ChangeOrderSendService
 
             $otp = $this->otpService->issue($link);
 
+            $portalToken = $this->portalLinks->ensure($changeOrder->project, $changeOrder->requested_by);
+
             return [
                 'change_order' => $changeOrder->fresh(['items']),
                 'token' => $token,
                 'otp_code' => $otp['code'],
                 'public_url' => sprintf('%s/p/change-orders/%s', config('app.frontend_url'), $token),
+                'portal_url' => $this->portalLinks->url($portalToken, '/change-orders'),
             ];
         });
 
         // Post-commit, same reasoning as ProposalSendService::deliverOtpByEmail()'s docblock.
-        $this->deliverOtpByEmail($result['change_order'], $result['otp_code'], $result['public_url']);
+        $this->deliverOtpByEmail($result['change_order'], $result['otp_code'], $result['portal_url']);
 
         return $result;
     }

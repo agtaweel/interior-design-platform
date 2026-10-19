@@ -852,7 +852,10 @@ export interface ProposalSendResult {
   version_no: number;
   status: ProposalStatus;
   sent_at: ISODateString;
+  /** Per-document approval page — still valid, but no longer what staff send (P3.1). */
   public_url: string;
+  /** This proposal inside the client's project page — the one link staff send. */
+  portal_url: string;
   otp_code: string;
 }
 
@@ -1097,7 +1100,10 @@ export interface ChangeOrderSendResult {
   number: string;
   status: ChangeOrderStatus;
   sent_at: ISODateString;
+  /** Per-document approval page — still valid, but no longer what staff send (P3.1). */
   public_url: string;
+  /** The client's project page, on Extras & Changes — the one link staff send. */
+  portal_url: string;
   otp_code: string;
 }
 
