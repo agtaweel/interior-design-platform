@@ -56,7 +56,7 @@ export default function ClientPortalProposalsPage() {
   if (proposals.length === 0) return <PortalEmpty message={t("clientPortal.proposals.empty")} />;
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 space-y-3 px-4 py-6">
+    <main className="w-full flex-1 space-y-3 px-4 py-6 sm:px-6 lg:px-8">
       <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">{t("clientPortal.tabs.proposals")}</h1>
       {proposals.map((proposal) => (
         <Link

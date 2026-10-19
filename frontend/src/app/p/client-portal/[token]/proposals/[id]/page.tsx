@@ -77,7 +77,7 @@ export default function ClientPortalProposalDetailPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-4 py-6">
+    <main className="w-full flex-1 space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <header>
         <h1 dir={directionFor(data.project.name)} className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           {t("clientPortal.proposalDetail.title")} v{data.proposal.version_no}

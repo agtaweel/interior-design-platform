@@ -52,7 +52,7 @@ export default function ClientPortalContractPage() {
   if (phase === "none" || !contract) return <PortalEmpty message={t("clientPortal.contract.empty")} />;
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 space-y-4 px-4 py-6">
+    <main className="w-full flex-1 space-y-4 px-4 py-6 sm:px-6 lg:px-8">
       <header>
         <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
           {t("clientPortal.contract.title")} {contract.contract_no}

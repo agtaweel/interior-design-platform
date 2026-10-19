@@ -60,7 +60,7 @@ export default function ClientPortalOverviewPage() {
   const currency = data.organization?.currency ?? "EGP";
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 space-y-6 px-4 py-6">
+    <main className="w-full flex-1 space-y-6 px-4 py-6 sm:px-6 lg:px-8">
       <header>
         <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           {data.project.code}

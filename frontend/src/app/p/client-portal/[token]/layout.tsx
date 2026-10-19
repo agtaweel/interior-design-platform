@@ -49,11 +49,11 @@ export default function ClientPortalLayout({ children }: { children: React.React
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-zinc-950">
-      {/* Two rows on the pages' own 672px column (px-4, same as every portal <main>): the brand
+      {/* Two rows spanning the full width (same padding as every portal <main>): the brand
           and controls, then the tabs on a row of their own. All six tabs fit that row on
           desktop; on a phone it scrolls sideways and the current tab is kept in view. */}
       <header className="ledger sticky top-0 z-10 border-b border-[var(--l-border)] bg-[var(--l-surface)]">
-        <div className="mx-auto max-w-2xl px-4">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex h-14 items-center justify-between gap-3">
             <FitoutLogo className="shrink-0" />
             <div className="flex items-center gap-2">

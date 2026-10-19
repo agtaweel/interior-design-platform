@@ -58,7 +58,7 @@ export default function ClientPortalGalleryPage() {
   const activeItem = activeIndex !== null ? media[activeIndex] : null;
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 space-y-3 px-4 py-6">
+    <main className="w-full flex-1 space-y-3 px-4 py-6 sm:px-6 lg:px-8">
       <h1 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">{t("clientPortal.tabs.gallery")}</h1>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {media.map((item, index) => {
