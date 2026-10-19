@@ -24,6 +24,47 @@
   --foreground: #ededed;
 }
 
+/* "Ledger" tokens for the dashboard (S02). Chrome stays ink; the brand amber is the one data hue
+ * and only marks what has been collected. Scoped to `.ledger` so the rest of the app keeps its
+ * current look until it is moved over screen by screen. */
+.ledger {
+  --l-surface: #ffffff;
+  --l-raised: #f4f4f5;
+  --l-border: #e6e6e6;
+  --l-rule: #f0f0f0;
+  --l-text: #0a0a0a;
+  --l-muted: #616161;
+  --l-primary: #141414;
+  --l-primary-ink: #ffffff;
+  --l-data: #d97706;
+  --l-track: #ececec;
+  --l-negative: #c4242a;
+  --l-pos-bg: #dcfae5;  --l-pos-ink: #04250e;
+  --l-neg-bg: #ffedea;  --l-neg-ink: #831c1e;
+  --l-warn-bg: #fffbeb; --l-warn-ink: #92400e;
+  --l-neutral-bg: #eeeeee; --l-neutral-ink: #3d3d3d;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  color: var(--l-text);
+}
+
+:root.dark .ledger {
+  --l-surface: #111111;
+  --l-raised: #1c1c1c;
+  --l-border: #262626;
+  --l-rule: #1c1c1c;
+  --l-text: #ffffff;
+  --l-muted: #b4b4b4;
+  --l-primary: #ffffff;
+  --l-primary-ink: #000000;
+  --l-data: #f59e0b;
+  --l-track: #2a2a2a;
+  --l-negative: #f0707f;
+  --l-pos-bg: #172a1d;  --l-pos-ink: #3fc07a;
+  --l-neg-bg: #2c1a20;  --l-neg-ink: #f0707f;
+  --l-warn-bg: #2a2110; --l-warn-ink: #f4b84a;
+  --l-neutral-bg: #222222; --l-neutral-ink: #c8c8c8;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

@@ -49,9 +49,13 @@ function ProjectsPageContent() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<ProjectStatus | "all">("all");
+  // ?status= pre-filters the list and ?new=1 pre-opens the create form — both are the
+  // dashboard's links into this screen ("View all" on active projects, "New Project").
+  const [statusFilter, setStatusFilter] = useState<ProjectStatus | "all">(
+    () => (searchParams.get("status") as ProjectStatus | null) ?? "all",
+  );
 
-  const [showNewForm, setShowNewForm] = useState(false);
+  const [showNewForm, setShowNewForm] = useState(() => searchParams.get("new") === "1");
   const [clients, setClients] = useState<Client[]>([]);
   const [clientsLoading, setClientsLoading] = useState(false);
   const [clientId, setClientId] = useState("");
