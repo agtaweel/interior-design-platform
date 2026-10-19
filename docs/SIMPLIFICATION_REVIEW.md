@@ -176,7 +176,10 @@ What was built, and where it differs from the original proposal:
 - **P4.2 — Walkthrough videos.** One short recording per stage (Quote, Sign, Build, Finish),
   recorded from the real app by `demo/scripts/record_help_videos.mjs`, **in both UI languages**
   (the player picks the one matching the interface), each with Arabic and English subtitles timed
-  to the actions, plus a poster frame. ~2.8 MB in `frontend/public/help/videos`.
+  to the actions, plus a poster frame. Paced for first-time users: every button pressed and field
+  typed into is spotlighted first (screen dims, amber frame, visible cursor, click ripple), pauses
+  are long, and the UI is recorded at 1100px and scaled up so text reads larger. ~11 MB in
+  `frontend/public/help/videos` (~40–100s per clip).
   *Difference:* **no voice-over** — a human Arabic narration can't be produced here; the
   subtitles carry the narration, and a narrated MP4 can replace any clip later under the same
   file name. Re-run the script after UI changes.
