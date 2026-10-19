@@ -63,20 +63,23 @@ function NavLink({
     return (
       <span
         title={comingSoon}
-        className="cursor-not-allowed rounded-md px-3 py-2 text-sm font-medium text-zinc-400 dark:text-zinc-600"
+        className="cursor-not-allowed rounded-md px-3 py-2 text-sm text-[var(--l-muted)] opacity-60"
       >
         {label}
       </span>
     );
   }
+  // Ledger nav: the active item is a neutral grey pill with the label in ink — no brand colour
+  // in the chrome (the amber is kept for the logo and for collected money on the dashboard).
   return (
     <Link
       href={href}
       onClick={onClick}
-      className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+      aria-current={isActive ? "page" : undefined}
+      className={`rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--l-text)] ${
         isActive
-          ? "bg-amber-600 text-white dark:bg-amber-500 dark:text-zinc-950"
-          : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          ? "bg-[var(--l-active)] font-medium text-[var(--l-text)]"
+          : "text-[var(--l-muted)] hover:bg-[var(--l-raised)] hover:text-[var(--l-text)]"
       }`}
     >
       {label}
@@ -103,7 +106,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         id="locale-switcher"
         value={locale}
         onChange={(e) => setLocale(e.target.value as Locale)}
-        className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+        className="h-9 rounded-md border border-[var(--l-border)] bg-[var(--l-surface)] px-2 text-sm text-[var(--l-text)] hover:border-[var(--l-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--l-text)]"
       >
         <option value="en">English</option>
         <option value="ar">العربية</option>
@@ -113,7 +116,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+      <header className="ledger border-b border-[var(--l-border)] bg-[var(--l-surface)]">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex min-w-0 items-center gap-6">
             <FitoutLogo className="shrink-0" />
@@ -135,13 +138,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             <NotificationBell />
             {localeSwitcher}
             {user ? (
-              <span className="max-w-[10rem] truncate text-sm text-zinc-600 dark:text-zinc-300">
+              <span className="max-w-[10rem] truncate text-sm text-[var(--l-muted)]">
                 {user.name}
               </span>
             ) : null}
             <button
               onClick={() => logout()}
-              className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
+              className="rounded text-sm font-medium text-[var(--l-text)] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--l-text)]"
             >
               {t("nav.logout")}
             </button>
@@ -155,7 +158,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               aria-label={t("nav.menu")}
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((open) => !open)}
-              className="flex h-9 w-9 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="flex h-9 w-9 items-center justify-center rounded-md text-[var(--l-muted)] hover:bg-[var(--l-raised)] hover:text-[var(--l-text)]"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
                 {menuOpen ? (
@@ -169,7 +172,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         {menuOpen ? (
-          <div className="border-t border-zinc-200 px-4 pb-4 pt-2 dark:border-zinc-800 lg:hidden">
+          <div className="border-t border-[var(--l-border)] px-4 pb-4 pt-2 lg:hidden">
             <nav className="flex flex-col gap-1">
               {allNavItems.map((item) => (
                 <NavLink
@@ -182,10 +185,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 />
               ))}
             </nav>
-            <div className="mt-3 flex items-center justify-between gap-3 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+            <div className="mt-3 flex items-center justify-between gap-3 border-t border-[var(--l-border)] pt-3">
               {localeSwitcher}
               {user ? (
-                <span className="truncate text-sm text-zinc-600 dark:text-zinc-300">{user.name}</span>
+                <span className="truncate text-sm text-[var(--l-muted)]">{user.name}</span>
               ) : null}
             </div>
             <button
@@ -193,7 +196,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 setMenuOpen(false);
                 logout();
               }}
-              className="mt-3 w-full rounded-md border border-zinc-300 px-3 py-2 text-left text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="mt-3 h-11 w-full rounded-md border border-[var(--l-border)] px-3 text-start text-sm font-medium text-[var(--l-text)] hover:bg-[var(--l-raised)]"
             >
               {t("nav.logout")}
             </button>

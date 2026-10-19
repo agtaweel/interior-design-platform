@@ -24,12 +24,14 @@
   --foreground: #ededed;
 }
 
-/* "Ledger" tokens for the dashboard (S02). Chrome stays ink; the brand amber is the one data hue
- * and only marks what has been collected. Scoped to `.ledger` so the rest of the app keeps its
- * current look until it is moved over screen by screen. */
+/* "Ledger" tokens for the dashboard (S02) and the app shell's top bar. Chrome stays ink; the
+ * brand amber is the one data hue and only marks what has been collected (plus the logo).
+ * Scoped to `.ledger` so the other screens keep their current look until they are moved over
+ * screen by screen. */
 .ledger {
   --l-surface: #ffffff;
   --l-raised: #f4f4f5;
+  --l-active: #ececec;
   --l-border: #e6e6e6;
   --l-rule: #f0f0f0;
   --l-text: #0a0a0a;
@@ -50,6 +52,7 @@
 :root.dark .ledger {
   --l-surface: #111111;
   --l-raised: #1c1c1c;
+  --l-active: #262626;
   --l-border: #262626;
   --l-rule: #1c1c1c;
   --l-text: #ffffff;
