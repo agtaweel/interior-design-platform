@@ -76,7 +76,7 @@ function NavLink({
       href={href}
       onClick={onClick}
       aria-current={isActive ? "page" : undefined}
-      className={`rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--l-text)] ${
+      className={`whitespace-nowrap rounded-md px-2.5 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--l-text)] ${
         isActive
           ? "bg-[var(--l-active)] font-medium text-[var(--l-text)]"
           : "text-[var(--l-muted)] hover:bg-[var(--l-raised)] hover:text-[var(--l-text)]"
@@ -118,9 +118,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
       <header className="ledger border-b border-[var(--l-border)] bg-[var(--l-surface)]">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
-          <div className="flex min-w-0 items-center gap-6">
+          {/* The full bar shows from xl (1280px) up: ten links (with Platform) plus the controls
+              do not fit at lg, where they ran under the icons. Below xl the menu button is used. */}
+          <div className="flex min-w-0 items-center gap-5">
             <FitoutLogo className="shrink-0" />
-            <nav className="hidden items-center gap-1 lg:flex">
+            <nav className="hidden items-center gap-0.5 xl:flex">
               {allNavItems.map((item) => (
                 <NavLink
                   key={item.key}
@@ -133,24 +135,24 @@ export function AppShell({ children }: { children: ReactNode }) {
             </nav>
           </div>
 
-          <div className="hidden items-center gap-3 lg:flex">
+          <div className="hidden shrink-0 items-center gap-2 xl:flex">
             <ThemeToggle />
             <NotificationBell />
             {localeSwitcher}
             {user ? (
-              <span className="max-w-[10rem] truncate text-sm text-[var(--l-muted)]">
+              <span title={user.name} className="max-w-[6rem] truncate text-sm text-[var(--l-muted)]">
                 {user.name}
               </span>
             ) : null}
             <button
               onClick={() => logout()}
-              className="rounded text-sm font-medium text-[var(--l-text)] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--l-text)]"
+              className="whitespace-nowrap rounded text-sm font-medium text-[var(--l-text)] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--l-text)]"
             >
               {t("nav.logout")}
             </button>
           </div>
 
-          <div className="flex items-center gap-2 lg:hidden">
+          <div className="flex items-center gap-2 xl:hidden">
             <ThemeToggle />
             <NotificationBell />
             <button
@@ -172,7 +174,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
 
         {menuOpen ? (
-          <div className="border-t border-[var(--l-border)] px-4 pb-4 pt-2 lg:hidden">
+          <div className="border-t border-[var(--l-border)] px-4 pb-4 pt-2 xl:hidden">
             <nav className="flex flex-col gap-1">
               {allNavItems.map((item) => (
                 <NavLink
