@@ -410,6 +410,7 @@ const en = {
   "boq.title": "BOQ & Pricing",
   "boq.subtitle": "Bill of quantities — costs and client pricing for this project.",
   "boq.grandTotal": "Grand Total",
+  "boq.totals.title": "Totals",
   "boq.directCost": "Direct Cost",
   "boq.clientTotal": "Client Total",
 
@@ -1516,6 +1517,7 @@ const ar: Dictionary = {
   "boq.title": "الكميات والتسعير",
   "boq.subtitle": "جدول الكميات — التكاليف وأسعار العميل لهذا المشروع.",
   "boq.grandTotal": "الإجمالي الكلي",
+  "boq.totals.title": "الإجماليات",
   "boq.directCost": "التكلفة المباشرة",
   "boq.clientTotal": "إجمالي العميل",
 

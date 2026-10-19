@@ -796,7 +796,13 @@ export default function BoqBuilderPage() {
         </Card>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_1fr_260px]">
+      {/* Two columns on desktop: filters + totals stacked on the left (240px), line items on the
+          right. A third 260px totals column used to squeeze the items to ~700px, below the
+          table's 900px minimum — and with a plain `1fr` the table then forced its column wider
+          and pushed the totals off the page. `minmax(0,1fr)` keeps any overflow inside the
+          table's own scroller. The items card spans both rows; the totals card fills row 2 of
+          the left column (source order unchanged, so on a phone totals still follow the items). */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:grid-rows-[auto_1fr]">
         {/* Left panel: categories + rooms */}
         <div className="flex flex-col gap-4">
           <Card>
@@ -937,7 +943,7 @@ export default function BoqBuilderPage() {
         </div>
 
         {/* Center: line item grid */}
-        <Card>
+        <Card className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <CardHeader className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{t("boq.items.title")}</h2>
             <Button variant="secondary" className="py-1" onClick={() => setShowAddItem((v) => !v)}>
@@ -1214,10 +1220,10 @@ export default function BoqBuilderPage() {
           </CardBody>
         </Card>
 
-        {/* Right panel: totals */}
-        <Card className="h-fit">
+        {/* Totals: under the filters in the left column on desktop */}
+        <Card className="h-fit lg:col-start-1 lg:row-start-2">
           <CardHeader>
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{t("boq.categories.title")}</h2>
+            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">{t("boq.totals.title")}</h2>
           </CardHeader>
           <CardBody className="flex flex-col gap-2 text-sm">
             {categories.map((c) => {
