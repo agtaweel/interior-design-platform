@@ -40,7 +40,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
-import { finishingLevelLabel, localizedName, templateTypeLabel } from "@/lib/i18n/localizedContent";
+import { finishingLevelLabel, localizedDescription, localizedName, templateTypeLabel } from "@/lib/i18n/localizedContent";
 
 const INPUT_CLASSES =
   "w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-950";
@@ -454,6 +454,9 @@ export function BoqTemplateDetailScreen({
                                     {item.default_quantity ?? "—"} {localizedName(item.default_unit, locale)} ·{" "}
                                     {item.is_required ? t("boqAdmin.items.required") : t("boqAdmin.items.optional")}
                                   </span>
+                                  {localizedDescription(item.catalog_item, locale) ? (
+                                    <p className="text-xs text-zinc-400">{localizedDescription(item.catalog_item, locale)}</p>
+                                  ) : null}
                                 </div>
                                 {version.status === "draft" && !readOnly ? (
                                   <Button
@@ -495,6 +498,7 @@ export function BoqTemplateDetailScreen({
                                       key={item.id}
                                       type="button"
                                       onClick={() => setSelectedCatalogItem(item)}
+                                      title={localizedDescription(item, locale) || undefined}
                                       className={`rounded-md border px-2 py-1 text-xs ${
                                         selectedCatalogItem?.id === item.id
                                           ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30"

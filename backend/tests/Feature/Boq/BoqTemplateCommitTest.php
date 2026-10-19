@@ -74,7 +74,7 @@ class BoqTemplateCommitTest extends TestCase
         $this->assertSame($projectParent->id, $projectChild->parent_id);
     }
 
-    public function test_commit_with_arabic_locale_names_project_categories_and_items_in_arabic(): void
+    public function test_commit_with_arabic_locale_names_and_describes_project_categories_and_items_in_arabic(): void
     {
         $organization = Organization::factory()->create();
         $user = $this->manageBoqUser($organization);
@@ -90,6 +90,7 @@ class BoqTemplateCommitTest extends TestCase
         $catalogItem = BoqCatalogItem::factory()->create([
             'organization_id' => $organization->id, 'category_id' => $childCategory->id,
             'name' => 'Base Cabinet', 'name_en' => 'Base Cabinet', 'name_ar' => 'وحدة سفلية',
+            'description' => 'Base cabinet run', 'description_en' => 'Base cabinet run', 'description_ar' => 'وحدات مطبخ سفلية',
         ]);
 
         $this->withHeaders($this->authHeader($user))->postJson("/api/v1/projects/{$project->id}/boq/template-commit", [
@@ -102,7 +103,9 @@ class BoqTemplateCommitTest extends TestCase
 
         $this->assertSame('المطبخ', $projectParent->name);
         $this->assertSame('وحدات المطبخ', $projectChild->name);
-        $this->assertSame('وحدة سفلية', BoqItem::where('project_id', $project->id)->value('name'));
+        $projectItem = BoqItem::where('project_id', $project->id)->first();
+        $this->assertSame('وحدة سفلية', $projectItem->name);
+        $this->assertSame('وحدات مطبخ سفلية', $projectItem->description);
     }
 
     public function test_applying_a_second_template_that_shares_a_category_reuses_the_existing_project_category(): void

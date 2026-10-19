@@ -52,7 +52,7 @@ class BoqTemplateCommitService
                     'category_id' => $boqCategoryId,
                     'room_id' => null,
                     'name' => $row['name'] ?? $catalogItem?->localizedName($locale) ?? 'Untitled item',
-                    'description' => $catalogItem?->description,
+                    'description' => $catalogItem?->localizedDescription($locale),
                     'quantity' => $row['quantity'],
                     'unit' => $row['unit'] ?? $catalogItem?->defaultUnit?->code,
                     'material_unit_cost' => $row['material_unit_cost'] ?? $catalogItem?->default_material_unit_cost ?? 0,

@@ -27,6 +27,7 @@ class BoqMasterCatalogSeeder extends Seeder
     {
         $unitIdsByCode = BoqUnit::pluck('id', 'code');
         $data = require database_path('seeders/data/boq/catalog.php');
+        $descriptions = require database_path('seeders/data/boq/catalog_descriptions.php');
         $sortOrder = 0;
 
         foreach ($data as $topLevel) {
@@ -46,11 +47,16 @@ class BoqMasterCatalogSeeder extends Seeder
                 $itemSortOrder = 0;
 
                 foreach ($subcategory['items'] as $key => $item) {
+                    [$descriptionEn, $descriptionAr] = $descriptions[$key] ?? [null, null];
+
                     $catalogItem = BoqCatalogItem::withoutGlobalScopes()->updateOrCreate(
                         ['organization_id' => null, 'category_id' => $subCategory->id, 'name' => $item['name_en']],
                         [
                             'name_en' => $item['name_en'],
                             'name_ar' => $item['name_ar'],
+                            'description' => $descriptionEn,
+                            'description_en' => $descriptionEn,
+                            'description_ar' => $descriptionAr,
                             'default_unit_id' => $unitIdsByCode[$item['unit']] ?? null,
                             'default_material_unit_cost' => $item['material'],
                             'default_labor_unit_cost' => $item['labor'],

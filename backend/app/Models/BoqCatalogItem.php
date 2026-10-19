@@ -65,4 +65,9 @@ class BoqCatalogItem extends Model
     {
         return ($locale === 'ar' ? $this->name_ar : $this->name_en) ?: $this->name;
     }
+
+    public function localizedDescription(?string $locale): ?string
+    {
+        return ($locale === 'ar' ? $this->description_ar : $this->description_en) ?: $this->description;
+    }
 }
