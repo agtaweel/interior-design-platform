@@ -58,7 +58,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
-import { finishingLevelLabel, localizedName, templateTypeLabel } from "@/lib/i18n/localizedContent";
+import { finishingLevelLabel, localizedDescription, localizedName, templateTypeLabel } from "@/lib/i18n/localizedContent";
 import { useMoneyFormatter } from "@/lib/format/useMoneyFormatter";
 
 const INPUT_CLASSES =
@@ -707,6 +707,9 @@ export default function BoqBuilderPage() {
                         <div key={key} className="flex flex-wrap items-center gap-3 py-2">
                           <div className="min-w-[200px] flex-1">
                             <p className="text-sm text-zinc-900 dark:text-zinc-50">{localizedName(row.item, locale)}</p>
+                            {localizedDescription(row.item, locale) ? (
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400">{localizedDescription(row.item, locale)}</p>
+                            ) : null}
                             <p className="text-xs text-zinc-500 dark:text-zinc-400">
                               {row.item.is_required ? t("boq.template.preview.required") : null}
                               {row.item.needs_review ? (

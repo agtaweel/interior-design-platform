@@ -104,6 +104,29 @@ class BoqTemplatePreviewMergeTest extends TestCase
         $this->assertCount(2, $items[0]['contributed_by']);
     }
 
+    public function test_preview_items_carry_english_and_arabic_descriptions(): void
+    {
+        $organization = Organization::factory()->create();
+        $user = $this->manageBoqUser($organization);
+        $project = $this->projectIn($organization);
+        $category = \App\Models\BoqCatalogCategory::factory()->create(['organization_id' => $organization->id]);
+        $catalogItem = BoqCatalogItem::factory()->create([
+            'organization_id' => $organization->id, 'category_id' => $category->id,
+            'description' => 'Concealed wiring', 'description_en' => 'Concealed wiring', 'description_ar' => 'أسلاك مدفونة',
+        ]);
+
+        $version = $this->publishedVersion($organization);
+        BoqTemplateItem::factory()->create(['template_version_id' => $version->id, 'catalog_item_id' => $catalogItem->id, 'category_id' => $category->id, 'default_quantity' => 1, 'is_required' => true]);
+
+        $response = $this->withHeaders($this->authHeader($user))->postJson("/api/v1/projects/{$project->id}/boq/template-preview", [
+            'selections' => [['template_version_id' => $version->id]],
+        ])->assertStatus(200);
+
+        $item = $this->flatItems($response->json('data.categories'))[0];
+        $this->assertSame('Concealed wiring', $item['description_en']);
+        $this->assertSame('أسلاك مدفونة', $item['description_ar']);
+    }
+
     public function test_a_genuine_quantity_conflict_is_flagged_needs_review_not_silently_resolved(): void
     {
         $organization = Organization::factory()->create();

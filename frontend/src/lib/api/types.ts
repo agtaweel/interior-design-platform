@@ -630,6 +630,9 @@ export interface BoqTemplatePreviewItem {
   name: string;
   name_en: string | null;
   name_ar: string | null;
+  description: string | null;
+  description_en: string | null;
+  description_ar: string | null;
   default_unit: BoqUnit | null;
   quantity: number | string | null;
   quantity_source: string;
