@@ -35,7 +35,7 @@ export default function ClientPortalLayout({ children }: { children: React.React
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-zinc-950">
-      <nav className="sticky top-0 z-10 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+      <nav className="ledger sticky top-0 z-10 border-b border-[var(--l-border)] bg-[var(--l-surface)]">
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-2 py-2">
           <FitoutLogo variant="icon" className="h-6 w-6 shrink-0" />
           <div className="flex flex-1 gap-1 overflow-x-auto">
@@ -45,10 +45,12 @@ export default function ClientPortalLayout({ children }: { children: React.React
                 <Link
                   key={tab.labelKey}
                   href={tab.href(token)}
-                  className={`shrink-0 rounded-md px-3 py-1.5 text-sm font-medium whitespace-nowrap ${
+                  aria-current={active ? "page" : undefined}
+                  // Ledger tabs, same as the internal app: neutral grey pill for the current tab.
+                  className={`shrink-0 rounded-md px-3 py-1.5 text-sm whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--l-text)] ${
                     active
-                      ? "bg-amber-600 text-white dark:bg-amber-500 dark:text-zinc-950"
-                      : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                      ? "bg-[var(--l-active)] font-medium text-[var(--l-text)]"
+                      : "text-[var(--l-muted)] hover:bg-[var(--l-raised)] hover:text-[var(--l-text)]"
                   }`}
                 >
                   {t(tab.labelKey)}
@@ -61,7 +63,7 @@ export default function ClientPortalLayout({ children }: { children: React.React
             aria-label={t("nav.language")}
             value={locale}
             onChange={(e) => setLocale(e.target.value as Locale)}
-            className="shrink-0 rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-950"
+            className="h-9 shrink-0 rounded-md border border-[var(--l-border)] bg-[var(--l-surface)] px-2 text-sm text-[var(--l-text)] hover:border-[var(--l-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--l-text)]"
           >
             <option value="en">English</option>
             <option value="ar">العربية</option>

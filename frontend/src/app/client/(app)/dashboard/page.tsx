@@ -89,7 +89,7 @@ export default function ClientDashboardPage() {
         <CardBody>
           <p className="text-sm text-zinc-600 dark:text-zinc-300">
             Looking for a new studio?{" "}
-            <Link href="/marketplace" className="font-medium text-amber-600 hover:underline dark:text-amber-400">
+            <Link href="/marketplace" className="font-medium text-zinc-950 underline underline-offset-2 hover:no-underline dark:text-white">
               Browse the marketplace
             </Link>
             .

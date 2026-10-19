@@ -124,14 +124,14 @@ export default function InquiryThreadPage() {
                   key={m.id}
                   className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${
                     m.sender_type === "org_member"
-                      ? "ms-auto bg-amber-500 text-white dark:bg-amber-500 dark:text-zinc-950"
+                      ? "ms-auto bg-zinc-950 text-white dark:bg-white dark:text-zinc-950"
                       : "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50"
                   }`}
                 >
                   <p className="whitespace-pre-line">{m.body}</p>
                   <p
-                    className={`mt-1 text-[10px] ${
-                      m.sender_type === "org_member" ? "text-amber-50/80" : "text-zinc-400"
+                    className={`mt-1 text-[11px] ${
+                      m.sender_type === "org_member" ? "text-zinc-300 dark:text-zinc-600" : "text-zinc-500 dark:text-zinc-400"
                     }`}
                   >
                     {formatDateTime(m.created_at, locale)}

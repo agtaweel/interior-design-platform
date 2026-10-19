@@ -43,10 +43,12 @@ function NavLink({
     <Link
       href={href}
       onClick={onClick}
-      className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+      aria-current={isActive ? "page" : undefined}
+      // Same ledger nav as AppShell: a neutral grey pill for the current page, no brand fill.
+      className={`rounded-md px-3 py-2 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--l-text)] ${
         isActive
-          ? "bg-amber-600 text-white dark:bg-amber-500 dark:text-zinc-950"
-          : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          ? "bg-[var(--l-active)] font-medium text-[var(--l-text)]"
+          : "text-[var(--l-muted)] hover:bg-[var(--l-raised)] hover:text-[var(--l-text)]"
       }`}
     >
       {label}
@@ -61,7 +63,7 @@ export function ClientAppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+      <header className="ledger border-b border-[var(--l-border)] bg-[var(--l-surface)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex min-w-0 items-center gap-6">
             <Link href="/client/dashboard" className="shrink-0">
@@ -82,13 +84,13 @@ export function ClientAppShell({ children }: { children: ReactNode }) {
           <div className="hidden items-center gap-3 md:flex">
             <ThemeToggle />
             {client ? (
-              <span className="max-w-[10rem] truncate text-sm text-zinc-600 dark:text-zinc-300">
+              <span className="max-w-[10rem] truncate text-sm text-[var(--l-muted)]">
                 {client.name}
               </span>
             ) : null}
             <button
               onClick={() => logout()}
-              className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white"
+              className="rounded text-sm font-medium text-[var(--l-text)] underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--l-text)]"
             >
               Log out
             </button>
@@ -101,7 +103,7 @@ export function ClientAppShell({ children }: { children: ReactNode }) {
               aria-label="Menu"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen((open) => !open)}
-              className="flex h-9 w-9 items-center justify-center rounded-md text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="flex h-9 w-9 items-center justify-center rounded-md text-[var(--l-muted)] hover:bg-[var(--l-raised)] hover:text-[var(--l-text)]"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-5 w-5">
                 {menuOpen ? (
@@ -115,7 +117,7 @@ export function ClientAppShell({ children }: { children: ReactNode }) {
         </div>
 
         {menuOpen ? (
-          <div className="border-t border-zinc-200 px-4 pb-4 pt-2 dark:border-zinc-800 md:hidden">
+          <div className="border-t border-[var(--l-border)] px-4 pb-4 pt-2 md:hidden">
             <nav className="flex flex-col gap-1">
               {NAV_ITEMS.map((item) => (
                 <NavLink
@@ -127,16 +129,16 @@ export function ClientAppShell({ children }: { children: ReactNode }) {
                 />
               ))}
             </nav>
-            <div className="mt-3 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+            <div className="mt-3 border-t border-[var(--l-border)] pt-3">
               {client ? (
-                <p className="mb-3 truncate text-sm text-zinc-600 dark:text-zinc-300">{client.name}</p>
+                <p className="mb-3 truncate text-sm text-[var(--l-muted)]">{client.name}</p>
               ) : null}
               <button
                 onClick={() => {
                   setMenuOpen(false);
                   logout();
                 }}
-                className="w-full rounded-md border border-zinc-300 px-3 py-2 text-left text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="h-11 w-full rounded-md border border-[var(--l-border)] px-3 text-start text-sm font-medium text-[var(--l-text)] hover:bg-[var(--l-raised)]"
               >
                 Log out
               </button>
