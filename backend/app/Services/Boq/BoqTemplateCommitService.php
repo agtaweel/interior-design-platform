@@ -29,11 +29,12 @@ class BoqTemplateCommitService
 {
     /**
      * @param  array<int, array{catalog_item_id: int, category_id?: int, name?: string, unit?: string, quantity: float|string, material_unit_cost?: float|string|null, labor_unit_cost?: float|string|null, other_unit_cost?: float|string|null, client_unit_price?: float|string|null, source_template_id?: int|null, source_template_version_id?: int|null, source_template_item_id?: int|null, sort_order?: int}>  $resolvedItems
+     * @param  ?string  $locale  'en'|'ar' — which language the new project items/categories are named in
      * @return Collection<int, BoqItem>
      */
-    public function commit(Project $project, array $resolvedItems, User $actor): Collection
+    public function commit(Project $project, array $resolvedItems, User $actor, ?string $locale = null): Collection
     {
-        return DB::transaction(function () use ($project, $resolvedItems, $actor) {
+        return DB::transaction(function () use ($project, $resolvedItems, $actor, $locale) {
             $categoryMemo = [];
             $applicationCounts = [];
             $createdItems = collect();
@@ -43,14 +44,14 @@ class BoqTemplateCommitService
                 $catalogCategoryId = $row['category_id'] ?? $catalogItem?->category_id;
 
                 $boqCategoryId = $catalogCategoryId
-                    ? $this->resolveProjectCategory($project, (int) $catalogCategoryId, $categoryMemo)
+                    ? $this->resolveProjectCategory($project, (int) $catalogCategoryId, $categoryMemo, $locale)
                     : null;
 
                 $item = BoqItem::create([
                     'project_id' => $project->id,
                     'category_id' => $boqCategoryId,
                     'room_id' => null,
-                    'name' => $row['name'] ?? $catalogItem?->name ?? 'Untitled item',
+                    'name' => $row['name'] ?? $catalogItem?->localizedName($locale) ?? 'Untitled item',
                     'description' => $catalogItem?->description,
                     'quantity' => $row['quantity'],
                     'unit' => $row['unit'] ?? $catalogItem?->defaultUnit?->code,
@@ -90,7 +91,7 @@ class BoqTemplateCommitService
     }
 
     /** @param  array<int, int>  $memo  catalog_category_id => boq_categories.id, scoped to this commit() call only */
-    private function resolveProjectCategory(Project $project, int $catalogCategoryId, array &$memo): int
+    private function resolveProjectCategory(Project $project, int $catalogCategoryId, array &$memo, ?string $locale): int
     {
         if (isset($memo[$catalogCategoryId])) {
             return $memo[$catalogCategoryId];
@@ -99,13 +100,13 @@ class BoqTemplateCommitService
         $catalogCategory = BoqCatalogCategory::withoutGlobalScopes()->findOrFail($catalogCategoryId);
 
         $parentBoqCategoryId = $catalogCategory->parent_id
-            ? $this->resolveProjectCategory($project, $catalogCategory->parent_id, $memo)
+            ? $this->resolveProjectCategory($project, $catalogCategory->parent_id, $memo, $locale)
             : null;
 
         $boqCategory = BoqCategory::firstOrCreate([
             'project_id' => $project->id,
             'parent_id' => $parentBoqCategoryId,
-            'name' => $catalogCategory->name,
+            'name' => $catalogCategory->localizedName($locale),
         ]);
 
         return $memo[$catalogCategoryId] = $boqCategory->id;

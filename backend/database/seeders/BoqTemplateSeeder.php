@@ -82,7 +82,7 @@ class BoqTemplateSeeder extends Seeder
     }
 
     /**
-     * @param  array{code: string, name_en: string, name_ar: string, finishing_level?: ?string}  $meta
+     * @param  array{code: string, name_en: string, name_ar: string, description_en?: string, description_ar?: string, finishing_level?: ?string}  $meta
      * @param  array<string, array{quantity: float|null, required: bool}>  $items
      */
     private function createTemplate(array $meta, array $items, string $type = BoqTemplate::TYPE_FULL_FINISHING, ?string $projectType = null): BoqTemplate
@@ -93,6 +93,9 @@ class BoqTemplateSeeder extends Seeder
                 'name' => $meta['name_en'],
                 'name_en' => $meta['name_en'],
                 'name_ar' => $meta['name_ar'],
+                'description' => $meta['description_en'] ?? null,
+                'description_en' => $meta['description_en'] ?? null,
+                'description_ar' => $meta['description_ar'] ?? null,
                 'template_type' => $type,
                 'project_type' => $projectType,
                 'finishing_level' => $meta['finishing_level'] ?? null,

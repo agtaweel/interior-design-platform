@@ -17,6 +17,8 @@ return [
     'named_templates' => [
         'renovation' => [
             'code' => 'RENOVATION-GENERAL', 'name_en' => 'Renovation', 'name_ar' => 'تجديد شقة',
+            'description_en' => 'Refurbishing an already-finished apartment: removing old finishes, re-plastering, waterproofing wet areas, new tiles, fixtures, paint and doors, then a deep clean.',
+            'description_ar' => 'تجديد شقة مشطبة مسبقًا: إزالة التشطيبات القديمة، وإعادة البياض، وعزل الأماكن المبتلة، وبلاط وأدوات صحية ودهانات وأبواب جديدة، ثم تنظيف شامل.',
             'type' => BoqTemplate::TYPE_RENOVATION,
             'items' => [
                 'demolition.removal.flooring' => ['quantity' => 100, 'required' => true],
@@ -45,6 +47,8 @@ return [
         ],
         'shell_and_core' => [
             'code' => 'SHELL-AND-CORE', 'name_en' => 'Shell & Core', 'name_ar' => 'تشطيب هيكلي أساسي',
+            'description_en' => 'Base works that bring a raw unit to a ready-to-finish state: plaster, floor screed, wet-area waterproofing, and plumbing and electrical rough-in with the distribution board.',
+            'description_ar' => 'الأعمال الأساسية لتجهيز الوحدة الخام للتشطيب: بياض، ومحارة أرضيات، وعزل الأماكن المبتلة، وتأسيس السباكة والكهرباء مع لوحة التوزيع.',
             'type' => BoqTemplate::TYPE_PARTIAL_FINISHING,
             'items' => [
                 'plaster.walls.cement_plaster' => ['quantity' => 180, 'required' => true],
@@ -67,6 +71,8 @@ return [
         ],
         'bathroom_renovation' => [
             'code' => 'BATHROOM-RENOVATION', 'name_en' => 'Bathroom Renovation', 'name_ar' => 'تجديد الحمام',
+            'description_en' => 'Strip-out and full rebuild of one bathroom: waterproofing, plumbing points, anti-slip floor and wall tiles, new sanitary fixtures, ventilation, shower screen and mirror.',
+            'description_ar' => 'إزالة وإعادة تنفيذ حمام بالكامل: عزل، ونقاط سباكة، وبلاط أرضيات مانع للانزلاق وبلاط حوائط، وأدوات صحية جديدة، وتهوية، وفاصل دُش ومرآة.',
             'type' => BoqTemplate::TYPE_PARTIAL_FINISHING,
             'items' => [
                 'demolition.removal.wall_tiles' => ['quantity' => 18, 'required' => true],
@@ -94,6 +100,8 @@ return [
         ],
         'kitchen_renovation' => [
             'code' => 'KITCHEN-RENOVATION', 'name_en' => 'Kitchen Renovation', 'name_ar' => 'تجديد المطبخ',
+            'description_en' => 'Strip-out and rebuild of a kitchen: waterproofing, plumbing and electrical points, hood, floor tiles and backsplash, cabinets and a granite countertop.',
+            'description_ar' => 'إزالة وإعادة تنفيذ مطبخ: عزل، ونقاط سباكة وكهرباء، وشفاط، وبلاط أرضيات وحوائط، ووحدات مطبخ ورخامة جرانيت.',
             'type' => BoqTemplate::TYPE_PARTIAL_FINISHING,
             'items' => [
                 'demolition.removal.flooring' => ['quantity' => 10, 'required' => true],
@@ -118,6 +126,8 @@ return [
         ],
         'electrical_upgrade' => [
             'code' => 'ELECTRICAL-UPGRADE', 'name_en' => 'Electrical Upgrade', 'name_ar' => 'تحديث الكهرباء',
+            'description_en' => 'Concealed rewiring, new lighting, socket and AC points, a new distribution board with earthing, fittings, and testing and certification.',
+            'description_ar' => 'إعادة تمديد الأسلاك المدفونة، ونقاط إضاءة وبرايز وتكييف جديدة، ولوحة توزيع جديدة مع تأريض، وتركيبات، واختبار واعتماد.',
             'type' => BoqTemplate::TYPE_TRADE,
             'items' => [
                 'electrical.rough_in.lighting_point' => ['quantity' => 18, 'required' => true],
@@ -134,6 +144,8 @@ return [
         ],
         'plumbing_upgrade' => [
             'code' => 'PLUMBING-UPGRADE', 'name_en' => 'Plumbing Upgrade', 'name_ar' => 'تحديث السباكة',
+            'description_en' => 'Replacing supply and drainage points and the main riser, with new sanitary fixtures and a water heater.',
+            'description_ar' => 'تغيير نقاط التغذية والصرف والصاعد الرئيسي، مع أدوات صحية جديدة وسخان مياه.',
             'type' => BoqTemplate::TYPE_TRADE,
             'items' => [
                 'plumbing.rough_in.cold_water_point' => ['quantity' => 6, 'required' => true],
@@ -150,6 +162,8 @@ return [
         ],
         'paint_flooring_refresh' => [
             'code' => 'PAINT-FLOORING-REFRESH', 'name_en' => 'Paint & Flooring Refresh', 'name_ar' => 'تجديد الدهانات والأرضيات',
+            'description_en' => 'A cosmetic refresh: putty and repaint of walls and ceilings, new porcelain flooring and skirting, then cleaning. Services are not touched.',
+            'description_ar' => 'تجديد شكلي: معجون وإعادة دهان الحوائط والأسقف، وأرضيات بورسلين ووزرة جديدة، ثم التنظيف. دون المساس بالتأسيسات.',
             'type' => BoqTemplate::TYPE_TRADE,
             'items' => [
                 'paint.walls.putty_primer' => ['quantity' => 220, 'required' => true],
@@ -163,6 +177,8 @@ return [
         ],
         'interior_design_execution' => [
             'code' => 'INTERIOR-DESIGN-EXECUTION', 'name_en' => 'Interior Design + Execution', 'name_ar' => 'تصميم داخلي وتنفيذ',
+            'description_en' => 'Design-led fit-out: large-format porcelain, a feature wall, gypsum ceilings with cove lighting, premium paint, spotlights, a TV unit, wardrobes and kitchen cabinets.',
+            'description_ar' => 'تنفيذ قائم على التصميم: بورسلين مقاسات كبيرة، وحائط مميز، وأسقف جبسية بإضاءة مخفية، ودهانات متميزة، وسبوتات، ووحدة تلفزيون، ودواليب، ووحدات مطبخ.',
             'type' => BoqTemplate::TYPE_CUSTOM,
             'items' => [
                 'flooring.tiles.porcelain_80' => ['quantity' => 90, 'required' => true],
@@ -183,6 +199,8 @@ return [
     'room_templates' => [
         'master_bedroom' => [
             'code' => 'ROOM-MASTER-BEDROOM', 'name_en' => 'Master Bedroom', 'name_ar' => 'غرفة نوم رئيسية',
+            'description_en' => 'Finishing for a master bedroom: lighting, socket, AC and TV points, flooring, paint, a built-in wardrobe and a door.',
+            'description_ar' => 'تشطيب غرفة نوم رئيسية: نقاط إضاءة وبرايز وتكييف وتلفزيون، وأرضيات، ودهانات، ودولاب حائط، وباب.',
             'items' => [
                 'electrical.rough_in.lighting_point' => ['quantity' => 2, 'required' => true],
                 'electrical.rough_in.socket_point' => ['quantity' => 4, 'required' => true],
@@ -196,6 +214,8 @@ return [
         ],
         'bedroom' => [
             'code' => 'ROOM-BEDROOM', 'name_en' => 'Bedroom', 'name_ar' => 'غرفة نوم',
+            'description_en' => 'Finishing for a standard bedroom: lighting, socket and AC points, flooring, paint, a built-in wardrobe and a door.',
+            'description_ar' => 'تشطيب غرفة نوم عادية: نقاط إضاءة وبرايز وتكييف، وأرضيات، ودهانات، ودولاب حائط، وباب.',
             'items' => [
                 'electrical.rough_in.lighting_point' => ['quantity' => 1, 'required' => true],
                 'electrical.rough_in.socket_point' => ['quantity' => 3, 'required' => true],
@@ -208,6 +228,8 @@ return [
         ],
         'kids_room' => [
             'code' => 'ROOM-KIDS', 'name_en' => 'Kids Room', 'name_ar' => 'غرفة أطفال',
+            'description_en' => 'Finishing for a kids\' room: lighting, socket and AC points, flooring, paint, a built-in wardrobe and a door.',
+            'description_ar' => 'تشطيب غرفة أطفال: نقاط إضاءة وبرايز وتكييف، وأرضيات، ودهانات، ودولاب حائط، وباب.',
             'items' => [
                 'electrical.rough_in.lighting_point' => ['quantity' => 1, 'required' => true],
                 'electrical.rough_in.socket_point' => ['quantity' => 3, 'required' => true],
@@ -220,6 +242,8 @@ return [
         ],
         'living_room' => [
             'code' => 'ROOM-LIVING', 'name_en' => 'Living Room', 'name_ar' => 'غرفة معيشة',
+            'description_en' => 'Finishing for a living room: lighting, socket, AC and TV points, flooring, paint and a gypsum ceiling.',
+            'description_ar' => 'تشطيب غرفة معيشة: نقاط إضاءة وبرايز وتكييف وتلفزيون، وأرضيات، ودهانات، وسقف جبسي.',
             'items' => [
                 'electrical.rough_in.lighting_point' => ['quantity' => 2, 'required' => true],
                 'electrical.rough_in.socket_point' => ['quantity' => 5, 'required' => true],
@@ -232,6 +256,8 @@ return [
         ],
         'dining_room' => [
             'code' => 'ROOM-DINING', 'name_en' => 'Dining Room', 'name_ar' => 'غرفة سفرة',
+            'description_en' => 'Finishing for a dining room: lighting and socket points, flooring, paint and a chandelier.',
+            'description_ar' => 'تشطيب غرفة سفرة: نقاط إضاءة وبرايز، وأرضيات، ودهانات، ونجفة.',
             'items' => [
                 'electrical.rough_in.lighting_point' => ['quantity' => 1, 'required' => true],
                 'electrical.rough_in.socket_point' => ['quantity' => 2, 'required' => true],
@@ -242,6 +268,8 @@ return [
         ],
         'kitchen' => [
             'code' => 'ROOM-KITCHEN', 'name_en' => 'Kitchen', 'name_ar' => 'مطبخ',
+            'description_en' => 'Finishing for a kitchen: lighting, socket, cooker and exhaust points, cabinets, a granite countertop and a tiled backsplash.',
+            'description_ar' => 'تشطيب مطبخ: نقاط إضاءة وبرايز وبوتاجاز وشفاط، ووحدات مطبخ، ورخامة جرانيت، وبلاط حوائط.',
             'items' => [
                 'electrical.rough_in.lighting_point' => ['quantity' => 1, 'required' => true],
                 'electrical.rough_in.socket_point' => ['quantity' => 4, 'required' => true],
@@ -255,6 +283,8 @@ return [
         ],
         'master_bathroom' => [
             'code' => 'ROOM-MASTER-BATHROOM', 'name_en' => 'Master Bathroom', 'name_ar' => 'حمام رئيسي',
+            'description_en' => 'Finishing for a master bathroom: WC, washbasin, bathtub and shower mixer, wall tiles and anti-slip flooring, a mirror, and lighting and exhaust points.',
+            'description_ar' => 'تشطيب حمام رئيسي: قاعدة وحوض وبانيو وخلاط دُش، وبلاط حوائط وأرضيات مانعة للانزلاق، ومرآة، ونقاط إضاءة وشفاط.',
             'items' => [
                 'electrical.rough_in.lighting_point' => ['quantity' => 1, 'required' => true],
                 'electrical.rough_in.exhaust_fan_point' => ['quantity' => 1, 'required' => true],
@@ -269,6 +299,8 @@ return [
         ],
         'bathroom' => [
             'code' => 'ROOM-BATHROOM', 'name_en' => 'Bathroom', 'name_ar' => 'حمام',
+            'description_en' => 'Finishing for a standard bathroom: WC, washbasin and shower mixer, wall tiles and anti-slip flooring, a mirror, and lighting and exhaust points.',
+            'description_ar' => 'تشطيب حمام عادي: قاعدة وحوض وخلاط دُش، وبلاط حوائط وأرضيات مانعة للانزلاق، ومرآة، ونقاط إضاءة وشفاط.',
             'items' => [
                 'electrical.rough_in.lighting_point' => ['quantity' => 1, 'required' => true],
                 'electrical.rough_in.exhaust_fan_point' => ['quantity' => 1, 'required' => true],
@@ -282,6 +314,8 @@ return [
         ],
         'guest_wc' => [
             'code' => 'ROOM-GUEST-WC', 'name_en' => 'Guest WC', 'name_ar' => 'حمام ضيوف',
+            'description_en' => 'Finishing for a guest toilet: WC, washbasin and mixer, wall tiles and anti-slip flooring, and a lighting point.',
+            'description_ar' => 'تشطيب حمام ضيوف: قاعدة وحوض وخلاط، وبلاط حوائط وأرضيات مانعة للانزلاق، ونقطة إضاءة.',
             'items' => [
                 'electrical.rough_in.lighting_point' => ['quantity' => 1, 'required' => true],
                 'plumbing.fixtures.wc' => ['quantity' => 1, 'required' => true],
@@ -293,6 +327,8 @@ return [
         ],
         'home_office' => [
             'code' => 'ROOM-HOME-OFFICE', 'name_en' => 'Home Office', 'name_ar' => 'مكتب منزلي',
+            'description_en' => 'Finishing for a home office: lighting, socket and data points, flooring, paint and a study desk.',
+            'description_ar' => 'تشطيب مكتب منزلي: نقاط إضاءة وبرايز وشبكة، وأرضيات، ودهانات، ومكتب.',
             'items' => [
                 'electrical.rough_in.lighting_point' => ['quantity' => 1, 'required' => true],
                 'electrical.rough_in.socket_point' => ['quantity' => 4, 'required' => true],
@@ -304,6 +340,8 @@ return [
         ],
         'dressing_room' => [
             'code' => 'ROOM-DRESSING', 'name_en' => 'Dressing Room', 'name_ar' => 'غرفة ملابس',
+            'description_en' => 'Finishing for a dressing room: lighting and socket points, built-in wardrobes, a decorative mirror and flooring.',
+            'description_ar' => 'تشطيب غرفة ملابس: نقاط إضاءة وبرايز، ودواليب حائط، ومرآة ديكورية، وأرضيات.',
             'items' => [
                 'electrical.rough_in.lighting_point' => ['quantity' => 1, 'required' => true],
                 'electrical.rough_in.socket_point' => ['quantity' => 2, 'required' => true],
@@ -314,6 +352,8 @@ return [
         ],
         'laundry_room' => [
             'code' => 'ROOM-LAUNDRY', 'name_en' => 'Laundry Room', 'name_ar' => 'غرفة غسيل',
+            'description_en' => 'Finishing for a laundry room: waterproofing, ceramic flooring, and water, drainage and power points for appliances.',
+            'description_ar' => 'تشطيب غرفة غسيل: عزل، وأرضيات سيراميك، ونقاط مياه وصرف وكهرباء للأجهزة.',
             'items' => [
                 'electrical.rough_in.lighting_point' => ['quantity' => 1, 'required' => true],
                 'electrical.rough_in.socket_point' => ['quantity' => 2, 'required' => true],
@@ -328,6 +368,8 @@ return [
     'packages' => [
         'smart_home' => [
             'code' => 'PACKAGE-SMART-HOME', 'name_en' => 'Smart Home Package', 'name_ar' => 'باقة المنزل الذكي',
+            'description_en' => 'Add-on: smart switches, a thermostat, an automation hub and a video intercom, with optional curtain motors and indoor CCTV.',
+            'description_ar' => 'إضافة: مفاتيح ذكية، وترموستات، ووحدة تحكم مركزية، وإنتركم بالفيديو، مع ستائر كهربائية وكاميرات مراقبة داخلية اختيارية.',
             'items' => [
                 'low_current.smart_home.smart_switch' => ['quantity' => 8, 'required' => true],
                 'low_current.smart_home.thermostat' => ['quantity' => 1, 'required' => true],
@@ -339,6 +381,8 @@ return [
         ],
         'premium_lighting' => [
             'code' => 'PACKAGE-PREMIUM-LIGHTING', 'name_en' => 'Premium Lighting Package', 'name_ar' => 'باقة الإضاءة المتميزة',
+            'description_en' => 'Add-on: recessed spotlights, a chandelier, wall lights, cove lighting and premium switches.',
+            'description_ar' => 'إضافة: سبوتات مدفونة، ونجفة، وأباليك، وإضاءة مخفية، ومفاتيح متميزة.',
             'items' => [
                 'electrical.fixtures.recessed_spotlight' => ['quantity' => 15, 'required' => true],
                 'electrical.fixtures.chandelier' => ['quantity' => 1, 'required' => true],
@@ -349,6 +393,8 @@ return [
         ],
         'luxury_bathroom' => [
             'code' => 'PACKAGE-LUXURY-BATHROOM', 'name_en' => 'Luxury Bathroom Package', 'name_ar' => 'باقة الحمام الفاخر',
+            'description_en' => 'Add-on: a wall-hung WC, bathtub, glass shower cabin, marble flooring, stone cladding and a decorative mirror.',
+            'description_ar' => 'إضافة: قاعدة معلقة، وبانيو، وكابينة دُش زجاجية، وأرضيات رخام، وتكسية حجر، ومرآة ديكورية.',
             'items' => [
                 'plumbing.fixtures.wall_hung_wc' => ['quantity' => 1, 'required' => true],
                 'plumbing.fixtures.bathtub' => ['quantity' => 1, 'required' => true],
@@ -360,6 +406,8 @@ return [
         ],
         'premium_kitchen' => [
             'code' => 'PACKAGE-PREMIUM-KITCHEN', 'name_en' => 'Premium Kitchen Package', 'name_ar' => 'باقة المطبخ المتميز',
+            'description_en' => 'Add-on: a quartz countertop, extra base and tall cabinets, drawer organizers, pull-out baskets and a data point.',
+            'description_ar' => 'إضافة: رخامة كوارتز، ووحدات سفلية وطويلة إضافية، ومنظمات أدراج، وسلال منزلقة، ونقطة شبكة.',
             'items' => [
                 'kitchen.countertop.quartz' => ['quantity' => 4, 'required' => true],
                 'kitchen.cabinets.tall_unit' => ['quantity' => 1, 'required' => true],

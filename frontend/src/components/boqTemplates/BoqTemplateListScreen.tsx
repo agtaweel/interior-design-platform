@@ -21,9 +21,10 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { finishingLevelLabel, localizedDescription, localizedName, templateTypeLabel } from "@/lib/i18n/localizedContent";
 
 export function BoqTemplateListScreen({ platform, basePath }: { platform: boolean; basePath: string }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [templates, setTemplates] = useState<BoqTemplate[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -95,12 +96,15 @@ export function BoqTemplateListScreen({ platform, basePath }: { platform: boolea
                       href={`${basePath}/${tpl.id}`}
                       className="text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50"
                     >
-                      {tpl.name}
+                      {localizedName(tpl, locale)}
                     </Link>
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                      {tpl.code} · {tpl.template_type}
-                      {tpl.finishing_level ? ` · ${tpl.finishing_level}` : ""}
+                      {tpl.code} · {templateTypeLabel(t, tpl.template_type)}
+                      {tpl.finishing_level ? ` · ${finishingLevelLabel(t, tpl.finishing_level)}` : ""}
                     </p>
+                    {localizedDescription(tpl, locale) ? (
+                      <p className="mt-0.5 text-xs text-zinc-400">{localizedDescription(tpl, locale)}</p>
+                    ) : null}
                   </div>
                   <div className="flex items-center gap-2">
                     {tpl.active_version ? (

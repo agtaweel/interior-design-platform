@@ -48,6 +48,7 @@ import type {
 } from "@/lib/api/types";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { roleLabel } from "@/lib/i18n/localizedContent";
 import { formatDateTime } from "@/lib/format/date";
 import type { TranslationKey } from "@/lib/i18n/dictionaries";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
@@ -671,7 +672,7 @@ function MembersSection({ organizationId }: { organizationId: string }) {
                 >
                   {availableRoles.map((role) => (
                     <option key={role.id} value={role.id}>
-                      {role.name}
+                      {roleLabel(t, role)}
                     </option>
                   ))}
                 </select>
@@ -723,11 +724,11 @@ function MembersSection({ organizationId }: { organizationId: string }) {
                         onChange={(e) => handleRoleChange(member, e.target.value)}
                       >
                         {member.role && !availableRoles.some((r) => String(r.id) === String(member.role!.id)) ? (
-                          <option value={String(member.role.id)}>{member.role.name}</option>
+                          <option value={String(member.role.id)}>{roleLabel(t, member.role)}</option>
                         ) : null}
                         {availableRoles.map((role) => (
                           <option key={role.id} value={role.id}>
-                            {role.name}
+                            {roleLabel(t, role)}
                           </option>
                         ))}
                       </select>

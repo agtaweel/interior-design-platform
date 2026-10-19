@@ -74,6 +74,37 @@ class BoqTemplateCommitTest extends TestCase
         $this->assertSame($projectParent->id, $projectChild->parent_id);
     }
 
+    public function test_commit_with_arabic_locale_names_project_categories_and_items_in_arabic(): void
+    {
+        $organization = Organization::factory()->create();
+        $user = $this->manageBoqUser($organization);
+        $project = $this->projectIn($organization);
+
+        $parentCategory = BoqCatalogCategory::factory()->create([
+            'organization_id' => $organization->id, 'name' => 'Kitchen', 'name_en' => 'Kitchen', 'name_ar' => 'المطبخ',
+        ]);
+        $childCategory = BoqCatalogCategory::factory()->create([
+            'organization_id' => $organization->id, 'parent_id' => $parentCategory->id,
+            'name' => 'Cabinets', 'name_en' => 'Cabinets', 'name_ar' => 'وحدات المطبخ',
+        ]);
+        $catalogItem = BoqCatalogItem::factory()->create([
+            'organization_id' => $organization->id, 'category_id' => $childCategory->id,
+            'name' => 'Base Cabinet', 'name_en' => 'Base Cabinet', 'name_ar' => 'وحدة سفلية',
+        ]);
+
+        $this->withHeaders($this->authHeader($user))->postJson("/api/v1/projects/{$project->id}/boq/template-commit", [
+            'locale' => 'ar',
+            'items' => [['catalog_item_id' => $catalogItem->id, 'category_id' => $childCategory->id, 'quantity' => 1, 'unit' => 'pcs']],
+        ])->assertStatus(201);
+
+        $projectParent = BoqCategory::where('project_id', $project->id)->whereNull('parent_id')->first();
+        $projectChild = BoqCategory::where('project_id', $project->id)->whereNotNull('parent_id')->first();
+
+        $this->assertSame('المطبخ', $projectParent->name);
+        $this->assertSame('وحدات المطبخ', $projectChild->name);
+        $this->assertSame('وحدة سفلية', BoqItem::where('project_id', $project->id)->value('name'));
+    }
+
     public function test_applying_a_second_template_that_shares_a_category_reuses_the_existing_project_category(): void
     {
         $organization = Organization::factory()->create();

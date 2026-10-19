@@ -40,6 +40,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { finishingLevelLabel, localizedName, templateTypeLabel } from "@/lib/i18n/localizedContent";
 
 const INPUT_CLASSES =
   "w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-950";
@@ -55,7 +56,7 @@ export function BoqTemplateDetailScreen({
   basePath: string;
   templateId: string;
 }) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   const [template, setTemplate] = useState<BoqTemplate | null>(null);
   const [versions, setVersions] = useState<BoqTemplateVersion[]>([]);
   const [usage, setUsage] = useState<BoqTemplateUsage | null>(null);
@@ -287,7 +288,7 @@ export function BoqTemplateDetailScreen({
           ← {t("boqAdmin.back")}
         </Link>
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">{template.name}</h1>
+          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">{localizedName(template, locale)}</h1>
           <div className="flex items-center gap-2">
             {template.is_system ? <Badge tone="blue">{t("boqAdmin.isSystem")}</Badge> : null}
             {!template.is_active ? <Badge tone="red">{t("boqAdmin.inactive")}</Badge> : null}
@@ -337,7 +338,7 @@ export function BoqTemplateDetailScreen({
                 >
                   {BOQ_TEMPLATE_TYPES.map((type) => (
                     <option key={type} value={type}>
-                      {type}
+                      {templateTypeLabel(t, type)}
                     </option>
                   ))}
                 </select>
@@ -351,7 +352,7 @@ export function BoqTemplateDetailScreen({
                   <option value="">{t("boqAdmin.form.finishingLevelNone")}</option>
                   {FINISHING_LEVELS.map((level) => (
                     <option key={level} value={level}>
-                      {level}
+                      {finishingLevelLabel(t, level)}
                     </option>
                   ))}
                 </select>
@@ -448,9 +449,9 @@ export function BoqTemplateDetailScreen({
                             {expandedVersion.items.map((item) => (
                               <div key={item.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                                 <div>
-                                  <span className="text-zinc-900 dark:text-zinc-50">{item.catalog_item?.name}</span>
+                                  <span className="text-zinc-900 dark:text-zinc-50">{localizedName(item.catalog_item, locale)}</span>
                                   <span className="ms-2 text-xs text-zinc-500 dark:text-zinc-400">
-                                    {item.default_quantity ?? "—"} {item.default_unit?.code ?? ""} ·{" "}
+                                    {item.default_quantity ?? "—"} {localizedName(item.default_unit, locale)} ·{" "}
                                     {item.is_required ? t("boqAdmin.items.required") : t("boqAdmin.items.optional")}
                                   </span>
                                 </div>
@@ -500,7 +501,7 @@ export function BoqTemplateDetailScreen({
                                           : "border-zinc-200 dark:border-zinc-800"
                                       }`}
                                     >
-                                      {item.name}
+                                      {localizedName(item, locale)}
                                     </button>
                                   ))}
                                 </div>
@@ -509,7 +510,7 @@ export function BoqTemplateDetailScreen({
                             {selectedCatalogItem ? (
                               <div className="mt-3 flex flex-wrap items-center gap-2">
                                 <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                                  {t("boqAdmin.items.selected")}: {selectedCatalogItem.name}
+                                  {t("boqAdmin.items.selected")}: {localizedName(selectedCatalogItem, locale)}
                                 </span>
                                 <input
                                   type="number"

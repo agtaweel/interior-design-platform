@@ -58,6 +58,7 @@ import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { finishingLevelLabel, localizedName, templateTypeLabel } from "@/lib/i18n/localizedContent";
 import { useMoneyFormatter } from "@/lib/format/useMoneyFormatter";
 
 const INPUT_CLASSES =
@@ -542,6 +543,7 @@ export default function BoqBuilderPage() {
             source_template_id: firstContributor?.template_id ?? null,
             source_template_version_id: firstContributor?.template_version_id ?? null,
             source_template_item_id: firstContributor?.template_item_id ?? null,
+            name: localizedName(row.item, locale),
           };
           if (unit) resolved.unit = unit;
           return resolved;
@@ -553,7 +555,7 @@ export default function BoqBuilderPage() {
         return;
       }
 
-      await commitBoqTemplates(projectId, items);
+      await commitBoqTemplates(projectId, items, locale);
       await loadBoq();
       setShowTemplates(false);
       setTemplateStep("select");
@@ -675,10 +677,10 @@ export default function BoqBuilderPage() {
                             className="mt-0.5"
                           />
                           <span>
-                            <span className="block font-medium text-zinc-900 dark:text-zinc-50">{tpl.name}</span>
+                            <span className="block font-medium text-zinc-900 dark:text-zinc-50">{localizedName(tpl, locale)}</span>
                             <span className="block text-xs text-zinc-500 dark:text-zinc-400">
-                              {tpl.template_type}
-                              {tpl.finishing_level ? ` · ${tpl.finishing_level}` : ""}
+                              {templateTypeLabel(t, tpl.template_type)}
+                              {tpl.finishing_level ? ` · ${finishingLevelLabel(t, tpl.finishing_level)}` : ""}
                             </span>
                           </span>
                         </label>
@@ -704,7 +706,7 @@ export default function BoqBuilderPage() {
                       return (
                         <div key={key} className="flex flex-wrap items-center gap-3 py-2">
                           <div className="min-w-[200px] flex-1">
-                            <p className="text-sm text-zinc-900 dark:text-zinc-50">{row.item.name}</p>
+                            <p className="text-sm text-zinc-900 dark:text-zinc-50">{localizedName(row.item, locale)}</p>
                             <p className="text-xs text-zinc-500 dark:text-zinc-400">
                               {row.item.is_required ? t("boq.template.preview.required") : null}
                               {row.item.needs_review ? (
@@ -716,7 +718,12 @@ export default function BoqBuilderPage() {
                             {row.item.contributed_by.length > 1 ? (
                               <p className="text-xs text-zinc-400">
                                 {t("boq.template.preview.from")}:{" "}
-                                {row.item.contributed_by.map((c) => `${c.template_name} (${c.default_quantity ?? "—"})`).join(", ")}
+                                {row.item.contributed_by
+                                  .map((c) => {
+                                    const tpl = availableTemplates?.find((x) => String(x.id) === String(c.template_id));
+                                    return `${tpl ? localizedName(tpl, locale) : c.template_name} (${c.default_quantity ?? "—"})`;
+                                  })
+                                  .join(", ")}
                               </p>
                             ) : null}
                           </div>

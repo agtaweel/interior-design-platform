@@ -19,6 +19,8 @@ return [
         'code' => 'FULL-FINISHING-STANDARD',
         'name_en' => 'Full Apartment Finishing - Standard',
         'name_ar' => 'تشطيب شقة كامل - عادي',
+        'description_en' => 'Complete finishing for an apartment delivered as a bare shell: plaster, flooring, paint, electrical, plumbing, doors, kitchen and bathrooms at a standard specification.',
+        'description_ar' => 'تشطيب كامل لشقة مستلمة على الطوب: بياض وأرضيات ودهانات وكهرباء وسباكة وأبواب ومطبخ وحمامات بمواصفات عادية.',
         'finishing_level' => 'STANDARD',
         'items' => [
             'plaster.walls.cement_plaster' => ['quantity' => 180, 'required' => true],
@@ -123,6 +125,8 @@ return [
         'code' => 'FULL-FINISHING-PREMIUM',
         'name_en' => 'Full Apartment Finishing - Premium',
         'name_ar' => 'تشطيب شقة كامل - متميز',
+        'description_en' => 'The Standard scope upgraded: large-format porcelain with marble accents, feature walls, gypsum ceilings with cove lighting, premium paint and switches, quartz countertops, premium doors, uPVC windows and wall-hung WCs.',
+        'description_ar' => 'نطاق التشطيب العادي بعد الترقية: بورسلين مقاسات كبيرة مع لمسات رخام، وحوائط مميزة، وأسقف جبسية بإضاءة مخفية، ودهانات ومفاتيح متميزة، ورخامة كوارتز، وأبواب متميزة، وشبابيك يو بي في سي، وقواعد معلقة.',
         'finishing_level' => 'PREMIUM',
         'remove' => [
             'flooring.tiles.porcelain_60', 'paint.walls.standard', 'electrical.fixtures.switch_standard',
@@ -161,6 +165,8 @@ return [
         'code' => 'FULL-FINISHING-LUXURY',
         'name_en' => 'Full Apartment Finishing - Luxury',
         'name_ar' => 'تشطيب شقة كامل - فاخر',
+        'description_en' => 'The Premium scope upgraded: marble flooring throughout, stone cladding, a walk-in closet, smart-home controls, home-theater wiring, glass shower cabins and fully fitted kitchen storage.',
+        'description_ar' => 'نطاق التشطيب المتميز بعد الترقية: أرضيات رخام بالكامل، وتكسيات حجر، وغرفة ملابس، وتحكم منزل ذكي، وتأسيس مسرح منزلي، وكبائن دُش زجاجية، ووحدات تخزين مطبخ متكاملة.',
         'finishing_level' => 'LUXURY',
         'remove' => [
             'flooring.tiles.porcelain_80',

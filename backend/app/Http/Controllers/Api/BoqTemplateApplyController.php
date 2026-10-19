@@ -103,7 +103,9 @@ class BoqTemplateApplyController extends Controller
             }
         }
 
-        $createdItems = $this->commitService->commit($projectModel, $items, $request->user());
+        $locale = in_array($request->input('locale'), ['en', 'ar'], true) ? $request->input('locale') : null;
+
+        $createdItems = $this->commitService->commit($projectModel, $items, $request->user(), $locale);
 
         return response()->json(['data' => BoqItemResource::collection($createdItems)->resolve()], 201);
     }

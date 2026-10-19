@@ -178,6 +178,7 @@ export function previewBoqTemplates(
   });
 }
 
-export function commitBoqTemplates(projectId: number | string, items: BoqTemplateCommitItem[]) {
-  return apiPostResource<BoqItem[]>(`/projects/${projectId}/boq/template-commit`, { items });
+/** `locale` picks the language the new project BOQ categories are named in (items use each row's `name`). */
+export function commitBoqTemplates(projectId: number | string, items: BoqTemplateCommitItem[], locale?: "en" | "ar") {
+  return apiPostResource<BoqItem[]>(`/projects/${projectId}/boq/template-commit`, { items, locale });
 }

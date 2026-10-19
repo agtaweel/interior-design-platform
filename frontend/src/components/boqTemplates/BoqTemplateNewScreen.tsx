@@ -12,6 +12,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { ErrorBanner } from "@/components/ui/ErrorBanner";
 import { useLocale } from "@/lib/i18n/LocaleProvider";
+import { finishingLevelLabel, templateTypeLabel } from "@/lib/i18n/localizedContent";
 
 const INPUT_CLASSES =
   "w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 dark:border-zinc-700 dark:bg-zinc-950";
@@ -93,7 +94,7 @@ export function BoqTemplateNewScreen({ platform, basePath }: { platform: boolean
                 >
                   {BOQ_TEMPLATE_TYPES.map((type) => (
                     <option key={type} value={type}>
-                      {type}
+                      {templateTypeLabel(t, type)}
                     </option>
                   ))}
                 </select>
@@ -107,7 +108,7 @@ export function BoqTemplateNewScreen({ platform, basePath }: { platform: boolean
                   <option value="">{t("boqAdmin.form.finishingLevelNone")}</option>
                   {FINISHING_LEVELS.map((level) => (
                     <option key={level} value={level}>
-                      {level}
+                      {finishingLevelLabel(t, level)}
                     </option>
                   ))}
                 </select>
